@@ -19,27 +19,57 @@ from scipy.ndimage import gaussian_filter
 # from torch_geometric.data import Data
 
 
-
-class DataNormer():
+class DataNormer(object):
     """
         data normalization at last dimension
     """
 
     def __init__(self, data, method="min-max", axis=None):
-        if axis is None:
-            axis = tuple(range(len(data.shape) - 1))
-        self.method = method
-        if method == "min-max":
-            self.max = np.max(data, axis=axis)
-            self.min = np.min(data, axis=axis)
+        """
+            data normalization at last dimension
+            :param data: data to be normalized
+            :param method: normalization method
+            :param axis: axis to be normalized
+        """
+        if isinstance(data, str):
+            if os.path.isfile(data):
+                try:
+                    self.load(data)
+                except:
+                    raise ValueError("the savefile format is not supported!")
+            else:
+                raise ValueError("the file does not exist!")
+        elif type(data) is np.ndarray:
+            if axis is None:
+                axis = tuple(range(len(data.shape) - 1))
+            self.method = method
+            if method == "min-max":
+                self.max = np.max(data, axis=axis)
+                self.min = np.min(data, axis=axis)
 
-        elif method == "mean-std":
-            self.mean = np.mean(data, axis=axis)
-            self.std = np.std(data, axis=axis)
+            elif method == "mean-std":
+                self.mean = np.mean(data, axis=axis)
+                self.std = np.std(data, axis=axis)
+        elif type(data) is torch.Tensor:
+            if axis is None:
+                axis = tuple(range(len(data.shape) - 1))
+            self.method = method
+            if method == "min-max":
+                self.max = np.max(data.numpy(), axis=axis)
+                self.min = np.min(data.numpy(), axis=axis)
+
+            elif method == "mean-std":
+                self.mean = np.mean(data.numpy(), axis=axis)
+                self.std = np.std(data.numpy(), axis=axis)
+        else:
+            raise NotImplementedError("the data type is not supported!")
+
 
     def norm(self, x):
         """
             input tensors
+            param x: input tensors
+            return x: output tensors
         """
         if torch.is_tensor(x):
             if self.method == "min-max":
@@ -58,6 +88,8 @@ class DataNormer():
     def back(self, x):
         """
             input tensors
+            param x: input tensors
+            return x: output tensors
         """
         if torch.is_tensor(x):
             if self.method == "min-max":
@@ -72,26 +104,37 @@ class DataNormer():
             elif self.method == "mean-std":
                 x = x * (self.std + 1e-10) + self.mean
         return x
-    def save(self,save_path):
+    def save(self, save_path):
+        """
+            save the parameters to the file
+            :param save_path: file path to save
+        """
         import pickle
         with open(save_path, 'wb') as f:
             pickle.dump(self, f)
 
-    def load(self,save_path):
+    def load(self, save_path):
+        """
+            load the parameters from the file
+            :param save_path: file path to load
+        """
         import pickle
         isExist = os.path.exists(save_path)
         if isExist:
-            with open(save_path, 'rb') as f:
-                load = pickle.load(f)
-            self.method = load.method
-            if load.method == "mean-std":
-                self.std = load.std
-                self.mean = load.mean
-            elif load.method == "min-max":
-                self.min = load.min
-                self.max = load.max
+            try:
+                with open(save_path, 'rb') as f:
+                    load = pickle.load(f)
+                self.method = load.method
+                if load.method == "mean-std":
+                    self.std = load.std
+                    self.mean = load.mean
+                elif load.method == "min-max":
+                    self.min = load.min
+                    self.max = load.max
+            except:
+                raise ValueError("the savefile format is not supported!")
         else:
-            print("The pkl file is not exist, CHECK PLEASE!")
+            raise ValueError("The pkl file is not exist, CHECK PLEASE!")
 
 
 # reading data

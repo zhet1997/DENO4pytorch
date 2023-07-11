@@ -244,7 +244,7 @@ if __name__ == "__main__":
                 fig.savefig(os.path.join(work_path, 'train_solution_' + str(t) + '_graph.jpg'))
                 plt.close(fig)
 
-                triang = tri.Triangulation(train_coord[t][:, 0], train_coord[t][:, 1])
+                triang = tri.Triangulation(valid_coord[t][:, 0], valid_coord[t][:, 1])
 
                 fig, axs = plt.subplots(out_dim, 3, figsize=(15, 12), num=1, layout='constrained')
                 Visual.plot_fields_tr(fig, axs, valid_true[t], valid_pred[t], valid_coord[t],

@@ -4,6 +4,7 @@ import torch
 from Utilizes.process_data import DataNormer, MatLoader
 from post_process.post_data import Post_2d
 import os
+import torch
 
 def get_grid(real_path=None):
     xx = np.linspace(-0.127, 0.126, 64)
@@ -246,7 +247,6 @@ def get_value(data_2d, input_para=None, parameterList=None):
 
     return np.concatenate(Rst, axis=1)
 
-
 class Rotor37WeightLoss(torch.nn.Module):
     def __init__(self):
         super(Rotor37WeightLoss, self).__init__()
@@ -277,7 +277,6 @@ class Rotor37WeightLoss(torch.nn.Module):
         lossfunc = torch.nn.MSELoss()
         loss = lossfunc(predicted * weighted_mat, target * weighted_mat)
         return loss
-
 
 def get_gemodata_from_mat(realpath=None,existcheck=None):
 
