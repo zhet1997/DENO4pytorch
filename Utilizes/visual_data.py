@@ -436,19 +436,19 @@ class MatplotlibVision(object):
 
         axs.plot([min_value, max_value], [min_value, max_value], 'k--', linewidth=2.0)
         # 在两个曲线之间填充颜色
-        axs.fill_between([min_value, max_value], [0.995 * min_value, 0.995 * max_value],
-                         [1.005 * min_value, 1.005 * max_value],
-                         alpha=0.2, color='b')
+        # axs.fill_between([min_value, max_value], [0.995 * min_value, 0.995 * max_value],
+        #                  [1.005 * min_value, 1.005 * max_value],
+        #                  alpha=0.2, color='b')
 
         # plt.ylim((min_value, max_value))
         axs.set_xlim((min_value, max_value))
         axs.set_ylim((min_value, max_value))
         axs.tick_params(axis='both', which='both', labelsize=0)
-        # axs.grid(True)  # 添加网格
-        # axs.legend(loc="upper left", prop=self.font)
-        # axs.set_xlabel(xylabels[0], fontdict=self.font)
-        # axs.set_ylabel(xylabels[1], fontdict=self.font)
-        # axs.tick_params('both', labelsize=self.font["size"], )
+        axs.grid(True)  # 添加网格
+        axs.legend(loc="upper left", prop=self.font)
+        axs.set_xlabel(xylabels[0], fontdict=self.font)
+        axs.set_ylabel(xylabels[1], fontdict=self.font)
+        axs.tick_params('both', labelsize=self.font["size"], )
         # axs.set_title(title, fontdict=self.font)
 
     def plot_error(self, fig, axs, error, error_ratio=0.05, title=None,

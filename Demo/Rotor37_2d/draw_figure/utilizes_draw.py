@@ -329,28 +329,29 @@ def plot_error_new(post_true, post_pred_list, parameterList,
     ]
 
     for parameter_Name in parameterList:
-        fig, axs = plt.subplots(1, 1, figsize=(5, 5), num=1)
+        fig, axs = plt.subplots(1, 1, figsize=(10, 10), num=1)
+        # fig, axs = plt.subplots(1, 1, figsize=(5, 5), num=1)
         for ii, post_pred in enumerate(post_pred_list):
 
-            if ii==3:
+            # if ii==3:
 
-                if parameter_Name in ("MassFlow"):
-                    value_span_true = post_true.get_MassFlow()
-                    value_span_pred = post_pred.get_MassFlow()
+            if parameter_Name in ("MassFlow"):
+                value_span_true = post_true.get_MassFlow()
+                value_span_pred = post_pred.get_MassFlow()
 
 
-                else:
-                    value_span_true = getattr(post_true, parameter_Name) #shape[num, 64, 64]
-                    value_span_true = post_true.span_density_average(value_span_true[:, :, -1]) # shape[num, 1]
-                    value_span_pred = getattr(post_pred, parameter_Name)
-                    value_span_pred = post_true.span_density_average(value_span_pred[:, :, -1])
+            else:
+                value_span_true = getattr(post_true, parameter_Name) #shape[num, 64, 64]
+                value_span_true = post_true.span_density_average(value_span_true[:, :, -1]) # shape[num, 1]
+                value_span_pred = getattr(post_pred, parameter_Name)
+                value_span_pred = post_true.span_density_average(value_span_pred[:, :, -1])
 
-                Visual.plot_regression_dot(fig, axs, value_span_true.squeeze(), value_span_pred.squeeze(),
-                                       title=parameter_Name, color=colorList[ii], label=labelList[ii])
+            Visual.plot_regression_dot(fig, axs, value_span_true.squeeze(), value_span_pred.squeeze(),
+                                   title=parameter_Name, color=colorList[ii], label=labelList[ii])
 
         if save_path is None:
-            jpg_path = os.path.join(work_path, parameter_Name + "_error_FNO_" + str(fig_id) + '.jpg')
-        plt.locator_params(axis='x', nbins=4)
+            jpg_path = os.path.join(work_path, parameter_Name + "_error_" + str(fig_id) + '.jpg')
+        # plt.locator_params(axis='x', nbins=4)
         fig.savefig(jpg_path) # 暂时修改
         plt.close(fig)
 

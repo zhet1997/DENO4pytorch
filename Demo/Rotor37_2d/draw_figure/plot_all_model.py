@@ -250,22 +250,20 @@ def plot_1d_curves():
 
 def plot_error():
     nameList = [
+        # 'MLP',
+        # 'UNet',
+        # 'deepONet',
+        # 'FNO',
         'Transformer',
-        'MLP',
-        'UNet',
-        'deepONet',
-        'FNO',
-        # 'Transformer',
     ]
     scaleList = [1, 1, 1, 1, 1]
     pathList = [
-        'work/Transformer',
-        'work_train_MLP/MLP_5',
-        'work_train_UNet/UNet_4',
-        'work_train_deepONet/deepONet_1',
-        'work_train_FNO2/FNO_1',
+        # 'work_train_MLP/MLP_5',
+        # 'work_train_UNet/UNet_4',
+        # 'work_train_deepONet/deepONet_1',
+        # 'work_train_FNO2/FNO_1',
         # 'work_train_Trans2/Transformer_1',
-        # 'work/Transformer',
+        'work/Transformer',
     ]
 
     if torch.cuda.is_available():
@@ -323,12 +321,22 @@ def plot_error():
         true, pred = get_true_pred(valid_loader, Net_model, inference, Device,
                                    name=nameReal, iters=5, alldata=False
                                    )
-
+        true = y_normalizer.back(true)
         y_normalizer = DataNormer(np.ndarray([1, 1]), method="mean-std", axis=0)
         y_normalizer.load(norm_save_y)
 
-        true = y_normalizer.back(true)
-        pred = y_normalizer.back(pred)
+
+        # if ii==1:
+        #     true, pred = get_true_pred(valid_loader, Net_model, inference, Device,
+        #                                name=nameReal, iters=5, alldata=False
+        #                                )
+        #
+        #     true = y_normalizer.back(true)
+        # else:
+        #     _, pred = get_true_pred(valid_loader, Net_model, inference, Device,
+        #                                name=nameReal, iters=5, alldata=False
+        #                                )
+        # pred = y_normalizer.back(pred)
 
         # pred = predicter(Net_model, torch.tensor(design[sample_number:sample_number+1,:]), Device, name=nameReal)  # 获得预测值
 
