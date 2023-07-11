@@ -3,7 +3,7 @@ import os
 import numpy as np
 import yaml
 import torch
-from utilizes_rotor37 import get_quanlity_from_mat, get_grid
+from utilizes_rotor37 import get_quanlity_from_mat, get_grid, get_origin
 from post_process.post_data import Post_2d
 from train_model.model_whole_life import WorkPrj
 from Utilizes.process_data import DataNormer
@@ -35,6 +35,33 @@ def load_CFD_mat(sample_file, parameterList):
 
     return all_dict
 
+def load_CFD_mat_train(parameterList):
+
+    quanlityList = ["Static Pressure", "Static Temperature",
+                    'V2', 'W2', "DensityFlow"]
+
+    grid = get_grid(real_path=os.path.join("..", "data"))
+    design, fields = get_origin(realpath=os.path.join("..", "data"))
+    design = design[:2500]
+    fields = fields[:2500]
+    # design, fields = get_quanlity_from_mat(sample_file, quanlityList)
+    post_true = Post_2d(fields, grid,
+                        inputDict=None,
+                        )
+    all_dict = {}
+    for parameter in parameterList:
+        if parameter=="MassFlow":
+            scalar = post_true.get_MassFlow()
+        else:
+            value_span = getattr(post_true, parameter)
+            scalar = post_true.span_density_average(value_span[:, :, -1])
+        all_dict.update({parameter: scalar})
+
+    all_dict.update({"Design": design})
+
+    return all_dict
+
+
 def get_pred_rst(work_path, name, x, Device):
     work = WorkPrj(work_path)
 
@@ -60,14 +87,14 @@ def get_pred_rst(work_path, name, x, Device):
                             out_norm=y_normlizer,
                             )
 
-    pred = model_all.predictor_value(x, parameterList=parameterList, setOpt=False)
+    pred = model_all.predictor_value(x, parameterList=None, setOpt=False)
 
     return pred
 
 
 if __name__ == "__main__":
     work_path = os.path.join("..", "work_train_FNO2", "FNO_1") #当前效果最好的模型
-    name_opt = "sin_obj_minimize"
+    name_opt = "EPM_optimization_tasks"
     name = "FNO"
 
     if torch.cuda.is_available():
@@ -91,13 +118,18 @@ if __name__ == "__main__":
 
     dict_true = load_CFD_mat(mat_path, parameterList)
     #加载预测结果 # 需要加载模型获得全部结果
+
     pred = get_pred_rst(work_path, name, dict_true["Design"], Device)
     #对比
     # dict_compare_list = []
     dict_compare = {}
-    for ii, parameter in enumerate(parameterList):
-        compareList = np.concatenate((dict_true[parameter], pred[:, ii:ii+1],
-                                      np.abs((dict_true[parameter]-pred[:, ii:ii+1])/dict_true[parameter])),axis=1)
+    # for ii, parameter in enumerate(parameterList):
+
+    for ii in range(24):
+        parameter = "task_" + str(ii)
+        # compareList = np.concatenate((dict_true[parameter], pred[:, ii:ii+1],
+        #                               np.abs((dict_true[parameter]-pred[:, ii:ii+1])/dict_true[parameter])),axis=1)
+        compareList = pred[:, ii:ii+1]
         compareList = np.round(compareList, decimals=5)
         dict_compare.update({parameter : compareList.tolist()})
 

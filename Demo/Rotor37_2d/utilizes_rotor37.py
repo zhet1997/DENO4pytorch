@@ -139,6 +139,65 @@ def get_origin(quanlityList=None,
 
     return design, fields
 
+def get_origin_gemo(quanlityList=None,
+                realpath=None,
+                existcheck=True,
+                shuffled=True,
+                getridbad=True):
+
+    if quanlityList is None:
+        quanlityList = ["Static Pressure", "Static Temperature",
+                        'V2', 'W2', "DensityFlow"]
+    if realpath is None:
+        sample_files = [os.path.join("data", "sampleRstZip_1500"),
+                        os.path.join("data", "sampleRstZip_500"),
+                        os.path.join("data", "sampleRstZip_970")
+                        ]
+    else:
+        sample_files = [os.path.join(realpath, "sampleRstZip_1500"),
+                        os.path.join(realpath, "sampleRstZip_500"),
+                        os.path.join(realpath, "sampleRstZip_970")
+                        ]
+    if existcheck:
+        sample_files_exists = []
+        for file in sample_files:
+            if os.path.exists(file + '.mat'):
+                sample_files_exists.append(file)
+            else:
+                print("The data file {} is not exist, CHECK PLEASE!".format(file))
+
+        sample_files = sample_files_exists
+
+    _, fields = get_quanlity_from_mat(sample_files, quanlityList)
+    design = get_gemodata_from_mat(realpath=realpath, existcheck=existcheck) # read the gemo data from here
+
+    if getridbad:
+        if realpath is None:
+            file_path = os.path.join("data", "sus_bad_data.yml")
+        else:
+            file_path = os.path.join(realpath, "sus_bad_data.yml")
+        with open(file_path, 'r') as f:
+            sus_bad_dict = yaml.load(f, Loader=yaml.FullLoader)
+        sus_bad_idx = []
+        for key in sus_bad_dict.keys():
+            sus_bad_idx.extend(sus_bad_dict[key])
+        sus_bad_idx = np.array(sus_bad_idx)
+        sus_bad_idx = np.unique(sus_bad_idx)
+
+        design = np.delete(design, sus_bad_idx, axis=0)
+        fields = np.delete(fields, sus_bad_idx, axis=0)
+
+    if shuffled:
+        np.random.seed(8905)
+        idx = np.random.permutation(design.shape[0])
+        # print(idx[:10])
+        design = design[idx]
+        fields = fields[idx]
+
+    return design, fields
+
+
+
 def get_quanlity_from_mat(sample_files, quanlityList):
     design = []
     fields = []
@@ -219,13 +278,47 @@ class Rotor37WeightLoss(torch.nn.Module):
         loss = lossfunc(predicted * weighted_mat, target * weighted_mat)
         return loss
 
-if __name__ == "__main__":
-    design, field = get_origin(shuffled=False, getridbad=False)
-    grid = get_grid()
-    Rst = get_value(field, parameterList="PressureRatioW")
 
-    sort_idx = np.argsort(Rst.squeeze())
-    sort_value = Rst[sort_idx]
+def get_gemodata_from_mat(realpath=None,existcheck=None):
+
+    if realpath is None:
+        sample_files = [os.path.join("data", "sampleRstSPL_1500"),
+                        os.path.join("data", "sampleRstSPL_500"),
+                        os.path.join("data", "sampleRstSPL_970")
+                        ]
+    else:
+        sample_files = [os.path.join(realpath, "sampleRstSPL_1500"),
+                        os.path.join(realpath, "sampleRstSPL_500"),
+                        os.path.join(realpath, "sampleRstSPL_970")
+                        ]
+    if existcheck:
+        sample_files_exists = []
+        for file in sample_files:
+            if os.path.exists(file + '.mat'):
+                sample_files_exists.append(file)
+            else:
+                print("The data file {} is not exist, CHECK PLEASE!".format(file))
+    design = []
+    # fields = []
+    if not isinstance(sample_files, list):
+        sample_files = [sample_files]
+    for ii, file in enumerate(sample_files):
+        reader = MatLoader(file, to_torch=False)
+        design.append(reader.read_field('input'))
+    design = np.concatenate(design, axis=0)
+
+    return design
+
+if __name__ == "__main__":
+    design, field = get_origin_gemo(shuffled=True, getridbad=True)
+    # grid = get_grid()
+    # Rst = get_value(field, parameterList="PressureRatioW")
+    #
+    # sort_idx = np.argsort(Rst.squeeze())
+    # sort_value = Rst[sort_idx]
+    # design = get_gemodata_from_mat()
+    # print(design.shape)
+
 
     print(0)
 

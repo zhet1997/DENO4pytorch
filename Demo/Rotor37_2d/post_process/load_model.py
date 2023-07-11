@@ -6,6 +6,7 @@ from post_process.post_data import Post_2d
 from Demo.Rotor37_2d.utilizes_rotor37 import get_grid, get_origin
 from Utilizes.process_data import DataNormer
 import yaml
+from utilizes_rotor37 import get_gemodata_from_mat,get_origin_gemo
 
 def get_noise(shape, scale):
     random_array = np.random.randn(np.prod(shape)) #  randn生成的是标准正态分布
@@ -13,6 +14,83 @@ def get_noise(shape, scale):
     random_array = random_array.reshape(shape)
 
     return random_array * scale
+
+def loaddata_Sql(name,
+             ntrain=2500,
+             nvalid=400,
+             shuffled=False,
+             noise_scale=None,
+             batch_size=32):
+
+    design, fields = get_origin_gemo(realpath=os.path.join("..", "data"),shuffled=shuffled) # 获取原始数据
+    if name in ("FNO", "FNM", "UNet", "Transformer"):
+        input = np.tile(design[:, None, None, :], (1, 64, 64, 1))
+        r1 = 10
+        input = design[:, :, ::r1, :]
+        input = input.reshape([input.shape[0], -1])  # 二维数据
+        input = np.tile(input[:, None, None, :], (1, 64, 64, 1))
+    else:
+        input = design
+    output = fields
+
+    # input = torch.tensor(input, dtype=torch.float)
+    # output = torch.tensor(output, dtype=torch.float)
+    print(input.shape, output.shape)
+
+    train_x = input[:ntrain, :]
+    train_y = output[:ntrain, :]
+    valid_x = input[-nvalid:, :]
+    valid_y = output[-nvalid:, :]
+
+    x_normalizer = DataNormer(train_x, method='mean-std')
+    train_x = x_normalizer.norm(train_x)
+    valid_x = x_normalizer.norm(valid_x)
+
+    y_normalizer = DataNormer(train_y, method='mean-std')
+    train_y = y_normalizer.norm(train_y)
+    valid_y = y_normalizer.norm(valid_y)
+
+    if name in ("MLP"):
+        train_y = train_y.reshape([train_y.shape[0], -1])
+        valid_y = valid_y.reshape([valid_y.shape[0], -1])
+
+    if noise_scale is not None and noise_scale > 0: # 向数据中增加噪声
+        noise_train = get_noise(train_y.shape, noise_scale)
+        train_y = train_y + noise_train
+
+    # 完成了归一化后再转换数据
+    train_x = torch.tensor(train_x, dtype=torch.float)
+    train_y = torch.tensor(train_y, dtype=torch.float)
+    valid_x = torch.tensor(valid_x, dtype=torch.float)
+    valid_y = torch.tensor(valid_y, dtype=torch.float)
+
+    if name in ("deepONet"):
+        grid = get_grid(real_path=os.path.join("..", "data"))
+        grid_trans = torch.tensor(grid[np.newaxis, :, :, :], dtype=torch.float)
+        train_grid = torch.tile(grid_trans, [train_x.shape[0], 1, 1, 1])  # 所有样本的坐标是一致的。
+        valid_grid = torch.tile(grid_trans, [valid_x.shape[0], 1, 1, 1])
+
+        grid_normalizer = DataNormer(train_grid.numpy(), method='mean-std')  # 这里的axis不一样了
+        train_grid = grid_normalizer.norm(train_grid)
+        valid_grid = grid_normalizer.norm(valid_grid)
+
+        # grid_trans = grid_trans.reshape([1, -1, 2])
+        train_grid = train_grid.reshape([train_x.shape[0], -1, 2])
+        valid_grid = valid_grid.reshape([valid_x.shape[0], -1, 2])
+        train_y = train_y.reshape([train_y.shape[0], -1, 5])
+        valid_y = valid_y.reshape([valid_y.shape[0], -1, 5])
+
+        train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_grid, train_y),
+                                                   batch_size=batch_size, shuffle=True, drop_last=True)
+        valid_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(valid_x, valid_grid, valid_y),
+                                                   batch_size=batch_size, shuffle=False, drop_last=True)
+    else:
+        train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_y),
+                                                   batch_size=batch_size, shuffle=True, drop_last=True)
+        valid_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(valid_x, valid_y),
+                                                   batch_size=batch_size, shuffle=False, drop_last=True)
+
+    return train_loader, valid_loader, x_normalizer, y_normalizer
 
 def loaddata(name,
              ntrain=2500,
@@ -87,7 +165,7 @@ def loaddata(name,
 
     return train_loader, valid_loader, x_normalizer, y_normalizer
 
-def rebuild_model(work_path, Device, in_dim=28, out_dim=5, name=None, mode=10):
+def rebuild_model(work_path, Device, in_dim=363, out_dim=5, name=None, mode=10):
     """
     rebuild the model with pth files
     """
@@ -184,12 +262,13 @@ def get_true_pred(loader, Net_model, inference, Device,
                   name=None, out_dim=5, iters=0, alldata=False):
     true_list = []
     pred_list = []
+    set_size_sub  = 32
     if alldata:
         num = len(loader.dataset)
-        iters = (num + loader.batch_size -1)//loader.batch_size
+        iters = (num + set_size_sub -1)//set_size_sub
 
         new_loader = torch.utils.data.DataLoader(loader.dataset,
-                                                 batch_size=loader.batch_size,
+                                                 batch_size=set_size_sub,
                                                  shuffle=False,
                                                  drop_last=False)
         loader = new_loader
@@ -200,13 +279,13 @@ def get_true_pred(loader, Net_model, inference, Device,
         if name in ("deepONet"):
             (data_x, data_f, data_y) = data_box
             sub_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(data_x, data_f, data_y),
-                                                     batch_size=loader.batch_size,
+                                                     batch_size=set_size_sub,
                                                      shuffle=False,
                                                      drop_last=False)
         else:
             (data_x, data_y) = data_box
             sub_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(data_x, data_y),
-                                                     batch_size=loader.batch_size,
+                                                     batch_size=set_size_sub,
                                                      shuffle=False,
                                                      drop_last=False)
     # for ii in range(iters):

@@ -13,7 +13,8 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from torchinfo import summary
+# from torchinfo import summary
+from torchsummary import summary
 from fno.FNOs import FNO2d
 from cnn.ConvNets import UNet2d
 
@@ -213,7 +214,8 @@ if __name__ == "__main__":
         input1 = torch.randn(batch_size, train_x.shape[1], train_x.shape[2], train_x.shape[3]).to(Device)
         input2 = torch.randn(batch_size, train_x.shape[1], train_x.shape[2], 2).to(Device)
         print(name)
-        summary(Net_model, input_data=[input1, input2], device=Device)
+        summary(Net_model, [(64, 64, 28), (64, 64, 5)])
+        exit()
 
         # 损失函数
         Loss_func = nn.MSELoss()

@@ -12,7 +12,7 @@ import torch.nn as nn
 from Utilizes.visual_data import MatplotlibVision
 from Utilizes.process_data import DataNormer, MatLoader
 from collections import OrderedDict
-
+from torchsummary import summary
 import matplotlib.pyplot as plt
 import time
 import os
@@ -148,10 +148,9 @@ if __name__ == "__main__":
 # load data
 ################################################################
 
-    design, fields = get_origin(quanlityList=["Static Pressure", "Static Temperature",
-                                             "DensityFlow",
-                                             'Relative Total Pressure', 'Relative Total Temperature'
-                                            ]) #获取原始数据
+    design, fields = get_origin()
+    # design = get_gemodata()
+
     input = design
     input = torch.tensor(input, dtype=torch.float)
     output = fields
@@ -188,12 +187,13 @@ if __name__ == "__main__":
 
     # 建立网络
     layer_mat = [in_dim, 256, 256, 256, 256, 256, 256, 256, 256, out_dim*64*64]
-    Net_model =  MLP(layer_mat=layer_mat, is_BatchNorm=False)
+    Net_model = MLP(layer_mat=layer_mat, is_BatchNorm=False)
     Net_model = Net_model.to(Device)
     print(name)
     # summary(Net_model, input_size=(batch_size, train_x.shape[1]), device=Device)
+    summary(Net_model, [(64, 64, 28)])
 
-    # 损失函数
+# 损失函数
     Loss_func = nn.MSELoss()
     # Loss_func = nn.SmoothL1Loss()
     # 优化算法

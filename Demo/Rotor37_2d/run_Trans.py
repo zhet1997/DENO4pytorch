@@ -14,6 +14,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchinfo import summary
+# from torchsummary import summary
 from Utilizes.process_data import DataNormer, MatLoader
 from transformer.Transformers import SimpleTransformer, FourierTransformer2D
 from Utilizes.visual_data import MatplotlibVision, TextLogger
@@ -24,6 +25,7 @@ import time
 import sys
 import yaml
 from run_MLP import get_grid, get_origin
+from utilizes_rotor37 import get_gemodata_from_mat,get_origin_gemo
 from post_process.post_data import Post_2d
 
 def feature_transform(x):
@@ -120,26 +122,34 @@ if __name__ == "__main__":
 
         name = 'Transformer_' + str(mode)
 
-        # name = 'Transformer'
+        name = 'Transformer'
         work_path = os.path.join('work', name)
         isCreated = os.path.exists(work_path)
         if not isCreated:
             os.makedirs(work_path)
 
         # 将控制台的结果输出到log文件
-        sys.stdout = TextLogger(os.path.join(work_path, 'train.log'), sys.stdout)
+        # sys.stdout = TextLogger(os.path.join(work_path, 'train.log'), sys.stdout)
 
         if torch.cuda.is_available():
             Device = torch.device('cuda:0')
         else:
             Device = torch.device('cpu')
 
-        design, fields = get_origin()
+        # design, fields = get_origin()
+        # design = get_gemodata_from_mat()
+        # design, fields = get_origin(quanlityList=["Static Pressure", "Static Temperature","DensityFlow",'Relative Total Pressure', 'Relative Total Temperature'])  # 获取原始数据
 
-        in_dim = 28
+        design, fields = get_origin_gemo(quanlityList=None,
+                realpath=None,
+                existcheck=True,
+                shuffled=True,
+                getridbad=True)
+
+        in_dim = 11*108
         out_dim = 5
-        ntrain = 2700
-        nvalid = 200
+        ntrain = 2500
+        nvalid = 400
 
         # modes = (12, 12)
         # width = 32
@@ -157,20 +167,27 @@ if __name__ == "__main__":
         print(epochs, learning_rate, scheduler_step, scheduler_gamma)
 
         #这部分应该是重采样
-        #不进行稀疏采样
-        r_train = 1
-        h_train = int(((64 - 1) / r_train) + 1)
-        s_train = h_train
+        # #不进行稀疏采样
 
-        r_valid = 1
-        h_valid = int(((64 - 1) / r_valid) + 1)
-        s_valid = h_valid
+        # r_train = 1
+        # h_train = int(((64 - 1) / r_train) + 1)
+        # s_train = h_train
+        #
+        # r_valid = 1
+        # h_valid = int(((64 - 1) / r_valid) + 1)
+        # s_valid = h_valid # 原始数据
 
         ################################################################
         # load data
         ################################################################
 
         input = np.tile(design[:, None, None, :], (1, 64, 64, 1))
+        r1 = 10
+        input = design[:, :, ::r1, :]
+        input = input.reshape([input.shape[0], -1]) # 二维数据
+        input = np.tile(input[:, None, None, :], (1, 64, 64, 1))
+
+        # input = np.tile(design[:, None, None, :], (1, 64, 64, 1))
         input = torch.tensor(input, dtype=torch.float)
 
         # output = fields[:, 0, :, :, :].transpose((0, 2, 3, 1))
@@ -179,10 +196,21 @@ if __name__ == "__main__":
 
         print(input.shape, output.shape)
 
-        train_x = input[:ntrain, :, :]
-        train_y = output[:ntrain, :, :]
-        valid_x = input[ntrain:ntrain + nvalid, :, :]
-        valid_y = output[ntrain:ntrain + nvalid, :, :]
+        train_x = input[:ntrain]
+        train_y = output[:ntrain]
+        valid_x = input[ntrain:ntrain + nvalid]
+        valid_y = output[ntrain:ntrain + nvalid]
+
+
+
+        # 进行稀疏采样
+        # train_x = input[:ntrain, :, ::r1, :]
+        # train_x = train_x.reshape([ntrain,-1])
+        # train_x = np.tile(train_x[:, None, None, :], (1, 64, 64, 1))
+        #
+        # valid_x = input[ntrain:ntrain + nvalid, :, ::r1, :]
+        # valid_x = valid_x.reshape([nvalid, -1])
+        # valid_x = np.tile(valid_x[:, None, None, :], (1, 64, 64, 1))
 
         x_normalizer = DataNormer(train_x.numpy(), method='mean-std')
         train_x = x_normalizer.norm(train_x)
@@ -209,13 +237,17 @@ if __name__ == "__main__":
         # 建立网络
         Net_model = FourierTransformer2D(**config).to(Device)
         # summary(Net_model, input_size=(batch_size, train_x.shape[1]), device=Device)
+        # summary(Net_model, (64, 64, 28))
+        # summary(Net_model, [(64, 64, 28)])
+        # summary(Net_model, [(32, 64, 64, 28), (32,64, 64, 2), (32,1,), (32,64, 64, 2)])
 
         # 损失函数
         Loss_func = nn.MSELoss()
         # Loss_func = nn.SmoothL1Loss()
         # 优化算法
         Optimizer = torch.optim.Adam(Net_model.parameters(), lr=learning_rate, betas=(0.7, 0.9), weight_decay=1e-4)
-
+        # 下降策略
+        Scheduler = torch.optim.lr_scheduler.StepLR(Optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
         # 可视化
         Visual = MatplotlibVision(work_path, input_name=('x', 'y'), field_name=('p', 't', 'rho', 'alf', 'v'))
 
@@ -230,7 +262,6 @@ if __name__ == "__main__":
 
             Net_model.train()
             log_loss[0].append(train(train_loader, Net_model, Device, Loss_func, Optimizer, Scheduler))
-
             Net_model.eval()
             log_loss[1].append(valid(valid_loader, Net_model, Device, Loss_func))
             print('epoch: {:6d}, lr: {:.3e}, train_step_loss: {:.3e}, valid_step_loss: {:.3e}, cost: {:.2f}'.

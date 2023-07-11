@@ -68,6 +68,7 @@ class Post_2d(object):
         self._PressureLossR = None
         self._DFactorR = None
         self._EntropyStatic = None
+        self._EntropyStaticNorm = None
         self._MachIsentropic = None
         self._Load = None
         self._LoadR = None
@@ -417,6 +418,8 @@ class Post_2d(object):
 
     def set_EntropyStatic(self, x):
         self.EntropyStatic = x
+    def set_EntropyStaticNorm(self, x):
+        self.EntropyStaticNorm = x
     def set_MachIsentropic(self, x):
         self.MachIsentropic = x
     def set_Load(self, x):
@@ -615,6 +618,15 @@ class Post_2d(object):
         else:
             return self._EntropyStatic
 
+    def get_EntropyStaticNorm(self):
+        if self._EntropyStaticNorm is None:
+            rst = -1 * self.EntropyStatic / self.Rg
+            rst = np.exp(rst)
+            self._EntropyStaticNorm = rst
+            return rst
+        else:
+            return self._EntropyStaticNorm
+
     def get_MachIsentropic(self):
         if self._MachIsentropic is None:
             rst1 = np.tile(self.PressureTotalRot[..., :1], [1, 1, self.n_1d]) / self.PressureStatic
@@ -669,6 +681,7 @@ class Post_2d(object):
     DFactor = property(get_DFactor, set_DFactor)
     DFactorR = property(get_DFactorR, set_DFactorR)
     EntropyStatic = property(get_EntropyStatic, set_EntropyStatic)
+    EntropyStaticNorm = property(get_EntropyStaticNorm, set_EntropyStaticNorm)
     MachIsentropic = property(get_MachIsentropic, set_MachIsentropic)
     Load = property(get_Load, set_Load)
     LoadR = property(get_LoadR, set_LoadR)
