@@ -244,8 +244,8 @@ class MatplotlibVision(object):
         """
         num_rows, num_cols = axs.get_subplotspec().get_gridspec().get_geometry()
         print(f"Axes position: Row {num_rows}, Column {num_cols}")
-        axs.plot(x, y, label=label, color=color)
-        # axs.semilogy(x, y, label=label, color=color)
+        # axs.plot(x, y, label=label, color=color)
+        axs.semilogy(x, y, label=label, color=color)
         std = std * rangeIndex
         if stdaxis==0:
             axs.fill_betweenx(y, x - std / 2, x + std / 2, alpha=0.4, label='', color=color)
@@ -255,11 +255,11 @@ class MatplotlibVision(object):
         axs.set_ylim(xlim)
         axs.set_xlim([0,1])
         axs.tick_params(axis='both', which='both', labelsize=0)
-        # axs.legend(loc="best", prop=self.font)
-        # axs.set_xlabel(xylabels[0], fontdict=self.font)
-        # axs.set_ylabel(xylabels[1], fontdict=self.font)
-        # axs.tick_params('both', labelsize=self.font["size"], )
-        # axs.set_title(title, fontdict=self.font)
+        axs.legend(loc="best", prop=self.font)
+        axs.set_xlabel(xylabels[0], fontdict=self.font)
+        axs.set_ylabel(xylabels[1], fontdict=self.font)
+        axs.tick_params('both', labelsize=self.font["size"], )
+        axs.set_title(title, fontdict=self.font)
 
     def plot_cumulate(self, fig, axs, data, data_neg=None, stdaxis=0, title=None):
         import matplotlib.patches as mpatches

@@ -18,7 +18,7 @@ from Utilizes.process_data import DataNormer, MatLoader
 from basic.basic_layers import FcnSingle
 from fno.FNOs import FNO2d
 from transformer.Transformers import SimpleTransformer, FourierTransformer
-
+from Utilizes.geometrics import gen_uniform_grid
 from Utilizes.visual_data import MatplotlibVision, TextLogger
 
 import matplotlib.pyplot as plt
@@ -70,7 +70,7 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
         optimizer: optimizer
         scheduler: scheduler
     """
-
+    grid = gen_uniform_grid(torch.tensor(np.zeros([1, 64, 64, 5]))).to(device)
     train_loss = 0
     for batch, (xx, yy) in enumerate(dataloader):
         xx = xx.to(device)
@@ -97,6 +97,7 @@ def valid(dataloader, netmodel, device, lossfunc):
         model: Network
         lossfunc: Loss function
     """
+    grid = gen_uniform_grid(torch.tensor(np.zeros([1, 64, 64, 5]))).to(device)
     valid_loss = 0
     with torch.no_grad():
         for batch, (xx, yy) in enumerate(dataloader):
@@ -118,6 +119,7 @@ def inference(dataloader, netmodel, device):
     Returns:
         out_pred: predicted fields
     """
+    grid = gen_uniform_grid(torch.tensor(np.zeros([1, 64, 64, 5]))).to(device)
     with torch.no_grad():
         xx, yy = next(iter(dataloader))
         xx = xx.to(device)
@@ -133,7 +135,7 @@ if __name__ == "__main__":
     # configs
     ################################################################
 
-    name = 'Transformer'
+    name = 'Transformer_TRA'
     work_path = os.path.join('work', name)
     train_path = os.path.join(work_path, 'train')
     isCreated = os.path.exists(work_path)
@@ -217,7 +219,7 @@ if __name__ == "__main__":
     FNO_model = FNO2d(in_dim=2, out_dim=config['n_targets'], modes=(16, 16), width=64, depth=4,
                       padding=9, activation='gelu').to(Device)
     MLP_model = FcnSingle(planes=(in_dim, 64, 64, config['n_targets']), last_activation=True).to(Device)
-    Net_model = predictor(trunc=FNO_model, branch=MLP_model, field_dim=out_dim).to(Device)
+    Net_model = predictor(trunc=Tra_model, branch=MLP_model, field_dim=out_dim).to(Device)
 
     # model_statistics = summary(Net_model, input_size=(batch_size, train_x.shape[1]), device=Device)
     # Logger.write(str(model_statistics))
@@ -240,7 +242,7 @@ if __name__ == "__main__":
     # train process
     ################################################################
     # grid = get_grid()
-    from Utilizes.geometrics import gen_uniform_grid
+
     grid = gen_uniform_grid(train_y[:1]).to(Device)
     for epoch in range(epochs):
 
@@ -272,8 +274,8 @@ if __name__ == "__main__":
             train_source, train_true, train_pred = inference(train_loader, Net_model, Device)
             valid_source, valid_true, valid_pred = inference(valid_loader, Net_model, Device)
 
-            torch.save({'log_loss': log_loss, 'net_model': Net_model.state_dict(), 'optimizer': Optimizer.state_dict()},
-                       os.path.join(train_path, 'latest_model.pth'))
+            # torch.save({'log_loss': log_loss, 'net_model': Net_model.state_dict(), 'optimizer': Optimizer.state_dict()},
+            #            os.path.join(train_path, 'latest_model.pth'))
 
             for fig_id in range(5):
                 fig, axs = plt.subplots(out_dim, 3, figsize=(18, 25), num=2)
