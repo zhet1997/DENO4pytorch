@@ -100,6 +100,7 @@ def loaddata(name,
              batch_size=32):
 
     design, fields = get_origin(realpath=os.path.join("..", "data"), shuffled=shuffled)  # 获取原始数据
+
     if name in ("FNO", "FNM", "UNet"):
         input = np.tile(design[:, None, None, :], (1, 64, 64, 1))
     else:
