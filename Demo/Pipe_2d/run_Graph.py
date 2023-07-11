@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-# @Copyright (c) 2022 Baidu.com, Inc. All Rights Reserved
-# @Time    : 2022/12/13 15:32
+# @Copyright (c) 2023 Baidu.com, Inc. All Rights Reserved
+# @Time    : 2023/5/8 23:54
 # @Author  : Liu Tianyuan (liutianyuan02@baidu.com)
-# @Site    :
+# @Site    : 
 # @File    : run_Graph.py
 """
 
@@ -35,7 +35,7 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
         scheduler: scheduler
     """
     train_loss = 0
-    for batch, (xx, yy, pp) in enumerate(dataloader):
+    for batch, (xx, yy) in enumerate(dataloader):
         xx = xx.to(device)
         yy = yy.to(device)
 
@@ -61,7 +61,7 @@ def valid(dataloader, netmodel, device, lossfunc):
     """
     valid_loss = 0
     with torch.no_grad():
-        for batch, (xx, yy, pp) in enumerate(dataloader):
+        for batch, (xx, yy) in enumerate(dataloader):
             xx = xx.to(device)
             yy = yy.to(device)
 
@@ -82,12 +82,12 @@ def inference(dataloader, netmodel, device):
     """
 
     with torch.no_grad():
-        xx, yy, pp = next(iter(dataloader))
+        xx, yy = next(iter(dataloader))
         xx = xx.to(device)
         pred = netmodel(xx)[0]
 
     # equation = model.equation(u_var, y_var, out_pred)
-    return xx.cpu().numpy(), pp.cpu().numpy(), yy.numpy(), pred.cpu().numpy()
+    return xx.cpu().numpy(), xx.cpu().numpy(), yy.numpy(), pred.cpu().numpy()
 
 
 if __name__ == "__main__":
@@ -111,54 +111,48 @@ if __name__ == "__main__":
     Logger.info("Model Name: {:s}, Computing Device: {:s}".format(name, str(Device)))
 
     # 数据集路径
-    datafile = './data/Data.npy'
+    INPUT_X = './data/Pipe_X.npy'
+    INPUT_Y = './data/Pipe_Y.npy'
+    OUTPUT_Sigma = './data/Pipe_Q.npy'
 
     # 训练集参数
-    ntrain = 1500
-    nvalid = 500
+    ntrain = 1000
+    nvalid = 200
+    r1 = 1
+    r2 = 1
+    s1 = int(((129 - 1) / r1) + 1)
+    s2 = int(((129 - 1) / r2) + 1)
 
     ################################################################
     # load data
     ################################################################
 
-    INPUT_PATH = './data/Meshes/Random_UnitCell_XY_10.npy'
-    OUTPUT_PATH = './data/Meshes/Random_UnitCell_sigma_10.npy'
-
-    input = np.load(INPUT_PATH)
-    input = torch.tensor(input, dtype=torch.float).permute(2, 0, 1)
-    # input (n, x, 2)
-
-    output = np.load(OUTPUT_PATH)
-    output = torch.tensor(output, dtype=torch.float).permute(1, 0)
-    # output (n, x)
-
-    train_x = input[:ntrain]
-    train_y = output[:ntrain, :, None]
-    valid_x = input[-nvalid:]
-    valid_y = output[-nvalid:, :, None]
-
-    INPUT_X = './data/Omesh/Random_UnitCell_Deform_X_10_interp.npy'
-    INPUT_Y = './data/Omesh/Random_UnitCell_Deform_Y_10_interp.npy'
     inputX = np.load(INPUT_X)
-    inputX = torch.tensor(inputX, dtype=torch.float).permute(2, 0, 1)
+    inputX = torch.tensor(inputX, dtype=torch.float) / 10.
     inputY = np.load(INPUT_Y)
-    inputY = torch.tensor(inputY, dtype=torch.float).permute(2, 0, 1)
-    profile = torch.stack([inputX, inputY], dim=-1)[..., 0, :]
-    profile_train = torch.cat((profile[:ntrain], profile[:ntrain, (0,)]), dim=1)
-    profile_valid = torch.cat((profile[-nvalid:], profile[-nvalid:, (0,)]), dim=1)
+    inputY = torch.tensor(inputY, dtype=torch.float)
+    input = torch.stack([inputX, inputY], dim=-1)
+
+    output = np.load(OUTPUT_Sigma)[:, (0,)].squeeze()
+    output = torch.tensor(output, dtype=torch.float).unsqueeze(-1)
+
+    train_x = input[:ntrain, ::r1, ::r2][:, :s1, :s2].reshape((ntrain, -1, 2))
+    train_y = output[:ntrain, ::r1, ::r2][:, :s1, :s2].reshape((ntrain, -1, 1))
+    valid_x = input[ntrain:ntrain + nvalid, ::r1, ::r2][:, :s1, :s2].reshape((nvalid, -1, 2))
+    valid_y = output[ntrain:ntrain + nvalid, ::r1, ::r2][:, :s1, :s2].reshape((nvalid, -1, 1))
 
     # x_normalizer = DataNormer(train_x.numpy(), method='mean-std', axis=(0,))
     # train_x = x_normalizer.norm(train_x)
     # valid_x = x_normalizer.norm(valid_x)
     #
-    y_normalizer = DataNormer(train_y.numpy(), method='mean-std')
-    train_y = y_normalizer.norm(train_y)
-    valid_y = y_normalizer.norm(valid_y)
+    # y_normalizer = DataNormer(train_y.numpy(), method='mean-std')
+    # train_y = y_normalizer.norm(train_y)
+    # valid_y = y_normalizer.norm(valid_y)
 
     # 模型参数
     in_dim = 2
     out_dim = 1
-    sampling_size = 972
+    sampling_size = s1 * s2
     modes = (12, 12)
     width = 32
     depth = 4
@@ -167,18 +161,18 @@ if __name__ == "__main__":
     dropout = 0.0
 
     # 训练参数
-    batch_size = 64
-    epochs = 500
+    batch_size = 8
+    epochs = 1000
     learning_rate = 0.0002
-    scheduler_step = 400
+    scheduler_step = 800
     scheduler_gamma = 0.1
 
     Logger.info('Total epochs: {:d}, learning_rate: {:e}, scheduler_step: {:d}, scheduler_gamma: {:e}'
                 .format(epochs, learning_rate, scheduler_step, scheduler_gamma))
 
-    train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_y, profile_train),
+    train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_y),
                                                batch_size=batch_size, shuffle=True, drop_last=False)
-    valid_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(valid_x, valid_y, profile_valid),
+    valid_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(valid_x, valid_y),
                                                batch_size=batch_size, shuffle=False, drop_last=False)
 
     ################################################################
@@ -245,27 +239,23 @@ if __name__ == "__main__":
             torch.save({'log_loss': log_loss, 'net_model': Net_model.state_dict(), 'optimizer': Optimizer.state_dict()},
                        os.path.join(work_path, 'latest_model.pth'))
 
-            train_coord, valid_coord = train_coord.reshape((-1, sampling_size, 2)), valid_coord.reshape(
-                (-1, sampling_size, 2))
-            train_prof, valid_prof = train_prof.reshape((-1, 66, 2)), valid_prof.reshape((-1, 66, 2))
-            train_true, valid_true = train_true.reshape((-1, sampling_size, out_dim)), valid_true.reshape(
-                (-1, sampling_size, out_dim))
-            train_pred, valid_pred = train_pred.reshape((-1, sampling_size, out_dim)), valid_pred.reshape(
-                (-1, sampling_size, out_dim))
+            train_coord = train_coord.reshape((batch_size, s1, s2, -1))
+            train_coord[..., 0] *= 10.
+            train_true = train_true.reshape((batch_size, s1, s2, -1))
+            train_pred = train_pred.reshape((batch_size, s1, s2, -1))
+            valid_coord = valid_coord.reshape((batch_size, s1, s2, -1))
+            valid_coord[..., 0] *= 10.
+            valid_true = valid_true.reshape((batch_size, s1, s2, -1))
+            valid_pred = valid_pred.reshape((batch_size, s1, s2, -1))
 
-            for t in range(10):
-                triang = tri.Triangulation(train_coord[t][:, 0], train_coord[t][:, 1])
-
-                fig, axs = plt.subplots(out_dim, 3, figsize=(15, 5), num=1, layout='constrained')
-                Visual.plot_fields_tr(fig, axs, train_true[t], train_pred[t], train_coord[t],
-                                      triang.edges, mask=train_prof[t])
-                fig.savefig(os.path.join(work_path, 'train_solution_' + str(t) + '_graph.jpg'))
+            for fig_id in range(batch_size):
+                fig, axs = plt.subplots(1, 3, figsize=(18, 6), layout='constrained', num=2)
+                Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], train_coord[fig_id])
+                fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
                 plt.close(fig)
 
-                triang = tri.Triangulation(valid_coord[t][:, 0], valid_coord[t][:, 1])
-
-                fig, axs = plt.subplots(out_dim, 3, figsize=(15, 5), num=1, layout='constrained')
-                Visual.plot_fields_tr(fig, axs, valid_true[t], valid_pred[t], valid_coord[t],
-                                      triang.edges, mask=valid_prof[t])
-                fig.savefig(os.path.join(work_path, 'valid_solution_' + str(t) + '_graph.jpg'))
+            for fig_id in range(batch_size):
+                fig, axs = plt.subplots(1, 3, figsize=(18, 6), layout='constrained', num=3)
+                Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], valid_coord[fig_id])
+                fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
                 plt.close(fig)

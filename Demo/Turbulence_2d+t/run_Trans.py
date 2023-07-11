@@ -15,7 +15,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from Utilizes.process_data import MatLoader
-from transformer.Transformers import FourierTransformer2D
+from transformer.Transformers import FourierTransformer
 from Utilizes.visual_data import MatplotlibVision, TextLogger
 
 import matplotlib.pyplot as plt
@@ -61,7 +61,7 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
         grid, edge = feature_transform(xx)
         for t in range(0, T, step):
             # y = yy[..., t:t + step]
-            im = netmodel(xx, grid, edge, grid)['preds']
+            im = netmodel(xx, grid, edge, grid)
             if t == 0:
                 pred = im
             else:
@@ -95,7 +95,7 @@ def valid(dataloader, netmodel, device, lossfunc):
             grid, edge = feature_transform(xx)
             for t in range(0, T, step):
                 y = yy[..., t:t + step]
-                im = netmodel(xx, grid, edge, grid)['preds']
+                im = netmodel(xx, grid, edge, grid)
                 if t == 0:
                     pred = im
                 else:
@@ -123,7 +123,7 @@ def inference(dataloader, netmodel, device):
         grid, edge = feature_transform(xx)
         for t in range(0, T, step):
             y = yy[..., t:t + step]
-            im = netmodel(xx, grid, edge, grid)['preds']
+            im = netmodel(xx, grid, edge, grid)
             if t == 0:
                 pred = im
             else:
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     config = config['Turbulence_2d+t']
 
     # 建立网络
-    Net_model = FourierTransformer2D(**config).to(Device)
+    Net_model = FourierTransformer(**config).to(Device)
     # input1 = torch.randn(batch_size, train_x.shape[1], train_x.shape[2], train_x.shape[3]).to(Device)
     # input2 = torch.randn(batch_size, train_x.shape[1], train_x.shape[2], 2).to(Device)
 
