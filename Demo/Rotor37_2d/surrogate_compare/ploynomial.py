@@ -16,14 +16,14 @@ def get_pred(npz_path, n_train, n_noise, parameter):
 
     train_x = design[:n_train]
     train_y = value[:n_train]
-    noise = get_noise(train_y.shape, n_noise) * np.mean(train_y)
+    noise = get_noise(train_y.shape, n_noise) * np.std(train_y) *2
     train_y = train_y + noise
 
     valid_x = design[-400:]
     valid_y = value[-400:]
 
     # 定义多项式特征转换器
-    degree = 5  # 多项式的次数
+    degree = 1  # 多项式的次数
     poly_features = PolynomialFeatures(degree=degree)
 
     # 进行多项式特征转换
@@ -45,10 +45,12 @@ if __name__ == "__main__":
     dict_noise = {}
 
     parameterList = [
-        "PressureRatioV", "TemperatureRatioV",
-        "Efficiency", "EfficiencyPoly",
-        "PressureLossR", "EntropyStatic",
-        "MachIsentropic", "Load",
+        "PressureRatioV",
+        # "TemperatureRatioV",
+        "Efficiency",
+        # "EfficiencyPoly",
+        # "PressureLossR", "EntropyStatic",
+        # "MachIsentropic", "Load",
         "MassFlow"]
     for parameter in parameterList:
 

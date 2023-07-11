@@ -148,10 +148,10 @@ class MatplotlibVision(object):
                        "font.serif": ['SimSun'], }
         rcParams.update(self.config)
 
-    def plot_loss(self, fig, axs, x, y, label, title=None, xylabels=('epoch', 'loss value')):
+    def plot_loss(self, fig, axs, x, y, label, title=None, xylabels=('epoch', 'loss value'),color=None, linestyle='-'):
         # sbn.set_style('ticks')
         # sbn.set(color_codes=True)
-        axs.semilogy(x, y, label=label) #对数坐标
+        axs.semilogy(x, y, label=label,color=color,linestyle=linestyle,linewidth=2) #对数坐标
         axs.grid(True)  # 添加网格
         axs.legend(loc="best", prop=self.font)
         axs.set_xlabel(xylabels[0], fontdict=self.font)
@@ -172,17 +172,19 @@ class MatplotlibVision(object):
         axs.tick_params('both', labelsize=self.font["size"], )
         axs.set_title(title, fontdict=self.font)
 
-    def plot_curve_scatter(self, fig, axs, x, y, label,
+    def plot_curve_scatter(self, fig, axs, x, y, labelList=None,
                            title=None, xylabels=('x', 'y'),
-                           colorList=None, markerList=None
+                           colorList=None, markerList=None,
+                           msList = None, mfcList = None, mecList = None,
+                           xlim=None
                            ):
         # sbn.set_style('ticks')
-        sbn.set(color_codes=True)
+        # sbn.set(color_codes=True)
         # check
-        if len(x.shape) == 1:
-            x.unsqueeze(0)
-        if len(y.shape) == 1:
-            y.unsqueeze(0)
+        # if len(x.shape) == 1:
+        #     x.unsqueeze(0)
+        # if len(y.shape) == 1:
+        #     y.unsqueeze(0)
         if colorList is not None:
             assert (len(colorList)==x.shape[0])
         if markerList is not None:
@@ -190,21 +192,32 @@ class MatplotlibVision(object):
         markers = ['.', 'o', '+', 'x', 's', 'd', 'v', '^', '<', '>', 'p', 'h', '*', '2', '3', '4']
         for ii, (marker, color) in enumerate(zip(markerList, colorList)):
             if marker in markers:
-                axs.scatter(x[ii], y[ii], label=label, color=color, marker=marker)
+                if msList is not None:
+                    axs.scatter(x[ii], y[ii], label=labelList[ii], color=color, marker=marker,linewidth=1,
+                                s=msList[ii], facecolor=mfcList[ii], edgecolor=mecList[ii])
+                else:
+                    axs.scatter(x[ii], y[ii], label=labelList[ii], color=color, marker=marker, linewidth=1,
+                                s=200, facecolor=color, edgecolor=None, alpha=0.5)
             else:
-                axs.plot(x[ii], y[ii], label=label, color=color)
-        axs.grid(True)  # 添加网格
-        axs.legend(loc="best", prop=self.font)
+                axs.plot(x[ii], y[ii], label=labelList[ii], color=color, linewidth=2)
+        # axs.grid(True)  # 添加网格
+        # axs.legend(loc="best", prop=self.font,framealpha=1)
         axs.set_xlabel(xylabels[0], fontdict=self.font)
         axs.set_ylabel(xylabels[1], fontdict=self.font)
         axs.tick_params('both', labelsize=self.font["size"], )
-        axs.set_title(title, fontdict=self.font)
+        # axs.set_title(title, fontdict=self.font)
+
+        # axs.set_xlim(xlim)
+        # axs.set_ylim([0,1])
+
 
 
     def plot_value_std(self, fig, axs, x, y, label, std = None, stdaxis=0, title=None, xylabels=('x', 'y'), rangeIndex=1e2):
         """
         stdaxis 表示std所在的坐标维度 x-0, y-1
         """
+        num_rows, num_cols = axs.get_subplotspec().get_gridspec().get_geometry()
+        print(f"Axes position: Row {num_rows}, Column {num_cols}")
         axs.plot(x, y, label=label)
         std = std * rangeIndex
         if stdaxis==0:
@@ -217,6 +230,135 @@ class MatplotlibVision(object):
         axs.set_ylabel(xylabels[1], fontdict=self.font)
         axs.tick_params('both', labelsize=self.font["size"], )
         axs.set_title(title, fontdict=self.font)
+
+    def plot_value_std_clean(self, fig, axs, x, y, label,
+                             std = None, stdaxis=0, title=None,xlim=None,
+                             xylabels=('x', 'y'), rangeIndex=1e2, color=None):
+        """
+        stdaxis 表示std所在的坐标维度 x-0, y-1
+        """
+        num_rows, num_cols = axs.get_subplotspec().get_gridspec().get_geometry()
+        print(f"Axes position: Row {num_rows}, Column {num_cols}")
+        axs.plot(x, y, label=label, color=color)
+        # axs.semilogy(x, y, label=label, color=color)
+        std = std * rangeIndex
+        if stdaxis==0:
+            axs.fill_betweenx(y, x - std / 2, x + std / 2, alpha=0.4, label='', color=color)
+        elif stdaxis==1:
+            axs.fill_between(x, y - std / 2, y + std/2, alpha=0.4, label='', color=color)
+        axs.grid(True)  # 添加网格
+        axs.set_ylim(xlim)
+        axs.set_xlim([0,1])
+        axs.tick_params(axis='both', which='both', labelsize=0)
+        # axs.legend(loc="best", prop=self.font)
+        # axs.set_xlabel(xylabels[0], fontdict=self.font)
+        # axs.set_ylabel(xylabels[1], fontdict=self.font)
+        # axs.tick_params('both', labelsize=self.font["size"], )
+        # axs.set_title(title, fontdict=self.font)
+
+    def plot_cumulate(self, fig, axs, data, data_neg=None, stdaxis=0, title=None):
+        import matplotlib.patches as mpatches
+        def plot_one_block(accumulated, d, color=None, neg=False, stdaxis=1):
+            accumulated_old = accumulated.copy()
+            if neg:
+                accumulated -= d
+            else:
+                accumulated += d
+
+            if stdaxis==1:
+                p = plt.plot(np.linspace(0,1,data_length), accumulated, color=color)
+                p = plt.fill_between(np.linspace(0,1,data_length), accumulated_old, accumulated, color=color, alpha=0.5)
+            elif stdaxis==0:
+                p = plt.plot(accumulated, np.linspace(0,1,data_length), color=color)
+                p = plt.fill_betweenx(np.linspace(0,1,data_length), accumulated_old, accumulated, color=color, alpha=0.5)
+
+            return accumulated
+
+        # 确定数据组数和数据长度
+        num_groups = data.shape[0]
+        num_groups_neg = 0
+        if data_neg is not None:
+            num_groups_neg = data_neg.shape[0]
+        data_length = data.shape[1]
+
+        # 生成颜色列表
+        index = [0,1,2,9,3,4]
+        cmap = plt.cm.get_cmap('tab10')
+        colors =np.take(cmap.colors,index,axis=0)
+        # colors = plt.cm.get_cmap('jet').colors[:num_groups]
+
+        # 绘制累积值曲线和填充颜色
+        accumulated = np.zeros_like(data[0])
+        for ii in range(num_groups):
+            accumulated = plot_one_block(accumulated,
+                                         data[ii], color=colors[ii], neg=False, stdaxis=stdaxis)
+
+        if data_neg is not None:
+            colors_neg = plt.cm.get_cmap('tab10').colors[num_groups:num_groups+num_groups_neg]
+            accumulated = np.zeros_like(data_neg[0])
+            for ii in range(num_groups_neg):
+                accumulated = plot_one_block(accumulated,
+                                             data_neg[ii], color=colors_neg[ii], neg=True, stdaxis=stdaxis)
+
+        # 添加图例
+        # 获取图例句柄和标签的顺序
+        handles = ["0%span", "25%span", "50%span", "75%span", "100%span", "3D adjust"]
+        # handles = handles[::-1]
+        # plt.legend(handles)
+
+
+        # 创建图例
+        # legend_handles = []
+        # for ii in range(num_groups):
+        #     legend_handles.append(mpatches.Patch(color=colors[ii], label=handles[ii]))
+        #     # legend_handles.append(plt.Line2D([], [], color=colors[ii], marker='s', linestyle='-', markersize=10, label=handles[ii]))
+        #
+        # # 设置图例
+        # plt.legend(handles=legend_handles)
+        # plt.legend(loc="upper right", prop=self.font)
+        if title is not None:
+            axs.set_title(title, fontdict=self.font)
+
+        # axs.set_xlim(0,0.035)
+        # axs.set_ylim(0,1)
+
+        axs.set_xlim(0,1)
+        axs.set_ylim(0,0.015)
+
+    def plot_pie(self, fig, axs, data, title=None):
+
+        # 确定数据组数和数据长度
+        num_groups = data.shape[0]
+
+        # 生成颜色列表
+        # colors = plt.cm.get_cmap('tab20').colors[:num_groups:2]
+
+        index = [0,1,2,9,3,4]
+        cmap = plt.cm.get_cmap('tab10')
+        colors =np.take(cmap.colors,index,axis=0)
+
+
+        # 绘制饼图
+
+
+        labels = ["0%span", "25%span", "50%span", "75%span", "100%span", "3D adjust"]
+        # patches = axs.pie(data, autopct='%1.1f%%', startangle=90, colors=colors, labels=labels)
+        patches = axs.pie(data, autopct='%1.1f%%', startangle=90, colors=colors)
+        axs.axis=('equal')
+        patches = patches[0]
+
+        for patch in patches:
+            patch.set_alpha(0.55)
+        # 添加图例
+
+
+
+        # plt.legend(labels=labels)
+        # plt.legend(loc="best", prop=self.font, framealpha=1)
+        # if title is not None:
+        # 绘制图形    axs.set_title(title, fontdict=self.font)
+
+        # 创建图例
 
     def plot_scatter(self, fig, axs, true, pred, axis=0, title=None, xylabels=('x', 'y')):
         # sbn.set(color_codes=True)
@@ -265,6 +407,44 @@ class MatplotlibVision(object):
 
         # plt.ylim((-0.2, 0.2))
         # plt.pause(0.001)
+    def plot_regression_dot(self, fig, axs, true, pred, title=None,label=None,
+                            xylabels=('true value', 'pred value'),
+                            color='r'
+                            ):
+        # 所有功率预测误差与真实结果的回归直线
+        # sbn.set(color_codes=True)
+
+        max_value = max(true)  # math.ceil(max(true)/100)*100
+        min_value = min(true)  # math.floor(min(true)/100)*100
+        split_value = np.linspace(min_value, max_value, 11)
+
+        split_dict = {}
+        split_label = np.zeros(len(true), np.int)
+        for i in range(len(split_value)):
+            split_dict[i] = str(split_value[i])
+            index = true >= split_value[i]
+            split_label[index] = i + 1
+
+        axs.scatter(true, pred, marker='.', color=color, s=320 , linewidth=1,
+                      facecolor = color, edgecolor = 'k', alpha=1, label =None
+                    )
+
+        axs.plot([min_value, max_value], [min_value, max_value], 'k--', linewidth=2.0)
+        # 在两个曲线之间填充颜色
+        axs.fill_between([min_value, max_value], [0.995 * min_value, 0.995 * max_value],
+                         [1.005 * min_value, 1.005 * max_value],
+                         alpha=0.2, color='b')
+
+        # plt.ylim((min_value, max_value))
+        axs.set_xlim((min_value, max_value))
+        axs.set_ylim((min_value, max_value))
+        axs.tick_params(axis='both', which='both', labelsize=0)
+        # axs.grid(True)  # 添加网格
+        # axs.legend(loc="upper left", prop=self.font)
+        # axs.set_xlabel(xylabels[0], fontdict=self.font)
+        # axs.set_ylabel(xylabels[1], fontdict=self.font)
+        # axs.tick_params('both', labelsize=self.font["size"], )
+        # axs.set_title(title, fontdict=self.font)
 
     def plot_error(self, fig, axs, error, title=None,
                    xylabels=('predicted relative error / %', 'distribution density')):
@@ -462,7 +642,7 @@ class MatplotlibVision(object):
                 axs[i][j].spines['top'].set_linewidth(self.box_line_width)  # 设置右边坐标轴的粗细
 
     def plot_fields_ms(self, fig, axs, real, pred, coord, cmin_max=None, fmin_max=None, show_channel=None,
-                       cmaps=None, titles=None):
+                       cmaps=None, titles=None, limitList=None):
         if len(axs.shape) == 1:
             axs = axs[None, :]
 
@@ -494,7 +674,11 @@ class MatplotlibVision(object):
 
             fi = show_channel[i]
             ff = [real[..., fi], pred[..., fi], real[..., fi] - pred[..., fi]]
-            limit = max(abs(ff[-1].min()), abs(ff[-1].max()))
+            if limitList is not None:
+                limit = limitList[i]
+            else:
+                limit = max(abs(ff[-1].min()), abs(ff[-1].max()))
+            #
             for j in range(3):
 
                 axs[i][j].cla()
@@ -504,30 +688,118 @@ class MatplotlibVision(object):
                 axs[i][j].axis([cmin[0], cmax[0], cmin[1], cmax[1]])
                 # axs[i][j].axis('equal')
                 # ax[i][j].grid(zorder=0, which='both', color='grey', linewidth=1)
-                axs[i][j].set_title(titles[j], fontdict=self.font_EN)
+                # axs[i][j].set_title(titles[j], fontdict=self.font_EN)
                 # if i == 0:
                 #     ax[i][j].set_title(titles[j], fontdict=self.font_CHN)
-                cb = fig.colorbar(f_true, ax=axs[i][j])
+
+                cb = fig.colorbar(f_true, ax=axs[i][j], shrink=0.75)
                 cb.ax.tick_params(labelsize=self.font['size'])
                 for l in cb.ax.yaxis.get_ticklabels():
                     l.set_family('Times New Roman')
                 tick_locator = ticker.MaxNLocator(nbins=6)  # colorbar上的刻度值个数
                 cb.locator = tick_locator
                 cb.update_ticks()
+
+
                 if j < 2:
                     f_true.set_clim(fmin[i], fmax[i])
-                    cb.ax.set_title(name_channel[i], fontdict=self.font_EN, loc='center')
+                    # cb.ax.set_title(name_channel[i], fontdict=self.font_EN, loc='center')
                 else:
                     f_true.set_clim(-limit, limit)
-                    cb.ax.set_title('$\mathrm{\Delta}$' + name_channel[i], fontdict=self.font_EN, loc='center')
+                    # cb.ax.set_title('$\mathrm{\Delta}$' + name_channel[i], fontdict=self.font_EN, loc='center')
                 # 设置刻度间隔
-                axs[i][j].set_aspect(1)
-                axs[i][j].set_xlabel(r'$x$/m', fontdict=self.font_EN)
-                axs[i][j].set_ylabel(r'$y$/m', fontdict=self.font_EN)
+                axs[i][j].set_xticklabels([])
+                axs[i][j].set_yticklabels([])
+                axs[i][j].tick_params(axis='both', which='both', length=0, labelsize=0)
+                # axs[i][j].set_aspect(1)
+                # axs[i][j].set_xlabel(r'$x$/m', fontdict=self.font_EN)
+                # axs[i][j].set_ylabel(r'$y$/m', fontdict=self.font_EN)
+                self.box_line_width = 0
                 axs[i][j].spines['bottom'].set_linewidth(self.box_line_width)  # 设置底部坐标轴的粗细
                 axs[i][j].spines['left'].set_linewidth(self.box_line_width)  # 设置左边坐标轴的粗细
                 axs[i][j].spines['right'].set_linewidth(self.box_line_width)  # 设置右边坐标轴的粗细
                 axs[i][j].spines['top'].set_linewidth(self.box_line_width)  # 设置右边坐标轴的粗细
+
+    def plot_fields_ms_col(self, fig, axs, real, pred, coord, cmin_max=None, fmin_max=None, show_channel=None,
+                       cmaps=None, titles=None, limit=None):
+        # if len(axs.shape) == 1:
+        #     axs = axs[None, :]
+
+        if show_channel is None:
+            show_channel = np.arange(len(self.field_name))
+
+        if fmin_max == None:
+            fmin, fmax = real.min(axis=(0, 1)), real.max(axis=(0, 1))
+        else:
+            fmin, fmax = fmin_max[0], fmin_max[1]
+
+        if cmin_max == None:
+            cmin, cmax = coord.min(axis=(0, 1)), coord.max(axis=(0, 1))
+        else:
+            cmin, cmax = cmin_max[0], cmin_max[1]
+
+        if titles is None:
+            titles = ['truth', 'predicted', 'error']
+
+        if cmaps is None:
+            cmaps = ['RdYlBu_r', 'RdYlBu_r', 'coolwarm']
+
+        x_pos = coord[:, :, 0]
+        y_pos = coord[:, :, 1]
+        size_channel = len(show_channel)
+        name_channel = [self.field_name[i] for i in show_channel]
+
+        for j in range(size_channel):
+
+            fi = show_channel[j]
+            ff = [real[..., fi], pred[..., fi], real[..., fi] - pred[..., fi]]
+            if limit is None:
+                limit = max(abs(ff[-1].min()), abs(ff[-1].max()))
+
+            for i in range(3):
+
+                axs[j][i].cla()
+                f_true = axs[j][i].pcolormesh(x_pos, y_pos, ff[i], cmap=cmaps[i], shading='gouraud',
+                                              antialiased=True, snap=True)
+                f_true.set_zorder(10)
+                axs[j][i].axis([cmin[0], cmax[0], cmin[1], cmax[1]])
+                # axs[i][j].axis('equal')
+                # ax[i][j].grid(zorder=0, which='both', color='grey', linewidth=1)
+                axs[j][i].set_title(titles[i], fontdict=self.font_EN)
+                # if i == 0:
+                #     ax[i][j].set_title(titles[j], fontdict=self.font_CHN)
+                cb = fig.colorbar(f_true, ax=axs[j][i], shrink=0.75) #yanse
+                cb.ax.tick_params(labelsize=self.font['size'])
+                for l in cb.ax.yaxis.get_ticklabels():
+                    l.set_family('Times New Roman')
+                tick_locator = ticker.MaxNLocator(nbins=5)  # colorbar上的刻度值个数
+                cb.locator = tick_locator
+                cb.update_ticks()
+
+                axs[j][i].set_xticklabels([])
+                axs[j][i].set_yticklabels([])
+                if i < 2:
+                    f_true.set_clim(fmin[j], fmax[j])
+                    cb.ax.set_title(name_channel[j], fontdict=self.font_EN, loc='center')
+                    # axs[j][i].tick_params(axis='both', which='both', length=0, width=0)
+
+                else:
+                    f_true.set_clim(-limit, limit)
+                    cb.ax.set_title('$\mathrm{\Delta}$' + name_channel[j], fontdict=self.font_EN, loc='center')
+                # 设置刻度间隔
+                axs[j][i].set_aspect(1)
+                # axs[i][j].set_xlabel(r'$x$/m', fontdict=self.font_EN)
+                # axs[i][j].set_ylabel(r'$y$/m', fontdict=self.font_EN)
+                self.box_line_width = 0
+                axs[j][i].spines['bottom'].set_linewidth(self.box_line_width)  # 设置底部坐标轴的粗细
+                axs[j][i].spines['left'].set_linewidth(self.box_line_width)  # 设置左边坐标轴的粗细
+                axs[j][i].spines['right'].set_linewidth(self.box_line_width)  # 设置右边坐标轴的粗细
+                axs[j][i].spines['top'].set_linewidth(self.box_line_width)  # 设置右边坐标轴的粗细
+
+                # axs[j][i].spines['bottom'].set_visible(False)
+                axs[j][i].spines['left'].set_visible(False)
+                axs[j][i].spines['right'].set_visible(False)
+                axs[j][i].spines['top'].set_visible(False)
 
     def plot_fields_grid(self, fig, axs, real, pred, fmin_max=None, show_channel=None,
                        cmaps=None, titles=None):
@@ -573,7 +845,7 @@ class MatplotlibVision(object):
                 cb.ax.tick_params(labelsize=self.font['size'])
                 for l in cb.ax.yaxis.get_ticklabels():
                     l.set_family('Times New Roman')
-                tick_locator = ticker.MaxNLocator(nbins=6)  # colorbar上的刻度值个数
+                tick_locator = ticker.MaxNLocator(nbins=3)  # colorbar上的刻度值个数
                 cb.locator = tick_locator
                 cb.update_ticks()
                 if j < 2:

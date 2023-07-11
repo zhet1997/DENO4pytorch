@@ -45,7 +45,7 @@ def get_pred(npz_path, n_train, n_noise, parameter, Device):
 
     train_x = design[:n_train]
     train_y = value[:n_train]
-    noise = get_noise(train_y.numpy().shape, n_noise) * np.mean(train_y.numpy())
+    noise = get_noise(train_y.numpy().shape, n_noise) * np.std(train_y.numpy()) *2
     train_y = train_y + torch.tensor(noise, dtype=torch.float32)
 
     valid_x = design[-400:]
@@ -112,21 +112,23 @@ if __name__ == "__main__":
     dict_noise = {}
 
     parameterList = [
-        "PressureRatioV", "TemperatureRatioV",
-        "Efficiency", "EfficiencyPoly",
-        "PressureLossR", "EntropyStatic",
-        "MachIsentropic", "Load",
+        "PressureRatioV",
+        # "TemperatureRatioV",
+        "Efficiency",
+        # "EfficiencyPoly",
+        # "PressureLossR", "EntropyStatic",
+        # "MachIsentropic", "Load",
         "MassFlow"]
     for parameter in parameterList:
 
         n_trainList = [500, 1000, 1500, 2000, 2500]
         n_noiseList = [0, 0.005, 0.01, 0.05, 0.1]
 
-        data_box_num = np.zeros([400, 5])
-        for ii, n_train in enumerate(n_trainList):
-            pred = get_pred(npz_path, n_train, 0, parameter, Device)
-            data_box_num[:, ii] = pred.copy()
-        dict_num.update({parameter: data_box_num})
+        # data_box_num = np.zeros([400, 5])
+        # for ii, n_train in enumerate(n_trainList):
+        #     pred = get_pred(npz_path, n_train, 0, parameter, Device)
+        #     data_box_num[:, ii] = pred.copy()
+        # dict_num.update({parameter: data_box_num})
 
         data_box_noise = np.zeros([400, 5])
         for ii, n_noise in enumerate(n_noiseList):
@@ -134,7 +136,7 @@ if __name__ == "__main__":
             data_box_noise[:, ii] = pred.copy()
         dict_noise.update({parameter: data_box_noise})
 
-        np.savez(os.path.join("..", "data", "surrogate_data", "ANN_num.npz"), **dict_num)
+        # np.savez(os.path.join("..", "data", "surrogate_data", "ANN_num.npz"), **dict_num)
         np.savez(os.path.join("..", "data", "surrogate_data", "ANN_noise.npz"), **dict_noise)
 
 

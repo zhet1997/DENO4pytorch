@@ -5,7 +5,7 @@ from pymoo.algorithms.soo.nonconvex.de import DE
 from pymoo.core.problem import Problem
 from pymoo.optimize import minimize
 from pymoo.visualization.scatter import Scatter
-
+import time
 import torch
 import os
 from post_process.model_predict import DLModelPost
@@ -33,7 +33,7 @@ class Rotor37Predictor(Problem):
 
         super().__init__(n_var=28,
                          n_obj=len(parameterList),
-                         n_ieq_constr=len(hardConstrIneqList), n_eq_constr=len(hardConstrList),
+                         n_constr=0,#len(hardConstrIneqList)+len(hardConstrList),
                          xl=0.0, xu=1.0)
 
     def _evaluate(self, x, out, *args, **kwargs):
@@ -91,11 +91,11 @@ def predictor_establish(name, work_load_path):
 
 if __name__ == "__main__":
     # 设置需要优化的函数
-    name = 'FNO'
+    name = 'FNO_1'
     input_dim = 28
     output_dim = 5
-    # work_load_path = os.path.join("..", "work_train_FNO2")
-    work_load_path = os.path.join("..", "work")
+    work_load_path = os.path.join("..", "work_train_FNO2")
+    # work_load_path = os.path.join("..", "work")
 
     model_all = predictor_establish(name, work_load_path)
 
@@ -118,24 +118,29 @@ if __name__ == "__main__":
     # for parameter in parameterList:
         # 创建问题对象
     problem = Rotor37Predictor(model_all,
-                               parameterList=["Efficiency", "PressureRatioV"],
-                               softconstrList=[],
-                               hardConstrList=["MassFlow"],
-                               hardConstrIneqList=[],
+                               parameterList=["Efficiency"],
+                               # softconstrList=[],
+                               # hardConstrList=["MassFlow"],
+                               # hardConstrIneqList=[],
                               )
     # 定义优化算法
-    algorithm = NSGA2(pop_size=10)
-    # algorithm = GA(pop_size=20)
+    # algorithm = NSGA2(pop_size=10)
+    algorithm = GA(pop_size=20)
     # 进行优化
+    start_time = time.time()
+
     res = minimize(problem,
                    algorithm,
-                   termination=('n_gen', 200),
+                   termination=('n_gen', 80),
                    verbose=True,
                    save_history=True
-                   )# 打印最优解
+                   )  # 打印最优解
+
+    end_time = time.time()
 
     print("最优解：", res.X)
     print("最优目标函数值：", res.F)
+    print("运行时间：", end_time - start_time)
 
     # 保存到文件中
 

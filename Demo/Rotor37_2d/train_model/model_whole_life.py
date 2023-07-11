@@ -11,6 +11,7 @@ from Utilizes.visual_data import MatplotlibVision
 import matplotlib.pyplot as plt
 import yaml
 import time
+from torchsummary import summary
 
 
 def change_yml(name, yml_path=None, **kwargs):
@@ -91,6 +92,9 @@ class DLModelWhole(object):
         self.name = name
         self.net_model, self.inference, self.train, self.valid = \
             build_model_yml(work.yml, self.device, name=name)
+
+        # summary(self.net_model, [(64, 64, 28),(64, 64, 2),(64, 64, 28),(64, 64, 2)])
+        # summary(self.net_model, [(64, 64, 28), (64, 64, 2), (1,), (64, 64, 2)])
 
         self.in_norm = in_norm
         self.out_norm = out_norm

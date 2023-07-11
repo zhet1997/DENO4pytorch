@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import yaml
+import time
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.optimize import minimize
 from pymoo_optimizer import Rotor37Predictor, predictor_establish
@@ -29,7 +30,7 @@ if __name__ == "__main__":
 
     model_all = predictor_establish(name, work_load_path)
 
-    yml_path = os.path.join("EPM_optmization_tasks.yml")
+    yml_path = os.path.join("EPM_optmization_tasks_20230703.yml")
 
     with open(yml_path) as f:
         config = yaml.full_load(f)
@@ -38,26 +39,32 @@ if __name__ == "__main__":
     # 单个对象优化
     parameterList = [
         "Efficiency",
-        "EfficiencyPoly",
-        "PressureLossR",
+        # "EfficiencyPoly",
+        # "PressureLossR",
     ]
     for ii, parameter in enumerate(parameterList):
-        for task_id in range(8):
+        for task_id in range(1):
             config["task_" + str(task_id)]['parameterList'][0] = parameter
             problem = Rotor37Predictor(model_all, **config["task_" + str(task_id)])
             # 定义优化算法
             algorithm = NSGA2(pop_size=30)
             # algorithm = GA(pop_size=20)
             # 进行优化
+
+            start_time = time.time()
+
             res = minimize(problem,
                            algorithm,
-                           termination=('n_gen', 200),
+                           termination=('n_gen', 80),
                            verbose=True,
                            save_history=True
                            )# 打印最优解
 
+            end_time=time.time()
+
             print("最优解：", res.X)
             print("最优目标函数值：", res.F)
+            print("运行时间：",end_time-start_time)
 
             # 保存到文件中
 
@@ -65,4 +72,4 @@ if __name__ == "__main__":
             dict["task_" + str(task_id + ii*8) + "_value"] = res.F
 
         # 保存数据
-        np.savez(os.path.join("..", "data", "opt_data", 'EPM_optmization_tasks.npz'), **dict)
+        np.savez(os.path.join("..", "data", "opt_data", 'EPM_optmization_tasks_20230703.npz'), **dict)

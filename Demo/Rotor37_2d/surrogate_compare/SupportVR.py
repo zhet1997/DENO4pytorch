@@ -16,7 +16,7 @@ def get_pred(npz_path, n_train, n_noise, parameter):
 
     train_x = design[:n_train]
     train_y = value[:n_train]
-    noise = get_noise(train_y.shape, n_noise) * np.mean(train_y)
+    noise = get_noise(train_y.shape, n_noise) * np.std(train_y) *2
     train_y = train_y + noise
 
     y_scaled = scaler.fit_transform([[val] for val in train_y])
@@ -41,11 +41,13 @@ if __name__ == "__main__":
     dict_noise = {}
 
     parameterList = [
-    "PressureRatioV", "TemperatureRatioV",
-    "Efficiency", "EfficiencyPoly",
-    "PressureLossR", "EntropyStatic",
-    "MachIsentropic", "Load",
-    "MassFlow"]
+        "PressureRatioV",
+        # "TemperatureRatioV",
+        "Efficiency",
+        # "EfficiencyPoly",
+        # "PressureLossR", "EntropyStatic",
+        # "MachIsentropic", "Load",
+        "MassFlow"]
     for parameter in parameterList:
 
         n_trainList = [500, 1000, 1500, 2000, 2500]
