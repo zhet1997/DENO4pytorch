@@ -25,7 +25,8 @@ def plot_loss():
         'work_train_UNet/UNet_4',
         'work_train_deepONet/deepONet_1',
         'work_train_FNO2/FNO_1',
-        'work_train_Trans2/Transformer_1',
+        # 'work_train_Trans2/Transformer_1',
+        'work/Transformer',
     ]
 
     if torch.cuda.is_available():
@@ -33,7 +34,7 @@ def plot_loss():
     else:
         Device = torch.device('cpu')
 
-    fig, axs = plt.subplots(1, 1, figsize=(10, 4), num=1)
+    fig, axs = plt.subplots(1, 1, figsize=(20, 8), num=1)
     colors = plt.cm.get_cmap('Dark2').colors[:5]
 
     for ii, path in enumerate(pathList):
@@ -62,7 +63,7 @@ def plot_loss():
         normalizer = DataNormer(loss_box, method='mean-std', axis=0)
         normalizer.std = np.clip(normalizer.std, 0, normalizer.std[1])
         Visual.plot_value_std_clean(fig, axs, np.arange(len(log_loss[1])), normalizer.mean, label=nameList[ii],
-                                    std=normalizer.std, stdaxis=1, rangeIndex=1,
+                                    std=normalizer.std, stdaxis=1, rangeIndex=0.95,
                                     title=None, xylabels=("epoch", "loss value"),color=colors[ii],)
 
 
@@ -74,9 +75,9 @@ def plot_loss():
         # fig.suptitle('training loss')
 
     # axs.legend(loc="best", ncol=2)
-    Visual.font["size"] = 13
+    # Visual.font["size"] = 11
     axs.set_xlim(0, 900)
-    # axs.set_ylim(0, 0.11)
+    axs.set_ylim(1e-5, 0.5)
     axs.legend(loc="best", framealpha=1, prop=Visual.font)
     save_path = os.path.join("..", "data", "final_fig")
     fig.savefig(os.path.join(save_path, 'log_loss_std.jpg'))
@@ -249,19 +250,22 @@ def plot_1d_curves():
 
 def plot_error():
     nameList = [
+        'Transformer',
         'MLP',
         'UNet',
         'deepONet',
         'FNO',
-        'Transformer',
+        # 'Transformer',
     ]
     scaleList = [1, 1, 1, 1, 1]
     pathList = [
+        'work/Transformer',
         'work_train_MLP/MLP_5',
         'work_train_UNet/UNet_4',
         'work_train_deepONet/deepONet_1',
         'work_train_FNO2/FNO_1',
-        'work_train_Trans2/Transformer_1',
+        # 'work_train_Trans2/Transformer_1',
+        # 'work/Transformer',
     ]
 
     if torch.cuda.is_available():
@@ -302,14 +306,16 @@ def plot_error():
         norm_save_x = work.x_norm
         norm_save_y = work.y_norm
 
-        x_normlizer = DataNormer([1, 1], method="mean-std", axis=0)
+        x_normlizer = DataNormer(np.ndarray([1, 1]), method="mean-std", axis=0)
         x_normlizer.load(norm_save_x)
-
-        Net_model, inference, _, _ = build_model_yml(work.yml, Device, name=nameReal)
-        isExist = os.path.exists(work.pth)
-        if isExist:
-            checkpoint = torch.load(work.pth, map_location=Device)
-            Net_model.load_state_dict(checkpoint['net_model'])
+        if os.path.exists(work.yml):
+            Net_model, inference, _, _ = build_model_yml(work.yml, Device, name=nameReal)
+            isExist = os.path.exists(work.pth)
+            if isExist:
+                checkpoint = torch.load(work.pth, map_location=Device)
+                Net_model.load_state_dict(checkpoint['net_model'])
+        else:
+            Net_model, inference = rebuild_model(work_path, Device, name=nameReal)
 
         Net_model.eval()
 
@@ -318,7 +324,7 @@ def plot_error():
                                    name=nameReal, iters=5, alldata=False
                                    )
 
-        y_normalizer = DataNormer([1, 1], method="mean-std", axis=0)
+        y_normalizer = DataNormer(np.ndarray([1, 1]), method="mean-std", axis=0)
         y_normalizer.load(norm_save_y)
 
         true = y_normalizer.back(true)
@@ -372,8 +378,8 @@ def plot_error():
 
 if __name__ == "__main__":
     # plot_loss()
-    plot_1d_curves()
-    # plot_error()
+    # plot_1d_curves()
+    plot_error()
 
 
 

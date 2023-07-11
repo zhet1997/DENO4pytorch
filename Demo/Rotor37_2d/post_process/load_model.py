@@ -100,7 +100,7 @@ def loaddata(name,
              batch_size=32):
 
     design, fields = get_origin(realpath=os.path.join("..", "data"), shuffled=shuffled)  # 获取原始数据
-    if name in ("FNO", "FNM", "UNet", "Transformer"):
+    if name in ("FNO", "FNM", "UNet"):
         input = np.tile(design[:, None, None, :], (1, 64, 64, 1))
     else:
         input = design
@@ -165,7 +165,7 @@ def loaddata(name,
 
     return train_loader, valid_loader, x_normalizer, y_normalizer
 
-def rebuild_model(work_path, Device, in_dim=363, out_dim=5, name=None, mode=10):
+def rebuild_model(work_path, Device, in_dim=28, out_dim=5, name=None, mode=10):
     """
     rebuild the model with pth files
     """
@@ -191,14 +191,30 @@ def rebuild_model(work_path, Device, in_dim=363, out_dim=5, name=None, mode=10):
         Net_model = UNet2d(in_sizes=(64, 64, 28), out_sizes=(64, 64, 5), width=64,
                            depth=4, steps=1, activation='gelu', dropout=0).to(Device)
     elif 'Transformer' in name:
-        from transformer.Transformers import FourierTransformer2D
-        from run_Trans import inference
+        from basic.basic_layers import FcnSingle
+        from fno.FNOs import FNO2d
+        from transformer.Transformers import SimpleTransformer, FourierTransformer
+        from run_Trans import inference, predictor
+
         with open(os.path.join('transformer_config.yml')) as f:
             config = yaml.full_load(f)
             config = config['Rotor37_2d']
-            config['fourier_modes'] = mode
-        # 建立网络
-        Net_model = FourierTransformer2D(**config).to(Device)
+
+            # 建立网络
+        Tra_model = FourierTransformer(**config).to(Device)
+        FNO_model = FNO2d(in_dim=2, out_dim=config['n_targets'], modes=(16, 16), width=64, depth=4,
+                          padding=9, activation='gelu').to(Device)
+        MLP_model = FcnSingle(planes=(in_dim, 64, 64, config['n_targets']), last_activation=True).to(Device)
+        Net_model = predictor(trunc=FNO_model, branch=MLP_model, field_dim=out_dim).to(Device)
+
+        # from transformer.Transformers import FourierTransformer2D
+        # from run_Trans import inference
+        # with open(os.path.join('transformer_config_sql.yml')) as f:
+        #     config = yaml.full_load(f)
+        #     config = config['Rotor37_2d']
+        #     config['fourier_modes'] = mode
+        # # 建立网络
+        # Net_model = FourierTransformer2D(**config).to(Device)
 
     isExist = os.path.exists(os.path.join(work_path, 'latest_model.pth'))
     if isExist:
@@ -289,7 +305,7 @@ def get_true_pred(loader, Net_model, inference, Device,
                                                      shuffle=False,
                                                      drop_last=False)
     # for ii in range(iters):
-        if name in ('MLP'):
+        if name in ('MLP','Transformer'):
             _, true, pred = inference(sub_loader, Net_model, Device)
         else:
             _, _, true, pred = inference(sub_loader, Net_model, Device)
