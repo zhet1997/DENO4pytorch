@@ -12,7 +12,7 @@ from train_model.model_whole_life import WorkPrj
 from run_FNO import feature_transform
 from SALib.sample import latin
 
-
+# test add sth new.
 
 def predicter(netmodel, input, Device, name=None):
     """
