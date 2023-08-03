@@ -6,7 +6,7 @@ from post_process.post_data import Post_2d
 import os
 import torch
 
-def get_grid(real_path=None):
+def get_grid(real_path=None, GV_RB=False):
     xx = np.linspace(-0.127, 0.126, 64)
     xx = np.tile(xx, [64,1])
 
@@ -16,6 +16,11 @@ def get_grid(real_path=None):
     else:
         hub_file = os.path.join(real_path, 'hub_lower.txt')
         shroud_files = os.path.join(real_path, 'shroud_upper.txt')
+
+    if GV_RB:
+        hub_file = os.path.join('data', 'hub_lower_GV.txt')
+        shroud_files = os.path.join('data', 'shroud_upper_GV.txt')
+
 
     hub = np.loadtxt(hub_file)
     shroud = np.loadtxt(shroud_files)
@@ -197,7 +202,63 @@ def get_origin_gemo(quanlityList=None,
 
     return design, fields
 
+def get_origin_GVRB(quanlityList=None,
+                realpath=None,
+                existcheck=True,
+                shuffled=True,
+                getridbad=False):
 
+
+    if quanlityList is None:
+        quanlityList = ["Static Pressure", "Static Temperature",
+                        'Absolute Total Temperature',  "DensityFlow"]
+    if realpath is None:
+        sample_files = [os.path.join("data", "sampleRstGV_RB")]
+    else:
+        sample_files = [os.path.join("data", "sampleRstGV_RB")]
+    if existcheck:
+        sample_files_exists = []
+        for file in sample_files:
+            if os.path.exists(file + '.mat'):
+                sample_files_exists.append(file)
+            else:
+                print("The data file {} is not exist, CHECK PLEASE!".format(file))
+
+
+        sample_files = sample_files_exists
+
+
+    design, fields = get_quanlity_from_GVRBmat(sample_files, quanlityList)
+    # design = get_GVRBdata_from_mat(realpath=realpath, existcheck=existcheck) # read the gemo data from here
+
+
+    if getridbad:
+        if realpath is None:
+            file_path = os.path.join("data", "sus_bad_data.yml")
+        else:
+            file_path = os.path.join(realpath, "sus_bad_data.yml")
+        with open(file_path, 'r') as f:
+            sus_bad_dict = yaml.load(f, Loader=yaml.FullLoader)
+        sus_bad_idx = []
+        for key in sus_bad_dict.keys():
+            sus_bad_idx.extend(sus_bad_dict[key])
+        sus_bad_idx = np.array(sus_bad_idx)
+        sus_bad_idx = np.unique(sus_bad_idx)
+
+
+        design = np.delete(design, sus_bad_idx, axis=0)
+        fields = np.delete(fields, sus_bad_idx, axis=0)
+
+
+    if shuffled:
+        np.random.seed(8905)
+        idx = np.random.permutation(design.shape[0])
+        # print(idx[:10])
+        design = design[idx]
+        fields = fields[idx]
+
+
+    return design, fields
 
 def get_quanlity_from_mat(sample_files, quanlityList):
     design = []
@@ -207,7 +268,7 @@ def get_quanlity_from_mat(sample_files, quanlityList):
     for ii, file in enumerate(sample_files):
         reader = MatLoader(file, to_torch=False)
         design.append(reader.read_field('design'))
-        output = np.zeros([design[ii].shape[0], 64, 64, len(quanlityList)])
+        output = np.zeros([design[ii].shape[0], 128, 128, len(quanlityList)])
         Cp = 1004
         for jj, quanlity in enumerate(quanlityList):
             if quanlity == "DensityFlow":  # 设置一个需要计算获得的数据
@@ -228,7 +289,59 @@ def get_quanlity_from_mat(sample_files, quanlityList):
 
     return design, fields
 
+def get_quanlity_from_GVRBmat(sample_files, quanlityList):
+    design = []
+    fields = []
+    if not isinstance(sample_files, list):
+        sample_files = [sample_files]
+    for ii, file in enumerate(sample_files):
+        reader = MatLoader(file, to_torch=False)
+        design.append(reader.read_field('design'))
+        output = np.zeros([design[ii].shape[0], 128, 128, len(quanlityList)])
+        for jj, quanlity in enumerate(quanlityList):
+            if quanlity == "DensityFlow":  # 设置一个需要计算获得的数据
+                Vm = np.sqrt(np.power(reader.read_field("Vxyz_X"), 2) + np.power(reader.read_field("Vxyz_Y"), 2))
+                output[:, :, :, jj] = (reader.read_field("Density") * Vm).copy()
+            # elif quanlity == "Static Temperature":  # 设置一个需要计算获得的数据
+            #     output[:, :, :, jj] = (reader.read_field("Static Temperature")) .copy()
+            # elif quanlity == "Static Pressure":  # 设置一个需要计算获得的数据
+            #     output[:, :, :, jj] = (reader.read_field("Static Pressure")).copy()
+            # elif quanlity == "Absolute Total Temperature":  # 设置一个需要计算获得的数据
+            #     output[:, :, :, jj] = (reader.read_field("Absolute Total Temperature")).copy()
+            else:
+                output[:, :, :, jj] = reader.read_field(quanlity).copy()
+        fields.append(output)
 
+    design = np.concatenate(design, axis=0)
+    fields = np.concatenate(fields, axis=0)
+
+    return design, fields
+
+def get_GVRBdata_from_mat(realpath=None,existcheck=None):
+
+
+    if realpath is None:
+        sample_files = [os.path.join("data", "sampleRstGV_RB")]
+    else:
+        sample_files = [os.path.join("data", "sampleRstGV_RB")]
+    if existcheck:
+        sample_files_exists = []
+        for file in sample_files:
+            if os.path.exists(file + '.mat'):
+                sample_files_exists.append(file)
+            else:
+                print("The data file {} is not exist, CHECK PLEASE!".format(file))
+    design = []
+    # fields = []
+    if not isinstance(sample_files, list):
+        sample_files = [sample_files]
+    for ii, file in enumerate(sample_files):
+        reader = MatLoader(file, to_torch=False)
+        design.append(reader.read_field('design'))
+    design = np.concatenate(design, axis=0)
+
+
+    return design
 
 def get_value(data_2d, input_para=None, parameterList=None):
     if not isinstance(parameterList, list):
