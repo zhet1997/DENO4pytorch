@@ -68,6 +68,8 @@ class TextLogger(object):
         # logger.setLevel(level)
         handler = logging.FileHandler(filename)
         handler.setFormatter(formatter)
+        level = logging.INFO
+        level = int(level)
         handler.setLevel(level)
         logger.addHandler(handler)
 
