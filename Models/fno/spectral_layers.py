@@ -8,18 +8,20 @@
 # @File    : spectral_layers.py
 """
 import math
-import torch
-import torch.nn as nn
-import torch.fft as fft
-import torch.nn.functional as F
-from torch.nn.parameter import Parameter
-from torch.nn.init import xavier_uniform_, constant_, xavier_normal_
+
+import paddle
+import paddle as torch
+import paddle.nn as nn
+import paddle.fft as fft
+import paddle.nn.functional as F
+# from paddle.nn.parameter import Parameter
+# from paddle.nn.init import xavier_uniform_, constant_, xavier_normal_
 
 from functools import partial
 from Models.configs import activation_dict
 
 
-class SpectralConv1d(nn.Module):
+class SpectralConv1d(nn.Layer):
     '''
     1维谱卷积
     Modified Zongyi Li's Spectral1dConv code
@@ -46,10 +48,10 @@ class SpectralConv1d(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.return_freq = return_freq
         self.activation = activation_dict[activation]
-        self.linear = nn.Conv1d(self.in_dim, self.out_dim, 1)  # for residual
+        self.linear = nn.Conv1D(self.in_dim, self.out_dim, 1)  # for residual
         # self.linear = nn.Linear(self.in_dim, self.out_dim)
         self.scale = (1 / (in_dim * out_dim))
-        self.weights1 = nn.Parameter(self.scale * torch.rand(in_dim, out_dim, self.modes, dtype=torch.cfloat))
+        self.weights1 = torch.create_parameter(self.scale * torch.rand(in_dim, out_dim, self.modes, dtype='float32'))
         # xavier_normal_(self.weights1, gain=1 / (in_dim * out_dim))
 
     # Complex multiplication
@@ -68,7 +70,8 @@ class SpectralConv1d(nn.Module):
         x_ft = torch.fft.rfft(x, norm=self.norm)
 
         # Multiply relevant Fourier modes
-        out_ft = torch.zeros(batchsize, self.out_dim, x.size(-1) // 2 + 1, device=x.device, dtype=torch.cfloat)
+        shape = paddle.to_tensor([batchsize, self.out_dim, x.size(-1) // 2 + 1], place=x.place)
+        out_ft = torch.zeros(shape=shape, dtype=float)
         out_ft[:, :, :self.modes] = self.compl_mul1d(x_ft[:, :, :self.modes], self.weights1)
 
         # Return to physical space
@@ -81,7 +84,7 @@ class SpectralConv1d(nn.Module):
             return x
 
 
-class SpectralConv2d(nn.Module):
+class SpectralConv2d(nn.Layer):
     '''
     2维谱卷积
     Modified Zongyi Li's SpectralConv2d PyTorch 1.6 code
@@ -115,13 +118,13 @@ class SpectralConv2d(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.activation = activation_dict[activation]
         self.return_freq = return_freq
-        self.linear = nn.Conv2d(self.in_dim, self.out_dim, 1)  # for residual
+        self.linear = nn.Conv2D(self.in_dim, self.out_dim, 1)  # for residual
 
         self.scale = (1 / (in_dim * out_dim))
-        self.weights1 = nn.Parameter(
-            self.scale * torch.rand(in_dim, out_dim, self.modes1, self.modes2, dtype=torch.cfloat))
-        self.weights2 = nn.Parameter(
-            self.scale * torch.rand(in_dim, out_dim, self.modes1, self.modes2, dtype=torch.cfloat))
+        self.weights1 = torch.create_parameter(
+            self.scale * torch.rand([in_dim, out_dim, self.modes1, self.modes2], dtype=float))
+        self.weights2 = torch.create_parameter(
+            self.scale * torch.rand([in_dim, out_dim, self.modes1, self.modes2], dtype=float))
 
     # Complex multiplication
     def compl_mul2d(self, input, weights):
@@ -139,8 +142,8 @@ class SpectralConv2d(nn.Module):
         x_ft = torch.fft.rfft2(x, norm=self.norm)
 
         # Multiply relevant Fourier modes
-        out_ft = torch.zeros(batch_size, self.out_dim, x.size(-2), x.size(-1) // 2 + 1, dtype=torch.cfloat,
-                             device=x.device)
+        shape = paddle.to_tensor([batch_size, self.out_dim, x.size(-2), x.size(-1) // 2 + 1], place=x.place)
+        out_ft = torch.zeros(shape=shape, dtype=float)
         out_ft[:, :, :self.modes1, :self.modes2] = \
             self.compl_mul2d(x_ft[:, :, :self.modes1, :self.modes2], self.weights1)
         out_ft[:, :, -self.modes1:, :self.modes2] = \
@@ -156,7 +159,7 @@ class SpectralConv2d(nn.Module):
             return x
 
 
-class SpectralConv3d(nn.Module):
+class SpectralConv3d(nn.Layer):
     '''
     三维谱卷积
     Modified Zongyi Li's SpectralConv2d PyTorch 1.6 code
@@ -193,21 +196,21 @@ class SpectralConv3d(nn.Module):
         self.return_freq = return_freq
         self.activation = activation_dict[activation]
 
-        self.linear = nn.Conv3d(self.in_dim, self.out_dim, 1)  # for residual
+        self.linear = nn.Conv3D(self.in_dim, self.out_dim, 1)  # for residual
 
         self.scale = (1 / (in_dim * out_dim))
-        self.weights1 = nn.Parameter(
-            self.scale * torch.rand(in_dim, out_dim, self.modes1, self.modes2, self.modes3,
-                                    dtype=torch.cfloat))
-        self.weights2 = nn.Parameter(
-            self.scale * torch.rand(in_dim, out_dim, self.modes1, self.modes2, self.modes3,
-                                    dtype=torch.cfloat))
-        self.weights3 = nn.Parameter(
-            self.scale * torch.rand(in_dim, out_dim, self.modes1, self.modes2, self.modes3,
-                                    dtype=torch.cfloat))
-        self.weights4 = nn.Parameter(
-            self.scale * torch.rand(in_dim, out_dim, self.modes1, self.modes2, self.modes3,
-                                    dtype=torch.cfloat))
+        self.weights1 = paddle.create_parameter(
+            self.scale * torch.rand([in_dim, out_dim, self.modes1, self.modes2, self.modes3],
+                                    dtype=float))
+        self.weights2 = paddle.create_parameter(
+            self.scale * torch.rand([in_dim, out_dim, self.modes1, self.modes2, self.modes3],
+                                    dtype=float))
+        self.weights3 = paddle.create_parameter(
+            self.scale * torch.rand([in_dim, out_dim, self.modes1, self.modes2, self.modes3],
+                                    dtype=float))
+        self.weights4 = paddle.create_parameter(
+            self.scale * torch.rand([in_dim, out_dim, self.modes1, self.modes2, self.modes3],
+                                    dtype=float))
 
     # Complex multiplication
     def compl_mul3d(self, input, weights):
@@ -222,10 +225,10 @@ class SpectralConv3d(nn.Module):
         # Compute Fourier coeffcients up to factor of e^(- something constant)
         res = self.linear(x)
         # x = self.dropout(x)
-        x_ft = torch.fft.rfftn(x, dim=[-3, -2, -1], norm=self.norm)
+        x_ft = torch.fft.rfftn(x, axes=[-3, -2, -1], norm=self.norm)
         # Multiply relevant Fourier modes
-        out_ft = torch.zeros(batch_size, self.out_dim, x.size(-3), x.size(-2), x.size(-1) // 2 + 1,
-                             dtype=torch.cfloat, device=x.device)
+        shape = paddle.to_tensor([batch_size, self.out_dim, x.size(-3), x.size(-2), x.size(-1) // 2 + 1], place=x.place)
+        out_ft = torch.zeros(shape=shape, dtype=float)
         out_ft[:, :, :self.modes1, :self.modes2, :self.modes3] = \
             self.compl_mul3d(x_ft[:, :, :self.modes1, :self.modes2, :self.modes3], self.weights1)
         out_ft[:, :, -self.modes1:, :self.modes2, :self.modes3] = \
@@ -245,7 +248,7 @@ class SpectralConv3d(nn.Module):
             return x
 
 
-class AdaptiveFourier1d(nn.Module):
+class AdaptiveFourier1d(nn.Layer):
     """
     hidden_size: channel dimension size
     num_blocks: how many blocks to use in the block diagonal weight matrices (higher => less complexity but less parameters)
@@ -267,18 +270,18 @@ class AdaptiveFourier1d(nn.Module):
         self.scale = 0.02
         self.activation = activation_dict[activation]
 
-        self.weights1 = nn.Parameter(
-            self.scale * torch.rand(self.num_blocks, self.block_size, self.block_size * self.hidden_size_factor,
-                                    dtype=torch.cfloat))
-        self.weights2 = nn.Parameter(
-            self.scale * torch.rand(self.num_blocks, self.block_size, self.block_size * self.hidden_size_factor,
-                                    dtype=torch.cfloat))
-        self.bias1 = nn.Parameter(
-            self.scale * torch.rand(self.num_blocks, self.block_size * self.hidden_size_factor,
-                                    dtype=torch.cfloat))
-        self.bias2 = nn.Parameter(
-            self.scale * torch.rand(self.num_blocks, self.block_size,
-                                    dtype=torch.cfloat))
+        self.weights1 = paddle.create_parameter(
+            self.scale * torch.rand([self.num_blocks, self.block_size, self.block_size * self.hidden_size_factor],
+                                    dtype=float))
+        self.weights2 = paddle.create_parameter(
+            self.scale * torch.rand([self.num_blocks, self.block_size, self.block_size * self.hidden_size_factor],
+                                    dtype=float))
+        self.bias1 = paddle.create_parameter(
+            self.scale * torch.rand([self.num_blocks, self.block_size * self.hidden_size_factor],
+                                    dtype=float))
+        self.bias2 = paddle.create_parameter(
+            self.scale * torch.rand([self.num_blocks, self.block_size],
+                                    dtype=float))
 
     def compl_mul1d(self, input, weights, bias):
         # (batch, num_blocks, block_size, l), (num_blocks, block_size, block_size * hidden_size_factor)
@@ -296,8 +299,8 @@ class AdaptiveFourier1d(nn.Module):
         x = x.reshape(B, self.num_blocks, self.block_size, N // 2 + 1)
 
         out_ft1 = torch.zeros([B, self.num_blocks, self.block_size * self.hidden_size_factor, N // 2 + 1],
-                              dtype=torch.cfloat, device=x.device)
-        out_ft2 = torch.zeros(x.shape, dtype=torch.cfloat, device=x.device)
+                              dtype=float)
+        out_ft2 = torch.zeros(x.shape, dtype=float)
 
         total_modes = N // 2 + 1
         kept_modes = int(total_modes * self.hard_thresholding_fraction)
@@ -486,34 +489,34 @@ if __name__ == '__main__':
     y = layer(x)
     print(y.shape)
 
-    lossfunc = torch.nn.MSELoss()
-    optimizer = torch.optim.Adam(layer.parameters(), lr=0.001)
-    loss = lossfunc(y, torch.ones_like(y))
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
-
-    x = torch.ones([10, 3, 55, 64])
-    layer = SpectralConv2d(in_dim=3, out_dim=10, modes=(5, 3))
-    y = layer(x)
-    print(y.shape)
-
-    x = torch.ones([10, 3, 16, 32, 48])
-    layer = SpectralConv3d(in_dim=3, out_dim=4, modes=(5, 5, 5))
-    y = layer(x)
-    print(y.shape)
-
-    x = torch.ones(10, 64, 128)
-    layer = AdaptiveFourier1d(hidden_size=64, num_blocks=4)
-    y = layer(x)
-    print(y.shape)
-
-    x = torch.ones(10, 64, 55, 64)
-    layer = AdaptiveFourier2d(hidden_size=64, num_blocks=4)
-    y = layer(x)
-    print(y.shape)
-
-    x = torch.ones(10, 64, 55, 64, 33)
-    layer = AdaptiveFourier3d(hidden_size=64, num_blocks=4)
-    y = layer(x)
-    print(y.shape)
+    # lossfunc = torch.nn.MSELoss()
+    # optimizer = torch.optim.Adam(layer.parameters(), lr=0.001)
+    # loss = lossfunc(y, torch.ones_like(y))
+    # optimizer.zero_grad()
+    # loss.backward()
+    # optimizer.step()
+    #
+    # x = torch.ones([10, 3, 55, 64])
+    # layer = SpectralConv2d(in_dim=3, out_dim=10, modes=(5, 3))
+    # y = layer(x)
+    # print(y.shape)
+    #
+    # x = torch.ones([10, 3, 16, 32, 48])
+    # layer = SpectralConv3d(in_dim=3, out_dim=4, modes=(5, 5, 5))
+    # y = layer(x)
+    # print(y.shape)
+    #
+    # x = torch.ones(10, 64, 128)
+    # layer = AdaptiveFourier1d(hidden_size=64, num_blocks=4)
+    # y = layer(x)
+    # print(y.shape)
+    #
+    # x = torch.ones(10, 64, 55, 64)
+    # layer = AdaptiveFourier2d(hidden_size=64, num_blocks=4)
+    # y = layer(x)
+    # print(y.shape)
+    #
+    # x = torch.ones(10, 64, 55, 64, 33)
+    # layer = AdaptiveFourier3d(hidden_size=64, num_blocks=4)
+    # y = layer(x)
+    # print(y.shape)

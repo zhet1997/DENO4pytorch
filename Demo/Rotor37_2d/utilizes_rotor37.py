@@ -1,10 +1,9 @@
 import numpy as np
 import yaml
-import torch
+import paddle as torch
 from Utilizes.process_data import DataNormer, MatLoader
 from post_process.post_data import Post_2d
 import os
-import torch
 
 def get_grid(real_path=None):
     xx = np.linspace(-0.127, 0.126, 64)
@@ -247,7 +246,7 @@ def get_value(data_2d, input_para=None, parameterList=None):
 
     return np.concatenate(Rst, axis=1)
 
-class Rotor37WeightLoss(torch.nn.Module):
+class Rotor37WeightLoss(torch.nn.Layer):
     def __init__(self):
         super(Rotor37WeightLoss, self).__init__()
 
@@ -270,7 +269,7 @@ class Rotor37WeightLoss(torch.nn.Module):
 
         temp1 = torch.ones((grid_size_1, weighted_lines)) * weighted_cof
         temp2 = torch.ones((grid_size_1, grid_size_2 - weighted_lines * 2))
-        weighted_mat = torch.cat((temp1, temp2, temp1), dim=1)
+        weighted_mat = torch.concat((temp1, temp2, temp1), dim=1)
         weighted_mat = weighted_mat.unsqueeze(0).unsqueeze(-1).expand_as(target)
         weighted_mat = weighted_mat * grid_size_2 /(weighted_cof * weighted_lines * 2 + grid_size_2 - weighted_lines * 2)
         weighted_mat = weighted_mat.to(device)

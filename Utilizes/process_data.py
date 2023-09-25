@@ -11,7 +11,7 @@ import os.path
 import numpy as np
 import scipy
 import scipy.io as sio
-import torch
+import paddle as torch
 import h5py
 
 import sklearn.metrics
@@ -73,10 +73,10 @@ class DataNormer(object):
         """
         if torch.is_tensor(x):
             if self.method == "min-max":
-                x = 2 * (x - torch.tensor(self.min, device=x.device)) \
-                    / (torch.tensor(self.max, device=x.device) - torch.tensor(self.min, device=x.device) + 1e-10) - 1
+                x = 2 * (x - torch.to_tensor(self.min, place=x.place)) \
+                    / (torch.to_tensor(self.max, place=x.place) - torch.to_tensor(self.min, place=x.place) + 1e-10) - 1
             elif self.method == "mean-std":
-                x = (x - torch.tensor(self.mean, device=x.device)) / (torch.tensor(self.std + 1e-10, device=x.device))
+                x = (x - torch.to_tensor(self.mean, place=x.place)) / (torch.to_tensor(self.std + 1e-10, place=x.place))
         else:
             if self.method == "min-max":
                 x = 2 * (x - self.min) / (self.max - self.min + 1e-10) - 1
@@ -93,11 +93,11 @@ class DataNormer(object):
         """
         if torch.is_tensor(x):
             if self.method == "min-max":
-                x = (x + 1) / 2 * (torch.tensor(self.max, device=x.device)
-                                   - torch.tensor(self.min, device=x.device) + 1e-10) + torch.tensor(self.min,
-                                                                                                     device=x.device)
+                x = (x + 1) / 2 * (torch.to_tensor(self.max, place=x.device)
+                                   - torch.to_tensor(self.min, place=x.device) + 1e-10) + torch.to_tensor(self.min,
+                                                                                                     place=x.device)
             elif self.method == "mean-std":
-                x = x * (torch.tensor(self.std + 1e-10, device=x.device)) + torch.tensor(self.mean, device=x.device)
+                x = x * (torch.to_tensor(self.std + 1e-10, place=x.device)) + torch.to_tensor(self.mean, place=x.device)
         else:
             if self.method == "min-max":
                 x = (x + 1) / 2 * (self.max - self.min + 1e-10) + self.min
@@ -176,7 +176,7 @@ class MatLoader(object):
             x = x.astype(np.float32)
 
         if self.to_torch:
-            x = torch.from_numpy(x)
+            x = torch.to_tensor(x)
 
             if self.to_cuda:
                 x = x.cuda()
@@ -225,7 +225,7 @@ class SquareMeshGenerator(object):
         self.edge_index = np.vstack(np.where(pwd <= r))
         self.n_edges = self.edge_index.shape[1]
 
-        return torch.tensor(self.edge_index, dtype=torch.long)
+        return torch.to_tensor(self.edge_index, dtype=torch.long)
 
     def gaussian_connectivity(self, sigma):
         pwd = sklearn.metrics.pairwise_distances(self.grid)
@@ -233,10 +233,10 @@ class SquareMeshGenerator(object):
         sample = np.random.binomial(1, rbf)
         self.edge_index = np.vstack(np.where(sample))
         self.n_edges = self.edge_index.shape[1]
-        return torch.tensor(self.edge_index, dtype=torch.long)
+        return torch.to_tensor(self.edge_index, dtype=torch.long)
 
     def get_grid(self):
-        return torch.tensor(self.grid, dtype=torch.float)
+        return torch.to_tensor(self.grid, dtype=float)
 
     def attributes(self, f=None, theta=None):
         if f is None:
@@ -254,7 +254,7 @@ class SquareMeshGenerator(object):
             else:
                 edge_attr = f(xy[:, 0:self.d], xy[:, self.d:], theta[self.edge_index[0]], theta[self.edge_index[1]])
 
-        return torch.tensor(edge_attr, dtype=torch.float)
+        return torch.to_tensor(edge_attr, dtype=float)
 
     def get_boundary(self):
         s = self.s
@@ -274,7 +274,7 @@ class SquareMeshGenerator(object):
         vertice2 = np.tile(boundary, self.n)
         self.edge_index_boundary = np.stack([vertice2, vertice1], axis=0)
         self.n_edges_boundary = self.edge_index_boundary.shape[1]
-        return torch.tensor(self.edge_index_boundary, dtype=torch.long)
+        return torch.to_tensor(self.edge_index_boundary, dtype=torch.long)
 
     def attributes_boundary(self, f=None, theta=None):
         # if self.edge_index_boundary == None:
@@ -296,7 +296,7 @@ class SquareMeshGenerator(object):
                 edge_attr_boundary = f(xy[:, 0:self.d], xy[:, self.d:], theta[self.edge_index_boundary[0]],
                                        theta[self.edge_index_boundary[1]])
 
-        return torch.tensor(edge_attr_boundary, dtype=torch.float)
+        return torch.to_tensor(edge_attr_boundary, dtype=torch.float)
 
 
 class RandomMeshGenerator(object):
@@ -333,14 +333,14 @@ class RandomMeshGenerator(object):
         return self.idx
 
     def get_grid(self):
-        return torch.tensor(self.grid_sample, dtype=torch.float)
+        return torch.to_tensor(self.grid_sample, dtype=torch.float)
 
     def ball_connectivity(self, r):
         pwd = sklearn.metrics.pairwise_distances(self.grid_sample)
         self.edge_index = np.vstack(np.where(pwd <= r))
         self.n_edges = self.edge_index.shape[1]
 
-        return torch.tensor(self.edge_index, dtype=torch.long)
+        return torch.to_tensor(self.edge_index, dtype=torch.long)
 
     def gaussian_connectivity(self, sigma):
         pwd = sklearn.metrics.pairwise_distances(self.grid_sample)
@@ -348,7 +348,7 @@ class RandomMeshGenerator(object):
         sample = np.random.binomial(1, rbf)
         self.edge_index = np.vstack(np.where(sample))
         self.n_edges = self.edge_index.shape[1]
-        return torch.tensor(self.edge_index, dtype=torch.long)
+        return torch.to_tensor(self.edge_index, dtype=torch.long)
 
     def attributes(self, f=None, theta=None):
         if f is None:
@@ -368,7 +368,7 @@ class RandomMeshGenerator(object):
                 theta = theta[self.idx]
                 edge_attr = f(xy[:, 0:self.d], xy[:, self.d:], theta[self.edge_index[0]], theta[self.edge_index[1]])
 
-        return torch.tensor(edge_attr, dtype=torch.float)
+        return torch.to_tensor(edge_attr, dtype=torch.float)
 
 
 class RandomGridSplitter(object):
@@ -397,19 +397,19 @@ class RandomGridSplitter(object):
                 grid_sample = self.grid.reshape(self.n, -1)[idx]
                 theta_sample = theta.reshape(self.n, -1)[idx]
 
-                X = torch.cat([grid_sample, theta_sample], dim=1)
+                X = torch.concat([grid_sample, theta_sample], dim=1)
 
                 pwd = sklearn.metrics.pairwise_distances(grid_sample)
                 edge_index = np.vstack(np.where(pwd <= self.radius))
                 n_edges = edge_index.shape[1]
-                edge_index = torch.tensor(edge_index, dtype=torch.long)
+                edge_index = torch.to_tensor(edge_index, dtype=torch.long)
 
                 edge_attr = np.zeros((n_edges, 6))
                 a = theta_sample[:, 0]
                 edge_attr[:, :4] = grid_sample[edge_index.T].reshape(n_edges, -1)
                 edge_attr[:, 4] = a[edge_index[0]]
                 edge_attr[:, 5] = a[edge_index[1]]
-                edge_attr = torch.tensor(edge_attr, dtype=torch.float)
+                edge_attr = torch.to_tensor(edge_attr, dtype=torch.float)
 
                 data.append(Data(x=X, edge_index=edge_index, edge_attr=edge_attr, split_idx=idx))
         print('test', len(data), X.shape, edge_index.shape, edge_attr.shape)
@@ -431,7 +431,7 @@ class RandomGridSplitter(object):
         out = out / self.l
 
         # out = gaussian_filter(out, sigma=sigma, mode='constant', cval=0)
-        # out = torch.tensor(out, dtype=torch.float)
+        # out = torch.to_tensor(out, dtype=torch.float)
         return out.reshape(-1, )
 
 
@@ -453,13 +453,13 @@ class DownsampleGridSplitter(object):
         self.radius = radius
         self.edge_features = edge_features
 
-        self.index = torch.tensor(range(self.n), dtype=torch.long).reshape(self.resolution, self.resolution)
+        self.index = torch.to_tensor(range(self.n), dtype=torch.long).reshape(self.resolution, self.resolution)
 
     def ball_connectivity(self, grid):
         pwd = sklearn.metrics.pairwise_distances(grid)
         edge_index = np.vstack(np.where(pwd <= self.radius))
         n_edges = edge_index.shape[1]
-        return torch.tensor(edge_index, dtype=torch.long), n_edges
+        return torch.to_tensor(edge_index, dtype=torch.long), n_edges
 
     def get_data(self, theta):
         theta_d = theta.shape[1]
@@ -476,9 +476,9 @@ class DownsampleGridSplitter(object):
                 grid_sample = self.grid.reshape(self.n, -1)[idx]
                 theta_sample = theta.reshape(self.n, -1)[idx]
 
-                grid_split = torch.cat([grid_sub, grid_sample], dim=0)
-                theta_split = torch.cat([theta_sub, theta_sample], dim=0)
-                X = torch.cat([grid_split, theta_split], dim=1)
+                grid_split = torch.concat([grid_sub, grid_sample], dim=0)
+                theta_split = torch.concat([theta_sub, theta_sample], dim=0)
+                X = torch.concat([grid_split, theta_split], dim=1)
 
                 edge_index, n_edges = self.ball_connectivity(grid_split)
 
@@ -487,8 +487,8 @@ class DownsampleGridSplitter(object):
                 edge_attr[:, :4] = grid_split[edge_index.T].reshape(n_edges, -1)
                 edge_attr[:, 4:4 + self.edge_features] = a[edge_index[0]]
                 edge_attr[:, 4 + self.edge_features: 4 + self.edge_features * 2] = a[edge_index[1]]
-                edge_attr = torch.tensor(edge_attr, dtype=torch.float)
-                split_idx = torch.tensor([x, y], dtype=torch.long).reshape(1, 2)
+                edge_attr = torch.to_tensor(edge_attr, dtype=torch.float)
+                split_idx = torch.to_tensor([x, y], dtype=torch.long).reshape(1, 2)
 
                 data.append(Data(x=X, edge_index=edge_index, edge_attr=edge_attr, split_idx=split_idx))
         print('test', len(data), X.shape, edge_index.shape, edge_attr.shape)
@@ -516,18 +516,18 @@ class DownsampleGridSplitter(object):
             theta_sample = theta.reshape(self.n, -1)[idx]
             Y_sample = Y.reshape(self.n, )[idx]
 
-            grid_split = torch.cat([grid_sub, grid_sample], dim=0)
-            theta_split = torch.cat([theta_sub, theta_sample], dim=0)
-            Y_split = torch.cat([Y_sub, Y_sample], dim=0).reshape(-1, )
-            index_split = torch.cat([index_sub, idx], dim=0).reshape(-1, )
-            X = torch.cat([grid_split, theta_split], dim=1)
+            grid_split = torch.concat([grid_sub, grid_sample], dim=0)
+            theta_split = torch.concat([theta_sub, theta_sample], dim=0)
+            Y_split = torch.concat([Y_sub, Y_sample], dim=0).reshape(-1, )
+            index_split = torch.concat([index_sub, idx], dim=0).reshape(-1, )
+            X = torch.concat([grid_split, theta_split], dim=1)
 
         else:
             grid_split = grid_sub
             theta_split = theta_sub
             Y_split = Y_sub.reshape(-1, )
             index_split = index_sub.reshape(-1, )
-            X = torch.cat([grid_split, theta_split], dim=1)
+            X = torch.concat([grid_split, theta_split], dim=1)
 
         edge_index, n_edges = self.ball_connectivity(grid_split)
 
@@ -536,8 +536,8 @@ class DownsampleGridSplitter(object):
         edge_attr[:, :4] = grid_split[edge_index.T].reshape(n_edges, -1)
         edge_attr[:, 4:4 + self.edge_features] = a[edge_index[0]]
         edge_attr[:, 4 + self.edge_features: 4 + self.edge_features * 2] = a[edge_index[1]]
-        edge_attr = torch.tensor(edge_attr, dtype=torch.float)
-        split_idx = torch.tensor([x, y], dtype=torch.long).reshape(1, 2)
+        edge_attr = torch.to_tensor(edge_attr, dtype=torch.float)
+        split_idx = torch.to_tensor([x, y], dtype=torch.long).reshape(1, 2)
         data = Data(x=X, y=Y_split, edge_index=edge_index, edge_attr=edge_attr, split_idx=split_idx,
                     sample_idx=index_split)
         print('train', X.shape, Y_split.shape, edge_index.shape, edge_attr.shape, index_split.shape)
@@ -571,7 +571,7 @@ class DownsampleGridSplitter(object):
                 out[x::self.r, y::self.r] = pred_ij[:nx * ny].reshape(nx, ny)
 
         out = gaussian_filter(out, sigma=sigma, mode='constant', cval=0)
-        out = torch.tensor(out, dtype=torch.float)
+        out = torch.to_tensor(out, dtype=torch.float)
         return out.reshape(-1, )
 
 
@@ -593,7 +593,7 @@ class TorusGridSplitter(object):
         self.radius = radius
         self.edge_features = edge_features
 
-        self.index = torch.tensor(range(self.n), dtype=torch.long).reshape(self.resolution, self.resolution)
+        self.index = torch.to_tensor(range(self.n), dtype=torch.long).reshape(self.resolution, self.resolution)
 
     def pairwise_difference(self, grid1, grid2):
         n = grid1.shape[0]
@@ -648,7 +648,7 @@ class TorusGridSplitter(object):
         X_difference = X_DIFF[PWD_index]
         Y_difference = Y_DIFF[PWD_index]
         n_edges = edge_index.shape[1]
-        return torch.tensor(edge_index, dtype=torch.long), n_edges, distance, X_difference, Y_difference
+        return torch.to_tensor(edge_index, dtype=torch.long), n_edges, distance, X_difference, Y_difference
 
     def get_data(self, theta):
         theta_d = theta.shape[1]
@@ -665,9 +665,9 @@ class TorusGridSplitter(object):
                 grid_sample = self.grid.reshape(self.n, -1)[idx]
                 theta_sample = theta.reshape(self.n, -1)[idx]
 
-                grid_split = torch.cat([grid_sub, grid_sample], dim=0)
-                theta_split = torch.cat([theta_sub, theta_sample], dim=0)
-                X = torch.cat([grid_split, theta_split], dim=1)
+                grid_split = torch.concat([grid_sub, grid_sample], dim=0)
+                theta_split = torch.concat([theta_sub, theta_sample], dim=0)
+                X = torch.concat([grid_split, theta_split], dim=1)
 
                 edge_index, n_edges, distance, X_difference, Y_difference = self.torus_connectivity(grid_split)
 
@@ -678,8 +678,8 @@ class TorusGridSplitter(object):
                 edge_attr[:, 2] = distance.reshape(n_edges, )
                 edge_attr[:, 3:3 + self.edge_features] = a[edge_index[0]]
                 edge_attr[:, 3 + self.edge_features: 4 + self.edge_features * 2] = a[edge_index[1]]
-                edge_attr = torch.tensor(edge_attr, dtype=torch.float)
-                split_idx = torch.tensor([x, y], dtype=torch.long).reshape(1, 2)
+                edge_attr = torch.to_tensor(edge_attr, dtype=torch.float)
+                split_idx = torch.to_tensor([x, y], dtype=torch.long).reshape(1, 2)
 
                 data.append(Data(x=X, edge_index=edge_index, edge_attr=edge_attr, split_idx=split_idx))
         print('test', len(data), X.shape, edge_index.shape, edge_attr.shape)
@@ -707,18 +707,18 @@ class TorusGridSplitter(object):
             theta_sample = theta.reshape(self.n, -1)[idx]
             Y_sample = Y.reshape(self.n, )[idx]
 
-            grid_split = torch.cat([grid_sub, grid_sample], dim=0)
-            theta_split = torch.cat([theta_sub, theta_sample], dim=0)
-            Y_split = torch.cat([Y_sub, Y_sample], dim=0).reshape(-1, )
-            index_split = torch.cat([index_sub, idx], dim=0).reshape(-1, )
-            X = torch.cat([grid_split, theta_split], dim=1)
+            grid_split = torch.concat([grid_sub, grid_sample], dim=0)
+            theta_split = torch.concat([theta_sub, theta_sample], dim=0)
+            Y_split = torch.concat([Y_sub, Y_sample], dim=0).reshape(-1, )
+            index_split = torch.concat([index_sub, idx], dim=0).reshape(-1, )
+            X = torch.concat([grid_split, theta_split], dim=1)
 
         else:
             grid_split = grid_sub
             theta_split = theta_sub
             Y_split = Y_sub.reshape(-1, )
             index_split = index_sub.reshape(-1, )
-            X = torch.cat([grid_split, theta_split], dim=1)
+            X = torch.concat([grid_split, theta_split], dim=1)
 
         edge_index, n_edges, distance, X_difference, Y_difference = self.torus_connectivity(grid_split)
 
@@ -729,8 +729,8 @@ class TorusGridSplitter(object):
         edge_attr[:, 2] = distance.reshape(n_edges, )
         edge_attr[:, 3:3 + self.edge_features] = a[edge_index[0]]
         edge_attr[:, 3 + self.edge_features: 4 + self.edge_features * 2] = a[edge_index[1]]
-        edge_attr = torch.tensor(edge_attr, dtype=torch.float)
-        split_idx = torch.tensor([x, y], dtype=torch.long).reshape(1, 2)
+        edge_attr = torch.to_tensor(edge_attr, dtype=torch.float)
+        split_idx = torch.to_tensor([x, y], dtype=torch.long).reshape(1, 2)
         data = Data(x=X, y=Y_split, edge_index=edge_index, edge_attr=edge_attr, split_idx=split_idx,
                     sample_idx=index_split)
         print('train', X.shape, Y_split.shape, edge_index.shape, edge_attr.shape, index_split.shape)
@@ -764,7 +764,7 @@ class TorusGridSplitter(object):
                 out[x::self.r, y::self.r] = pred_ij[:nx * ny].reshape(nx, ny)
 
         out = gaussian_filter(out, sigma=sigma, mode='constant', cval=0)
-        out = torch.tensor(out, dtype=torch.float)
+        out = torch.to_tensor(out, dtype=torch.float)
         return out.reshape(-1, )
 
 
@@ -799,10 +799,10 @@ def grid(n_x, n_y):
                 edge_index.append((i + n_x, i))
                 edge_attr.append((0, -1, 0))
 
-    X = torch.tensor(grid, dtype=torch.float)
-    # Exact = torch.tensor(Exact, dtype=torch.float).view(-1)
-    edge_index = torch.tensor(edge_index, dtype=torch.long).transpose(0, 1)
-    edge_attr = torch.tensor(edge_attr, dtype=torch.float)
+    X = torch.to_tensor(grid, dtype=torch.float)
+    # Exact = torch.to_tensor(Exact, dtype=torch.float).view(-1)
+    edge_index = torch.to_tensor(edge_index, dtype=torch.long).transpose(0, 1)
+    edge_attr = torch.to_tensor(edge_attr, dtype=torch.float)
 
     return X, edge_index, edge_attr
 
@@ -838,10 +838,10 @@ def grid_edge(n_x, n_y, a):
                 edge_index.append((i + n_x, i))
                 edge_attr.append((d, a2, a1))
 
-    X = torch.tensor(grid, dtype=torch.float)
-    # Exact = torch.tensor(Exact, dtype=torch.float).view(-1)
-    edge_index = torch.tensor(edge_index, dtype=torch.long).transpose(0, 1)
-    edge_attr = torch.tensor(edge_attr, dtype=torch.float)
+    X = torch.to_tensor(grid, dtype=torch.float)
+    # Exact = torch.to_tensor(Exact, dtype=torch.float).view(-1)
+    edge_index = torch.to_tensor(edge_index, dtype=torch.long).transpose(0, 1)
+    edge_attr = torch.to_tensor(edge_attr, dtype=torch.float)
 
     return X, edge_index, edge_attr
 
@@ -881,10 +881,10 @@ def grid_edge_aug(n_x, n_y, a):
                 edge_attr.append((d, a2, a1, 1 / np.sqrt(np.abs(a1 * a2)),
                                   np.exp(-(d) ** 2), np.exp(-(d / 0.1) ** 2), np.exp(-(d / 0.01) ** 2)))
 
-    X = torch.tensor(grid, dtype=torch.float)
-    # Exact = torch.tensor(Exact, dtype=torch.float).view(-1)
-    edge_index = torch.tensor(edge_index, dtype=torch.long).transpose(0, 1)
-    edge_attr = torch.tensor(edge_attr, dtype=torch.float)
+    X = torch.to_tensor(grid, dtype=torch.float)
+    # Exact = torch.to_tensor(Exact, dtype=torch.float).view(-1)
+    edge_index = torch.to_tensor(edge_index, dtype=torch.long).transpose(0, 1)
+    edge_attr = torch.to_tensor(edge_attr, dtype=torch.float)
 
     return X, edge_index, edge_attr
 
@@ -917,10 +917,10 @@ def grid_edge_aug_full(n_x, n_y, r, a):
                 edge_attr.append((d, a2, a1, 1 / np.sqrt(np.abs(a1 * a2)),
                                   np.exp(-(d) ** 2), np.exp(-(d / 0.1) ** 2), np.exp(-(d / 0.01) ** 2)))
 
-    X = torch.tensor(grid, dtype=torch.float)
-    # Exact = torch.tensor(Exact, dtype=torch.float).view(-1)
-    edge_index = torch.tensor(edge_index, dtype=torch.long).transpose(0, 1)
-    edge_attr = torch.tensor(edge_attr, dtype=torch.float)
+    X = torch.to_tensor(grid, dtype=torch.float)
+    # Exact = torch.to_tensor(Exact, dtype=torch.float).view(-1)
+    edge_index = torch.to_tensor(edge_index, dtype=torch.long).transpose(0, 1)
+    edge_attr = torch.to_tensor(edge_attr, dtype=torch.float)
 
     return X, edge_index, edge_attr
 
@@ -952,14 +952,14 @@ def multi_grid(depth, n_x, n_y, grid, params):
 
         # construct X
         # if (is_high):
-        #     X = torch.cat([torch.zeros(n_l, l * 2), X, torch.zeros(n_l, (depth - 1 - l) * 2)], dim=1)
+        #     X = torch.concat([torch.zeros(n_l, l * 2), X, torch.zeros(n_l, (depth - 1 - l) * 2)], dim=1)
         # else:
-        #     X_l = torch.tensor(l, dtype=torch.float).repeat(n_l, 1)
-        #     X = torch.cat([X, X_l], dim=1)
+        #     X_l = torch.to_tensor(l, dtype=torch.float).repeat(n_l, 1)
+        #     X = torch.concat([X, X_l], dim=1)
         X_global.append(X)
 
         # construct edges
-        index1 = torch.tensor(range(n_l), dtype=torch.long)
+        index1 = torch.to_tensor(range(n_l), dtype=torch.long)
         index1 = index1 + num_nodes
         num_nodes += n_l
 
@@ -967,25 +967,25 @@ def multi_grid(depth, n_x, n_y, grid, params):
         if l != depth - 1:
             index2 = np.array(range(n_l // 4)).reshape(h_x_l // 2, h_y_l // 2)  # torch.repeat is different from numpy
             index2 = index2.repeat(2, axis=0).repeat(2, axis=1)
-            index2 = torch.tensor(index2).reshape(-1)
+            index2 = torch.to_tensor(index2).reshape(-1)
             index2 = index2 + num_nodes
-            index2 = torch.tensor(index2, dtype=torch.long)
+            index2 = torch.to_tensor(index2, dtype=torch.long)
 
-            edge_index_inter1 = torch.cat([index1, index2], dim=-1).reshape(2, -1)
-            edge_index_inter2 = torch.cat([index2, index1], dim=-1).reshape(2, -1)
-            edge_index_inter = torch.cat([edge_index_inter1, edge_index_inter2], dim=1)
+            edge_index_inter1 = torch.concat([index1, index2], dim=-1).reshape(2, -1)
+            edge_index_inter2 = torch.concat([index2, index1], dim=-1).reshape(2, -1)
+            edge_index_inter = torch.concat([edge_index_inter1, edge_index_inter2], dim=1)
 
-            edge_attr_inter1 = torch.tensor((0, 0, 1), dtype=torch.float).repeat(n_l, 1)
-            edge_attr_inter2 = torch.tensor((0, 0, -1), dtype=torch.float).repeat(n_l, 1)
-            edge_attr_inter = torch.cat([edge_attr_inter1, edge_attr_inter2], dim=0)
+            edge_attr_inter1 = torch.to_tensor((0, 0, 1), dtype=torch.float).repeat(n_l, 1)
+            edge_attr_inter2 = torch.to_tensor((0, 0, -1), dtype=torch.float).repeat(n_l, 1)
+            edge_attr_inter = torch.concat([edge_attr_inter1, edge_attr_inter2], dim=0)
 
             edge_index_global.append(edge_index_inter)
             edge_attr_global.append(edge_attr_inter)
 
-    X = torch.cat(X_global, dim=0)
-    edge_index = torch.cat(edge_index_global, dim=1)
-    edge_attr = torch.cat(edge_attr_global, dim=0)
-    mask_index = torch.tensor(range(n_x * n_y), dtype=torch.long)
+    X = torch.concat(X_global, dim=0)
+    edge_index = torch.concat(edge_index_global, dim=1)
+    edge_attr = torch.concat(edge_attr_global, dim=0)
+    mask_index = torch.to_tensor(range(n_x * n_y), dtype=torch.long)
     # print('create multi_grid with size:', X.shape,  edge_index.shape, edge_attr.shape, mask_index.shape)
 
     return (X, edge_index, edge_attr, mask_index, num_nodes)

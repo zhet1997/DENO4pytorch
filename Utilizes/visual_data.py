@@ -14,7 +14,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import seaborn as sbn
-from scipy import stats
+# from scipy import stats
 from matplotlib.animation import FuncAnimation
 import matplotlib.tri as tri
 import matplotlib.cm as cm

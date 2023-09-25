@@ -11,7 +11,6 @@ import os
 import numpy as np
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import paddle
-paddle.device.set_device('gpu:0')
 import paddle.nn as nn
 from paddle.io import DataLoader
 # from torchinfo import summary
@@ -46,7 +45,7 @@ def feature_transform(x):
     gridx = gridx.reshape(1, size_x, 1, 1).repeat([batchsize, 1, size_y, 1])
     gridy = paddle.linspace(0, 1, size_y, dtype=paddle.float32)
     gridy = gridy.reshape(1, 1, size_y, 1).repeat([batchsize, size_x, 1, 1])
-    return paddle.concat((gridx, gridy), dim=-1).to(x.device)
+    return paddle.concat((gridx, gridy), axis=-1)
 
 
 
@@ -61,14 +60,14 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
     """
     train_loss = 0
     for batch, (xx, yy) in enumerate(dataloader):
-        xx = xx.to(device)
-        yy = yy.to(device)
+        # xx = xx.to(device)
+        # yy = yy.to(device)
         gd = feature_transform(xx)
 
         pred = netmodel(xx, gd)
         loss = lossfunc(pred, yy)
 
-        optimizer.zero_grad()
+        optimizer.clear_grad()
         loss.backward()
         optimizer.step()
 
@@ -88,8 +87,8 @@ def valid(dataloader, netmodel, device, lossfunc):
     valid_loss = 0
     with paddle.no_grad():
         for batch, (xx, yy) in enumerate(dataloader):
-            xx = xx.to(device)
-            yy = yy.to(device)
+            # xx = xx.to(device)
+            # yy = yy.to(device)
             gd = feature_transform(xx)
 
             pred = netmodel(xx, gd)
@@ -109,7 +108,7 @@ def inference(dataloader, netmodel, device): # 这个是？？
 
     with paddle.no_grad():
         xx, yy = next(iter(dataloader))
-        xx = xx.to(device)
+        # xx = xx.to(device)
         gd = feature_transform(xx)
         pred = netmodel(xx, gd)
 
@@ -134,11 +133,11 @@ if __name__ == "__main__":
         # sys.stdout = TextLogger(os.path.join(work_path, 'train.log'), sys.stdout)
         #  torch.cuda.set_device(1)
 
-        # if torch.cuda.is_available():
-        #     Device = torch.device('cuda')
-        # else:
-        #     Device = torch.device('cpu')
-        Device = paddle.device.get_device()
+        if paddle.device.is_compiled_with_cuda():
+            Device = paddle.device.set_device('gpu')
+        else:
+            Device = paddle.device.set_device('cpu')
+
         # design, fields = get_origin()
         design, fields = get_origin(quanlityList=["Static Pressure", "Static Temperature",
                                                   "DensityFlow",
@@ -176,11 +175,11 @@ if __name__ == "__main__":
         ################################################################
 
         input = np.tile(design[:, None, None, :], (1, 64, 64, 1))
-        input = paddle.tensor(input, dtype=paddle.float)
+        input = paddle.to_tensor(input, dtype=float)
 
         # output = fields[:, 0, :, :, :].transpose((0, 2, 3, 1))
         output = fields
-        output = paddle.tensor(output, dtype=paddle.float)
+        output = paddle.to_tensor(output, dtype=float)
         print(input.shape, output.shape)
 
         train_x = input[:ntrain, ::r1, ::r2][:, :s1, :s2]
@@ -196,9 +195,9 @@ if __name__ == "__main__":
         train_y = y_normalizer.norm(train_y)
         valid_y = y_normalizer.norm(valid_y)
 
-        train_loader = paddle.utils.data.DataLoader(paddle.utils.data.TensorDataset(train_x, train_y),
+        train_loader = paddle.io.DataLoader(paddle.io.TensorDataset([train_x, train_y]),
                                                    batch_size=batch_size, shuffle=True, drop_last=True)
-        valid_loader = paddle.utils.data.DataLoader(paddle.utils.data.TensorDataset(valid_x, valid_y),
+        valid_loader = paddle.io.DataLoader(paddle.io.TensorDataset([valid_x, valid_y]),
                                                    batch_size=batch_size, shuffle=False, drop_last=True)
 
         ################################################################
@@ -213,11 +212,11 @@ if __name__ == "__main__":
             Net_model = UNet2d(in_sizes=train_x.shape[1:], out_sizes=train_y.shape[1:], width=width,
                                depth=depth, steps=steps, activation='gelu', dropout=dropout).to(Device)
 
-        input1 = paddle.randn(batch_size, train_x.shape[1], train_x.shape[2], train_x.shape[3]).to(Device)
-        input2 = paddle.randn(batch_size, train_x.shape[1], train_x.shape[2], 2).to(Device)
-        print(name)
-        summary(Net_model, [(64, 64, 28), (64, 64, 5)])
-        exit()
+        # input1 = paddle.randn(batch_size, train_x.shape[1], train_x.shape[2], train_x.shape[3]).to(Device)
+        # input2 = paddle.randn(batch_size, train_x.shape[1], train_x.shape[2], 2).to(Device)
+        # print(name)
+        # summary(Net_model, [(64, 64, 28), (64, 64, 5)])
+        # exit()
 
         # 损失函数
         Loss_func = nn.MSELoss()
@@ -225,9 +224,9 @@ if __name__ == "__main__":
         # Loss_func = FieldsLpLoss(size_average=False)
         # L1loss = nn.SmoothL1Loss()
         # 优化算法
-        Optimizer = paddle.optim.Adam(Net_model.parameters(), lr=learning_rate, betas=(0.7, 0.9), weight_decay=1e-4)
-        # 下降策略
-        Scheduler = paddle.optim.lr_scheduler.StepLR(Optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
+        Scheduler = paddle.optimizer.lr.StepDecay(learning_rate, step_size=scheduler_step, gamma=scheduler_gamma)
+        Optimizer = paddle.optimizer.Momentum(parameters=Net_model.parameters(), learning_rate=learning_rate,
+                                              weight_decay=1e-4)
         # 可视化
         Visual = MatplotlibVision(work_path, input_name=('x', 'y'), field_name=('p', 't', 'rho', 'alf', 'v'))
 
@@ -246,7 +245,7 @@ if __name__ == "__main__":
             Net_model.eval()
             log_loss[1].append(valid(valid_loader, Net_model, Device, Loss_func))
             print('epoch: {:6d}, lr: {:.3e}, train_step_loss: {:.3e}, valid_step_loss: {:.3e}, cost: {:.2f}'.
-                  format(epoch, Optimizer.param_groups[0]['lr'], log_loss[0][-1], log_loss[1][-1], time.time() - star_time))
+                  format(epoch, Optimizer.get_lr(), log_loss[0][-1], log_loss[1][-1], time.time() - star_time))
 
             star_time = time.time()
 
