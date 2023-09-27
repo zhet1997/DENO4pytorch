@@ -1,8 +1,8 @@
-import torch
+import paddle
 import os
 import numpy as np
 from post_process.post_data import Post_2d
-from run_FNO import feature_transform
+from train_model.train_task_construct import feature_transform
 from Demo.Rotor37_2d.utilizes_rotor37 import get_grid
 
 
@@ -31,12 +31,12 @@ class DLModelPost(object):
             input = input[np.newaxis, :]
         if not input_norm:  # 如果没有归一化，需要将输入归一化
             input = self.in_norm.norm(input)
-        input = torch.tensor(input, dtype=torch.float)
+        input = paddle.to_tensor(input, dtype='float32')
 
         self.netmodel.eval()
 
         if self.name in ("FNO", "UNet", "Transformer"):
-            input = torch.tensor(np.tile(input[:, None, None, :], (1, self.grid_size, self.grid_size, 1)), dtype=torch.float)
+            input = paddle.to_tensor(np.tile(input[:, None, None, :], (1, self.grid_size, self.grid_size, 1)), dtype='float32')
             input = input.to(self.Device)
             grid = feature_transform(input)
             pred = self.netmodel(input, grid)
@@ -56,29 +56,29 @@ class DLModelPost(object):
         input 模型的输入 shape:[num, input_dim]
         先转换数据，分批计算
         """
-        # torch.utils.data.TensorDataset(input_data)
-        loader = torch.utils.data.DataLoader(input_data,
+        # paddle.io.TensorDataset(input_data)
+        loader = paddle.io.DataLoader(input_data,
                                              batch_size=32,
                                              shuffle=False,
                                              drop_last=False)
         pred = []
         for input in loader:
             if self.name in ("FNO", "UNet", "Transformer"):
-                with torch.no_grad():
-                    input = torch.tensor(np.tile(input[:, None, None, :], (1, 64, 64, 1)),dtype=torch.float32)
+                with paddle.no_grad():
+                    input = paddle.to_tensor(np.tile(input[:, None, None, :], (1, 64, 64, 1)),dtype='float32')
                     input = input.to(self.Device)
                     grid = feature_transform(input)
                     temp = self.netmodel(input, grid)
                     pred.append(temp.clone())
                     temp = None
             else:
-                with torch.no_grad():
+                with paddle.no_grad():
                     input = input.to(self.Device)
                     temp = self.netmodel(input)
                     pred.append(temp.clone())
                     temp = None
 
-        pred = torch.cat(pred, dim=0)
+        pred = paddle.concat(pred, axis=0)
         return pred
 
     def predictor_value(self, input,
@@ -116,7 +116,7 @@ class DLModelPost(object):
         if soft_constraint is None:
             soft_constraint = []
 
-        grid = get_grid(real_path=os.path.join("..", "data"))
+        grid = get_grid(realpath=os.path.join("..", "data"))
         post_pred = Post_2d(pred_2d, grid,
                             inputDict=input_para,
                             )

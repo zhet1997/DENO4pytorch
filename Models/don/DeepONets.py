@@ -12,17 +12,17 @@ import math
 import copy
 import numpy as np
 
-import torch
-import torch.nn as nn
-import torch.fft as fft
-import torch.nn.functional as F
-from torch.nn.parameter import Parameter
-from torch.nn.init import xavier_uniform_, constant_, xavier_normal_
+import paddle
+import paddle.nn as nn
+# import paddle.fft as fft
+# import paddle.nn.functional as F
+# from paddle.nn.parameter import Parameter
+# from paddle.nn.init import xavier_uniform_, constant_, xavier_normal_
 from basic.basic_layers import *
 from Models.configs import *
 
 
-class DeepONetMulti(nn.Module):
+class DeepONetMulti(nn.Layer):
     # =============================================================================
     #     Inspired by L. Lu, J. Pengzhan, G.E. Karniadakis.
     #     "DeepONet: Learning nonlinear operators for identifying differential equations based on
@@ -42,8 +42,8 @@ class DeepONetMulti(nn.Module):
         """
         super(DeepONetMulti, self).__init__()
 
-        self.branches = nn.ModuleList() # 分支网络
-        self.trunks = nn.ModuleList() # 主干网络
+        self.branches = nn.LayerList() # 分支网络
+        self.trunks = nn.LayerList() # 主干网络
         for dim in operator_dims:
             self.branches.append(FcnSingle([dim] + planes_branch, activation=activation))# FcnSingle是从basic_layers里导入的
         for _ in range(output_dim):
@@ -55,11 +55,11 @@ class DeepONetMulti(nn.Module):
         """
         weight initialize
         """
-        for m in self.modules():
+        for m in self.sublayers():
             if isinstance(m, nn.Linear):
                 # nn.init.xavier_normal_(m.weight, gain=1)
-                nn.init.xavier_uniform_(m.weight, gain=1)
-                m.bias.data.zero_()
+                nn.initializer.XavierUniform(m.weight)
+                # m.bias.data.zero_()
 
     def forward(self, u_vars, y_var, size_set=True):
         """
@@ -75,19 +75,19 @@ class DeepONetMulti(nn.Module):
             B_size = list(y_var.shape[1:-1])
             for i in range(len(B_size)):
                 B = B.unsqueeze(1)
-            B = torch.tile(B, [1, ] + B_size + [1, ])
+            B = paddle.tile(B, [1, ] + B_size + [1, ])
 
         out_var = []
         for trunk in self.trunks:
             T = trunk(y_var)
-            out_var.append(torch.sum(B * T, dim=-1)) # 用这种方式实现两个网络的乘积
-        out_var = torch.stack(out_var, dim=-1)
+            out_var.append(paddle.sum(B * T, axis=-1)) # 用这种方式实现两个网络的乘积
+        out_var = paddle.stack(out_var, axis=-1)
         return out_var
 
 
 if __name__ == "__main__":
-    us = [torch.ones([10, 256 * 2]), torch.ones([10, 1])]
-    x = torch.ones([10, 2])
+    us = [paddle.ones([10, 256 * 2]), paddle.ones([10, 1])]
+    x = paddle.ones([10, 2])
     layer = DeepONetMulti(input_dim=2, operator_dims=[256 * 2, 1], output_dim=5,
                           planes_branch=[64] * 3, planes_trunk=[64] * 2)
     y = layer(us, x)

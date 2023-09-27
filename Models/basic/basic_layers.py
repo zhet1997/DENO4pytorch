@@ -7,21 +7,13 @@
 # @Site    :
 # @File    : basic_layers.py
 """
-
 import math
-import copy
 import numpy as np
-
-import torch
-import torch.nn as nn
-import torch.fft as fft
-import torch.nn.functional as F
-from torch.nn.parameter import Parameter
-from torch.nn.init import xavier_uniform_, constant_, xavier_normal_
+import paddle
 from Models.configs import *
 from typing import Any, List, Tuple, Union
 
-class FcnSingle(nn.Module):
+class FcnSingle(nn.Layer):
     def __init__(self, planes: list or tuple, activation="gelu", last_activation=False):
         # =============================================================================
         #     Inspired by M. Raissi a, P. Perdikaris b,∗, G.E. Karniadakis.
@@ -33,7 +25,7 @@ class FcnSingle(nn.Module):
         self.planes = planes
         self.active = activation_dict[activation]
 
-        self.layers = nn.ModuleList()
+        self.layers = nn.LayerList()
         for i in range(len(self.planes) - 2):
             self.layers.append(nn.Linear(self.planes[i], self.planes[i + 1]))
             self.layers.append(self.active)
@@ -52,7 +44,7 @@ class FcnSingle(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Linear):
                 # nn.init.xavier_normal_(m.weight, gain=1)
-                nn.init.xavier_uniform_(m.weight, gain=1)
+                nn.initializer.XavierUniform(m.weight)#这里存疑
                 m.bias.data.zero_()
 
     def forward(self, in_var):
@@ -64,7 +56,7 @@ class FcnSingle(nn.Module):
         return out_var
 
 
-class FcnMulti(nn.Module):
+class FcnMulti(nn.Layer):
     def __init__(self, planes: list, activation="gelu"):
         # =============================================================================
         #     Inspired by Haghighat Ehsan, et all.
@@ -75,7 +67,7 @@ class FcnMulti(nn.Module):
         self.planes = planes
         self.active = activation_dict[activation]
 
-        self.layers = nn.ModuleList()
+        self.layers = nn.LayerList()
         for j in range(self.planes[-1]):
             layer = []
             for i in range(len(self.planes) - 2):
@@ -92,7 +84,7 @@ class FcnMulti(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Linear):
                 # nn.init.xavier_normal_(m.weight, gain=1)
-                nn.init.xavier_uniform_(m.weight, gain=1)
+                nn.initializer.XavierUniform(m.weight)#这里存疑
                 m.bias.data.zero_()
 
     def forward(self, in_var):
@@ -103,15 +95,15 @@ class FcnMulti(nn.Module):
         y = []
         for i in range(self.planes[-1]):
             y.append(self.layers[i](in_var))
-        return torch.cat(y, dim=-1)
+        return paddle.concat(y, axis=-1)
 
 
-class Identity(nn.Module):
+class Identity(nn.Layer):
     '''
     a placeholder layer similar to tensorflow.no_op():
-    https://github.com/pytorch/pytorch/issues/9160#issuecomment-483048684
+    https://github.com/pypaddle/pypaddle/issues/9160#issuecomment-483048684
     not used anymore as
-    https://pytorch.org/docs/stable/generated/torch.nn.Identity.html
+    https://pypaddle.org/docs/stable/generated/paddle.nn.Identity.html
     edge and grid are dummy inputs
     '''
 
@@ -136,26 +128,26 @@ class Identity(nn.Module):
             (-1, in, H, W, S) -> (-1, out, H, W, S)
             Used in SimpleResBlock
             '''
-            x = x.permute(0, 2, 3, 4, 1)
+            x = x.transpose([0, 2, 3, 4, 1])
             x = self.id(x)
-            x = x.permute(0, 4, 1, 2, 3)
+            x = x.transpose([0, 4, 1, 2, 3])
         elif len(x.shape) == 4:
             '''
             (-1, in, H, W) -> (-1, out, H, W)
             Used in SimpleResBlock
             '''
-            x = x.permute(0, 2, 3, 1)
+            x = x.transpose([0, 2, 3, 1])
             x = self.id(x)
-            x = x.permute(0, 3, 1, 2)
+            x = x.transpose([0, 3, 1, 2])
 
         elif len(x.shape) == 3:
             '''
             (-1, S, in) -> (-1, S, out)
             Used in SimpleResBlock
             '''
-            # x = x.permute(0, 2, 1)
+            # x = x.transpose([0, 2, 1])
             x = self.id(x)
-            # x = x.permute(0, 2, 1)
+            # x = x.transpose([0, 2, 1])
         elif len(x.shape) == 2:
             '''
             (-1, in) -> (-1, out)
@@ -213,12 +205,12 @@ class Empircal(object):
 
 
 if __name__ == '__main__':
-    x = torch.ones([10, 64, 64, 3])
+    x = paddle.ones([10, 64, 64, 3])
     layer = FcnSingle([3, 64, 64, 10])
     y = layer(x)
     print(y.shape)
 
-    x = torch.ones([10, 64, 64, 3])
+    x = paddle.ones([10, 64, 64, 3])
     layer = FcnMulti([3, 64, 64, 10])
     y = layer(x)
     print(y.shape)

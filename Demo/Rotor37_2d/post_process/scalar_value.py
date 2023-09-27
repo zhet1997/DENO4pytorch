@@ -4,7 +4,6 @@ import os
 from Demo.Rotor37_2d.utilizes_rotor37 import get_grid, get_origin
 from post_process.post_data import Post_2d
 
-
 if __name__ == "__main__":
 # 数据读入
     work_path = os.path.join("..", "data", "surrogate_data")

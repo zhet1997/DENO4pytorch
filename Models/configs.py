@@ -8,14 +8,12 @@
 # @File    : configs.py
 """
 
-import torch
-import torch.nn as nn
-import numpy as np
-from torch.utils.data import Dataset
+import paddle.nn as nn
+
 
 activation_dict = \
-    {'gelu': nn.GELU(), 'silu': nn.SiLU(), 'relu': nn.ReLU(), 'tanh': nn.Tanh(), 'leakyrelu': nn.LeakyReLU(),
-     None: nn.SiLU()}
+    {'gelu': nn.GELU(), 'relu': nn.ReLU(), 'tanh': nn.Tanh(), 'leakyrelu': nn.LeakyReLU(),
+     None: nn.GELU()}
 
 additional_attr = ['normalizer', 'raw_laplacian', 'return_latent',
                    'residual_type', 'norm_type', 'norm_eps', 'boundary_condition',

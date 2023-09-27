@@ -1,82 +1,14 @@
 import os
-import torch
+import paddle
 import numpy as np
-from post_process.post_data import Post_2d
-from run_FNO import feature_transform
-from Demo.Rotor37_2d.utilizes_rotor37 import get_grid
 from utilizes_rotor37 import Rotor37WeightLoss
+from train_task_construct import WorkPrj, add_yml, change_yml
 from post_process.load_model import build_model_yml, loaddata
 from post_process.model_predict import DLModelPost
 from Utilizes.visual_data import MatplotlibVision
 import matplotlib.pyplot as plt
 import yaml
 import time
-from torchsummary import summary
-
-
-def change_yml(name, yml_path=None, **kwargs):
-    # 加载config模板
-    template_path = os.path.join("..", "data", "config_template.yml")
-    with open(template_path, 'r', encoding="utf-8") as f:
-        config_all = yaml.full_load(f)
-        config_para = config_all[name + '_config']
-    # 修改参数
-    for key in kwargs.keys():
-        if key in config_para.keys():
-            config_para[key] = kwargs[key]
-        else:
-            print("The keywords {} is illegal, CHECK PLEASE".format(key))
-    # 保存到新的文件
-    isExist = os.path.exists(yml_path)
-    if not isExist:
-        with open(yml_path, 'w', encoding="utf-8") as f:
-            pass
-    with open(yml_path, 'r', encoding="utf-8") as f:
-        data = yaml.load(f, Loader=yaml.FullLoader)
-    if data is None:
-        data = {}
-    data[name + '_config'] = config_para
-    with open(yml_path, 'w', encoding="utf-8") as f:
-        yaml.dump(data, f)
-
-def add_yml(key_set_list, yml_path=None):
-    template_path = os.path.join("..", "data", "config_template.yml")
-    with open(template_path, 'r', encoding="utf-8") as f:
-    # 加载config模板
-        config_all = yaml.full_load(f)
-    for key_set in key_set_list:
-        config_para = config_all[key_set]
-    # 保存到新的文件
-        with open(yml_path, 'r') as f:
-            data = yaml.load(f, Loader=yaml.FullLoader)
-        data[key_set] = config_para
-        with open(yml_path, 'w') as f:
-            yaml.dump(data, f)
-
-class WorkPrj(object):
-    def __init__(self, work_path):
-        self.root = work_path
-        isExist = os.path.exists(self.root)
-        if not isExist:
-            os.mkdir(self.root)
-        self.pth = os.path.join(self.root, 'latest_model.pth')
-        self.svg = os.path.join(self.root, 'log_loss.svg')
-        self.yml= os.path.join(self.root, 'config.yml')
-        self.x_norm = os.path.join(self.root, 'x_norm.pkl')
-        self.y_norm = os.path.join(self.root, 'y_norm.pkl')
-
-    def config(self, name):
-        with open(self.yml) as f:
-            config_all = yaml.full_load(f)
-
-        if name + "_config" in config_all.keys():
-            return config_all[name + "_config"]
-        else:
-            return None
-
-
-
-    # def exist_check(self):
 
 class DLModelWhole(object):
     def __init__(self, device,
@@ -93,9 +25,6 @@ class DLModelWhole(object):
         self.net_model, self.inference, self.train, self.valid = \
             build_model_yml(work.yml, self.device, name=name)
 
-        # summary(self.net_model, [(64, 64, 28),(64, 64, 2),(64, 64, 28),(64, 64, 2)])
-        # summary(self.net_model, [(64, 64, 28), (64, 64, 2), (1,), (64, 64, 2)])
-
         self.in_norm = in_norm
         self.out_norm = out_norm
         self.grid_size = grid_size
@@ -110,14 +39,11 @@ class DLModelWhole(object):
         with open(self.work.yml) as f:
             config = yaml.full_load(f)
         # 损失函数
-        # self.Loss_func = torch.nn.MSELoss()
+        # self.Loss_func = paddle.nn.MSELoss()
         self.Loss_func = Rotor37WeightLoss()
         # 优化算法
-        temp = config["Optimizer_config"]
-        temp['betas'] = tuple(float(x) for x in temp['betas'][0].split())
-        self.Optimizer = torch.optim.Adam(self.net_model.parameters(), **temp)
-        # 下降策略
-        self.Scheduler = torch.optim.lr_scheduler.StepLR(self.Optimizer, **config["Scheduler_config"])
+        self.Scheduler = paddle.optimizer.lr.StepDecay(**config["Scheduler_config"])
+        self.Optimizer = paddle.optimizer.Momentum(learning_rate=self.Scheduler, parameters=self.net_model.parameters())
 
     def train_epochs(self, train_loader, valid_loader):
         work = self.work
@@ -130,8 +56,7 @@ class DLModelWhole(object):
             self.net_model.eval()
             log_loss[1].append(self.valid(valid_loader,self.net_model, self.device, self.Loss_func))
             print('epoch: {:6d}, lr: {:.3e}, train_step_loss: {:.3e}, valid_step_loss: {:.3e}, cost: {:.2f}'.
-                  format(epoch, self.Optimizer.param_groups[0]['lr'], log_loss[0][-1], log_loss[1][-1],
-                         time.time() - star_time))
+                  format(epoch, self.Optimizer.get_lr(), log_loss[0][-1], log_loss[1][-1], time.time() - star_time))
             # print(os.environ['CUDA_VISIBLE_DEVICES'])
             star_time = time.time()
 
@@ -144,7 +69,7 @@ class DLModelWhole(object):
                 plt.close(fig)
 
             if epoch > 0 and epoch % 100 == 0:
-                torch.save(
+                paddle.save(
                     {'log_loss': log_loss, 'net_model': self.net_model.state_dict(), 'optimizer': self.Optimizer.state_dict()},
                     work.pth)
 
@@ -156,10 +81,10 @@ if __name__ == "__main__":
     valid_num = 450
     work = WorkPrj(os.path.join("..", "work_train", name + "_" + str(id)))
 
-    if torch.cuda.is_available():
-        Device = torch.device('cuda')
+    if paddle.device.is_compiled_with_cuda():
+        Device = paddle.device.set_device('gpu')
     else:
-        Device = torch.device('cpu')
+        Device = paddle.device.set_device('cpu')
 
     config_dict = {
                     'n_hidden': 512,
@@ -181,8 +106,3 @@ if __name__ == "__main__":
         Rst.append(post.predictor_value(input, parameterList="PressureLossR", input_norm=True))
 
     Rst = np.concatenate(Rst, axis=1)
-
-
-
-
-

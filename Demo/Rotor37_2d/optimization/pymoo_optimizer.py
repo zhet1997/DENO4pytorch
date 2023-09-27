@@ -1,18 +1,14 @@
-import numpy as np
-from pymoo.algorithms.moo.nsga2 import NSGA2
+
 from pymoo.algorithms.soo.nonconvex.ga import GA
-from pymoo.algorithms.soo.nonconvex.de import DE
 from pymoo.core.problem import Problem
 from pymoo.optimize import minimize
-from pymoo.visualization.scatter import Scatter
 import time
-import torch
+import paddle
 import os
 from post_process.model_predict import DLModelPost
 from post_process.load_model import loaddata, rebuild_model, build_model_yml
-from Utilizes.process_data import DataNormer, MatLoader, SquareMeshGenerator
+from Utilizes.process_data import DataNormer
 from train_model.model_whole_life import WorkPrj
-import matplotlib.pyplot as plt
 
 
 # 定义目标函数
@@ -56,10 +52,10 @@ def predictor_establish(name, work_load_path):
 
     work_path = os.path.join(work_load_path, name)
     work = WorkPrj(work_path)
-    # if torch.cuda.is_available():
-    #     Device = torch.device('cuda')
+    # if paddle.cuda.is_available():
+    #     Device = paddle.device('cuda')
     # else:
-    Device = torch.device('cpu') #优化就在CPU
+    Device = paddle.device.set_device('cpu') #优化就在CPU
 
     if os.path.exists(work.x_norm):
         norm_save_x = work.x_norm
@@ -77,7 +73,7 @@ def predictor_establish(name, work_load_path):
         Net_model, inference, _, _ = build_model_yml(work.yml, Device, name=nameReal)
         isExist = os.path.exists(work.pth)
         if isExist:
-            checkpoint = torch.load(work.pth, map_location=Device)
+            checkpoint = paddle.load(work.pth, map_location=Device)
             Net_model.load_state_dict(checkpoint['net_model'])
     else:
         Net_model, inference = rebuild_model(work_path, Device, name=nameReal)
@@ -151,13 +147,3 @@ if __name__ == "__main__":
 
     # 保存数据
     # np.savez(os.path.join("..", "data", "opt_data", 'sin_obj_maximize.npz'), **dict)
-
-
-
-
-
-    # n_evals = np.array([e.evaluator.n_eval for e in res.history])
-    # opt = np.array([e.opt[0].F for e in res.history])
-    # plt.scatter(opt[:, 0], opt[:, 1])
-    # plt.show()
-

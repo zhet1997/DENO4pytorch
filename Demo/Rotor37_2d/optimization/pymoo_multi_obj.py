@@ -48,7 +48,6 @@ if __name__ == "__main__":
             problem = Rotor37Predictor(model_all, **config["task_" + str(task_id)])
             # 定义优化算法
             algorithm = NSGA2(pop_size=30)
-            # algorithm = GA(pop_size=20)
             # 进行优化
 
             start_time = time.time()

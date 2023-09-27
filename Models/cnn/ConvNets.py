@@ -10,7 +10,7 @@
 from cnn.conv_layers import *
 from basic.basic_layers import *
 
-class UpSampleNet1d(nn.Module):
+class UpSampleNet1d(nn.Layer):
     """
         1维上采样卷积网络
     """
@@ -33,7 +33,7 @@ class UpSampleNet1d(nn.Module):
 
         self.linear = nn.Linear(self.in_dim, math.prod(self.hidden_size) * self.width)
 
-        self.upconvs = nn.ModuleList()
+        self.upconvs = nn.LayerList()
         for i in range(self.depth):
             self.upconvs.append(
                 Interp1dUpsample(self.width, self.width, residual=True, conv_block=True,
@@ -43,7 +43,7 @@ class UpSampleNet1d(nn.Module):
         self.interp_out = Interp1dUpsample(in_dim=width, out_dim=self.out_dim, residual=False, conv_block=True,
                                            activation=activation, dropout=self.dropout,
                                            interp_size=self.out_sizes, )
-        self.conv = nn.Conv1d(self.out_dim, self.out_dim, kernel_size=3, stride=1, padding=1)
+        self.conv = nn.Conv1D(self.out_dim, self.out_dim, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
         """
@@ -55,10 +55,10 @@ class UpSampleNet1d(nn.Module):
             x = self.upconvs[i](x)
         x = self.interp_out(x)
         x = self.conv(x)
-        return x.permute(0, 2, 1)
+        return x.transpose([0, 2, 1])
 
 
-class DownSampleNet1d(nn.Module):
+class DownSampleNet1d(nn.Layer):
     """
         1维下采样卷积网络
     """
@@ -82,11 +82,11 @@ class DownSampleNet1d(nn.Module):
         self.interp_in = Interp1dUpsample(in_dim=self.in_dim, out_dim=self.width, residual=False, conv_block=True,
                                           activation=self.activation, dropout=self.dropout,
                                           interp_size=(2 ** log2_in[0]))
-        self.downconvs = nn.ModuleList()
+        self.downconvs = nn.LayerList()
         for i in range(self.depth):
             self.downconvs.append(nn.Sequential(
                 Conv1dResBlock(self.width, self.width, basic_block=True, activation=activation, dropout=dropout),
-                nn.AvgPool1d(2, 2), ))
+                nn.AvgPool1D(2, 2), ))
 
         self.linear = nn.Sequential(nn.Linear(math.prod(self._out_size) * self.width, 64),
                                     activation_dict[activation],
@@ -97,7 +97,7 @@ class DownSampleNet1d(nn.Module):
         """
         forward computation
         """
-        x = x.permute(0, 2, 1)
+        x = x.transpose([0, 2, 1])
         x = self.interp_in(x)
         for i in range(self.depth):
             x = self.downconvs[i](x)
@@ -106,9 +106,9 @@ class DownSampleNet1d(nn.Module):
         return x
 
 
-class UNet1d(nn.Module):
+class UNet1d(nn.Layer):
     """
-        1维Unet  UNET model: https://github.com/milesial/Pytorch-UNet
+        1维Unet  UNET model: https://github.com/milesial/Pypaddle-UNet
     """
 
     def __init__(self, in_sizes: tuple, out_sizes: tuple, width=32, depth=4, steps=1, activation='gelu',
@@ -136,22 +136,22 @@ class UNet1d(nn.Module):
         self.interp_in = Interp1dUpsample(in_dim=steps*self.in_dim + 1, out_dim=self.in_dim, activation=activation,
                                           dropout=dropout,
                                           interp_size=self._input_sizes, conv_block=True)
-        self.encoders = nn.ModuleList()
+        self.encoders = nn.LayerList()
         for i in range(self.depth):
             if i == 0:
                 self.encoders.append(
                     Conv1dResBlock(self.in_dim, width, basic_block=True, activation=activation, dropout=dropout))
             else:
-                self.encoders.append(nn.Sequential(nn.MaxPool1d(2, 2),
+                self.encoders.append(nn.Sequential(nn.MaxPool1D(2, 2),
                                                    Conv1dResBlock(2 ** (i - 1) * width, 2 ** i * width,
                                                                   basic_block=True, activation=activation,
                                                                   dropout=dropout)))
-        self.bottleneck = nn.Sequential(nn.MaxPool1d(2, 2),
+        self.bottleneck = nn.Sequential(nn.MaxPool1D(2, 2),
                                         Conv1dResBlock(2 ** i * width, 2 ** i * width * 2, basic_block=True,
                                                        activation=activation, dropout=dropout))
 
-        self.decoders = nn.ModuleList()
-        self.upconvs = nn.ModuleList()
+        self.decoders = nn.LayerList()
+        self.upconvs = nn.LayerList()
 
         for i in range(self.depth, 0, -1):
             self.decoders.append(
@@ -167,15 +167,15 @@ class UNet1d(nn.Module):
         self.interp_out = Interp1dUpsample(in_dim=self.out_dim, out_dim=self.out_dim, interp_size=self.out_sizes,
                                            conv_block=False, activation=activation, dropout=dropout)
 
-        self.conv2 = nn.Conv1d(self.out_dim, self.out_dim, kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv1D(self.out_dim, self.out_dim, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x, grid):
         """
         forward computation
         """
         # x dim = [b, x1, t*v]
-        x = torch.cat((x, grid), dim=-1)
-        x = x.permute(0, 2, 1)
+        x = paddle.concat((x, grid), axis=-1)
+        x = x.transpose([0, 2, 1])
 
         enc = []
         enc.append(self.interp_in(x))
@@ -186,15 +186,15 @@ class UNet1d(nn.Module):
 
         for i in range(self.depth):
             x = self.upconvs[i](x)
-            x = torch.cat((x, enc[-i - 1]), dim=1)
+            x = paddle.concat((x, enc[-i - 1]), axis=1)
             x = self.decoders[i](x)
 
         x = self.interp_out(self.conv1(x))
         x = self.conv2(x)
-        return x.permute(0, 2, 1)
+        return x.transpose([0, 2, 1])
 
 
-class UpSampleNet2d(nn.Module):
+class UpSampleNet2d(nn.Layer):
     """
         2维上采样卷积网络
     """
@@ -224,7 +224,7 @@ class UpSampleNet2d(nn.Module):
 
         self.linear = nn.Linear(self.in_dim, math.prod(self.hidden_size) * self.width)
 
-        self.upconvs = nn.ModuleList()
+        self.upconvs = nn.LayerList()
         for i in range(self.depth):
             self.upconvs.append(
                 Interp2dUpsample(self.width, self.width, residual=True, conv_block=True,
@@ -234,7 +234,7 @@ class UpSampleNet2d(nn.Module):
         self.interp_out = Interp2dUpsample(in_dim=width, out_dim=self.out_dim, residual=False, conv_block=True,
                                            interp_mode='bilinear', activation=activation, dropout=self.dropout,
                                            interp_size=self.out_sizes, )
-        self.conv = nn.Conv2d(self.out_dim, self.out_dim, kernel_size=(3, 3), stride=(1, 1), padding=1)
+        self.conv = nn.Conv2D(self.out_dim, self.out_dim, kernel_size=(3, 3), stride=(1, 1), padding=1)
 
     def forward(self, x):
         """
@@ -246,10 +246,10 @@ class UpSampleNet2d(nn.Module):
             x = self.upconvs[i](x)
         x = self.interp_out(x)
         x = self.conv(x)
-        return x.permute(0, 2, 3, 1)
+        return x.transpose([0, 2, 3, 1])
 
 
-class DownSampleNet2d(nn.Module):
+class DownSampleNet2d(nn.Layer):
     """
         2维下采样卷积网络
     """
@@ -279,11 +279,11 @@ class DownSampleNet2d(nn.Module):
         self.interp_in = Interp2dUpsample(in_dim=self.in_dim, out_dim=self.width, residual=False, conv_block=True,
                                           interp_mode='bilinear', activation=self.activation, dropout=self.dropout,
                                           interp_size=(2 ** log2_in[0], 2 ** log2_in[1]))
-        self.downconvs = nn.ModuleList()
+        self.downconvs = nn.LayerList()
         for i in range(self.depth):
             self.downconvs.append(nn.Sequential(
                 Conv2dResBlock(self.width, self.width, basic_block=True, activation=activation, dropout=dropout),
-                nn.AvgPool2d(2, 2), ))
+                nn.AvgPool2D(2, 2), ))
 
         self.linear = nn.Sequential(nn.Linear(math.prod(self._out_size) * self.width,
                                               int(math.prod(self._out_size) * self.width / 4)),
@@ -295,7 +295,7 @@ class DownSampleNet2d(nn.Module):
         """
         forward computation
         """
-        x = x.permute(0, 3, 1, 2)
+        x = x.transpose([0, 3, 1, 2])
         x = self.interp_in(x)
         for i in range(self.depth):
             x = self.downconvs[i](x)
@@ -304,7 +304,7 @@ class DownSampleNet2d(nn.Module):
         return x
 
 
-class UNet2d(nn.Module):
+class UNet2d(nn.Layer):
     """
         2维UNet
     """
@@ -334,23 +334,23 @@ class UNet2d(nn.Module):
 
         self.interp_in = Interp2dUpsample(in_dim=steps*self.in_dim + 2, out_dim=self.in_dim, activation=activation,
                                           dropout=dropout, interp_size=self._input_sizes, conv_block=True)
-        self.encoders = nn.ModuleList()
+        self.encoders = nn.LayerList()
         for i in range(self.depth):
             if i == 0:
                 self.encoders.append(
                     Conv2dResBlock(self.in_dim, width, basic_block=True, activation=activation, dropout=dropout))
             else:
-                self.encoders.append(nn.Sequential(nn.MaxPool2d(2),
+                self.encoders.append(nn.Sequential(nn.MaxPool2D(2),
                                                    Conv2dResBlock(2 ** (i - 1) * width, 2 ** i * width,
                                                                   basic_block=True, activation=activation,
                                                                   dropout=dropout)))
 
-        self.bottleneck = nn.Sequential(nn.MaxPool2d(2),
+        self.bottleneck = nn.Sequential(nn.MaxPool2D(2),
                                         Conv2dResBlock(2 ** i * width, 2 ** i * width * 2, basic_block=True,
                                                        activation=activation, dropout=dropout))
 
-        self.decoders = nn.ModuleList()
-        self.upconvs = nn.ModuleList()
+        self.decoders = nn.LayerList()
+        self.upconvs = nn.LayerList()
 
         for i in range(self.depth, 0, -1):
             self.decoders.append(
@@ -366,14 +366,14 @@ class UNet2d(nn.Module):
         self.interp_out = Interp2dUpsample(in_dim=self.out_dim, out_dim=self.out_dim, interp_size=self.out_sizes,
                                            conv_block=False, activation=activation, dropout=dropout)
 
-        self.conv2 = nn.Conv2d(self.out_dim, self.out_dim, kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2D(self.out_dim, self.out_dim, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x, grid):
         """
         forward computation
         """
-        x = torch.cat((x, grid), dim=-1)
-        x = x.permute(0, 3, 1, 2)
+        x = paddle.concat((x, grid), axis=-1)
+        x = x.transpose([0, 3, 1, 2])
         enc = []
         enc.append(self.interp_in(x))
         for i in range(self.depth):
@@ -383,15 +383,15 @@ class UNet2d(nn.Module):
 
         for i in range(self.depth):
             x = self.upconvs[i](x)
-            x = torch.cat((x, enc[-i - 1]), dim=1)
+            x = paddle.concat((x, enc[-i - 1]), axis=1)
             x = self.decoders[i](x)
 
         x = self.interp_out(self.conv1(x))
         x = self.conv2(x)
-        return x.permute(0, 2, 3, 1)
+        return x.transpose([0, 2, 3, 1])
 
 
-class UpSampleNet3d(nn.Module):
+class UpSampleNet3d(nn.Layer):
     """
         3维上采样卷积网络
     """
@@ -424,7 +424,7 @@ class UpSampleNet3d(nn.Module):
 
         self.linear = nn.Linear(self.in_dim, math.prod(self.hidden_size) * self.width)
 
-        self.upconvs = nn.ModuleList()
+        self.upconvs = nn.LayerList()
         for i in range(self.depth):
             self.upconvs.append(
                 Interp3dUpsample(self.width, self.width, residual=True, conv_block=True,
@@ -434,7 +434,7 @@ class UpSampleNet3d(nn.Module):
         self.interp_out = Interp3dUpsample(in_dim=width, out_dim=self.out_dim, residual=False, conv_block=True,
                                            activation=activation, dropout=self.dropout,
                                            interp_size=self.out_sizes, )
-        self.conv = nn.Conv3d(self.out_dim, self.out_dim, kernel_size=3, stride=1, padding=1)
+        self.conv = nn.Conv3D(self.out_dim, self.out_dim, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
         """
@@ -446,10 +446,10 @@ class UpSampleNet3d(nn.Module):
             x = self.upconvs[i](x)
         x = self.interp_out(x)
         x = self.conv(x)
-        return x.permute(0, 2, 3, 4, 1)
+        return x.transpose([0, 2, 3, 4, 1])
 
 
-class DownSampleNet3d(nn.Module):
+class DownSampleNet3d(nn.Layer):
     """
         3维下采样卷积网络
     """
@@ -479,11 +479,11 @@ class DownSampleNet3d(nn.Module):
         self.interp_in = Interp3dUpsample(in_dim=self.in_dim, out_dim=self.width, residual=False, conv_block=True,
                                           activation=self.activation, dropout=self.dropout,
                                           interp_size=(2 ** log2_in[0], 2 ** log2_in[1], 2 ** log2_in[2]))
-        self.downconvs = nn.ModuleList()
+        self.downconvs = nn.LayerList()
         for i in range(self.depth):
             self.downconvs.append(nn.Sequential(
                 Conv3dResBlock(self.width, self.width, basic_block=True, activation=activation, dropout=dropout),
-                nn.AvgPool3d(2, 2), ))
+                nn.AvgPool3D(2, 2), ))
 
         self.linear = nn.Sequential(nn.Linear(math.prod(self._out_size) * self.width, 64),
                                     activation_dict[activation],
@@ -494,7 +494,7 @@ class DownSampleNet3d(nn.Module):
         """
         forward computation
         """
-        x = x.permute(0, 4, 1, 2, 3)
+        x = x.transpose([0, 4, 1, 2, 3])
         x = self.interp_in(x)
         for i in range(self.depth):
             x = self.downconvs[i](x)
@@ -503,7 +503,7 @@ class DownSampleNet3d(nn.Module):
         return x
 
 
-class UNet3d(nn.Module):
+class UNet3d(nn.Layer):
     """
         3维UNet
     """
@@ -529,23 +529,23 @@ class UNet3d(nn.Module):
         self.interp_in = Interp3dUpsample(in_dim=steps*self.in_dim + 3, out_dim=self.in_dim, activation=activation,
                                           dropout=dropout,
                                           interp_size=self._input_sizes, conv_block=True)
-        self.encoders = nn.ModuleList()
+        self.encoders = nn.LayerList()
         for i in range(self.depth):
             if i == 0:
                 self.encoders.append(
                     Conv3dResBlock(self.in_dim, width, basic_block=True, activation=activation, dropout=dropout))
             else:
-                self.encoders.append(nn.Sequential(nn.MaxPool3d(2, 2),
+                self.encoders.append(nn.Sequential(nn.MaxPool3D(2, 2),
                                                    Conv3dResBlock(2 ** (i - 1) * width, 2 ** i * width,
                                                                   basic_block=True, activation=activation,
                                                                   dropout=dropout)))
 
-        self.bottleneck = nn.Sequential(nn.MaxPool3d(2, 2),
+        self.bottleneck = nn.Sequential(nn.MaxPool3D(2, 2),
                                         Conv3dResBlock(2 ** i * width, 2 ** i * width * 2, basic_block=True,
                                                        activation=activation, dropout=dropout))
 
-        self.decoders = nn.ModuleList()
-        self.upconvs = nn.ModuleList()
+        self.decoders = nn.LayerList()
+        self.upconvs = nn.LayerList()
 
         for i in range(self.depth, 0, -1):
             self.decoders.append(
@@ -561,14 +561,14 @@ class UNet3d(nn.Module):
         self.interp_out = Interp3dUpsample(in_dim=self.out_dim, out_dim=self.out_dim, interp_size=self.out_sizes,
                                            conv_block=False, activation=activation, dropout=dropout)
 
-        self.conv2 = nn.Conv3d(self.out_dim, self.out_dim, kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv3D(self.out_dim, self.out_dim, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x, grid):
         """
         forward computation
         """
-        x = torch.cat((x, grid), dim=-1)
-        x = x.permute(0, 4, 1, 2, 3)
+        x = paddle.concat((x, grid), axis=-1)
+        x = x.transpose([0, 4, 1, 2, 3])
         enc = []
         enc.append(self.interp_in(x))
         for i in range(self.depth):
@@ -578,67 +578,67 @@ class UNet3d(nn.Module):
 
         for i in range(self.depth):
             x = self.upconvs[i](x)
-            x = torch.cat((x, enc[-i - 1]), dim=1)
+            x = paddle.concat((x, enc[-i - 1]), axis=1)
             x = self.decoders[i](x)
 
         x = self.interp_out(self.conv1(x))
         x = self.conv2(x)
-        return x.permute(0, 2, 3, 4, 1)
+        return x.transpose([0, 2, 3, 4, 1])
 
 if __name__ == '__main__':
 
-    x = torch.ones([10, 92, 8])
-    g = torch.ones([10, 92, 1])
+    x = paddle.ones([10, 92, 8])
+    g = paddle.ones([10, 92, 1])
     input_size = x.shape[1:]
     layer = UNet1d(in_sizes=input_size, out_sizes=(128, 16), width=32, depth=6, steps=1)
     y = layer(x, g)
     print(y.shape)
 
-    x = torch.ones([10, 10])
+    x = paddle.ones([10, 10])
     in_sizes, out_sizes = 10, (58, 32)
     layer = UpSampleNet1d(in_sizes, out_sizes, width=32, depth=4)
     y = layer(x)
     print(y.shape)
 
-    x = torch.ones([10, 92, 8])
+    x = paddle.ones([10, 92, 8])
     in_sizes, out_sizes = x.shape[1:], 10
     layer = DownSampleNet1d(in_sizes, out_sizes, width=32, depth=4)
     y = layer(x)
     print(y.shape)
 
-    x = torch.ones([10, 4, 92, 8])
-    g = torch.ones([10, 4, 92, 2])
+    x = paddle.ones([10, 4, 92, 8])
+    g = paddle.ones([10, 4, 92, 2])
     input_size = x.shape[1:]
     layer = UNet2d(in_sizes=input_size, out_sizes=(32, 32, 5), width=32, depth=6, steps=1)
     y = layer(x, g)
     print(y.shape)
 
-    x = torch.ones([10, 10])
+    x = paddle.ones([10, 10])
     in_sizes, out_sizes = 10, (58, 32, 5)
     layer = UpSampleNet2d(in_sizes, out_sizes, width=32, depth=4)
     y = layer(x)
     print(y.shape)
 
-    x = torch.ones([10, 22, 92, 4])
+    x = paddle.ones([10, 22, 92, 4])
     in_sizes, out_sizes = x.shape[1:], 10
     layer = DownSampleNet2d(in_sizes, out_sizes, width=32, depth=4)
     y = layer(x)
     print(y.shape)
 
-    x = torch.ones([10, 32, 92, 92, 8])
-    g = torch.ones([10, 32, 92, 92, 3])
+    x = paddle.ones([10, 32, 92, 92, 8])
+    g = paddle.ones([10, 32, 92, 92, 3])
     input_size = x.shape[1:]
     layer = UNet3d(in_sizes=input_size, out_sizes=(32, 32, 16, 5), width=32, depth=6)
     y = layer(x, g)
     print(y.shape)
 
-    x = torch.ones([10, 10])
+    x = paddle.ones([10, 10])
     in_sizes, out_sizes = 10, (32, 58, 32, 8)
     layer = UpSampleNet3d(in_sizes, out_sizes, width=32, depth=4)
     y = layer(x)
     print(y.shape)
 
-    x = torch.ones([10, 4, 92, 52, 8])
+    x = paddle.ones([10, 4, 92, 52, 8])
     in_sizes, out_sizes = x.shape[1:], 5
     layer = DownSampleNet3d(in_sizes, out_sizes, width=32, depth=4)
     y = layer(x)

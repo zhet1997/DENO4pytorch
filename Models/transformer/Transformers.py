@@ -14,27 +14,22 @@ import sys
 import math
 import numpy as np
 
-import torch
-import torch.nn as nn
-import torch.fft as fft
-import torch.nn.functional as F
-from torch.nn.parameter import Parameter
-from torch.nn.init import xavier_uniform_, constant_, xavier_normal_
-from torchinfo import summary
+import paddle
+import paddle.nn as nn
+import paddle.fft as fft
+import paddle.nn.functional as F
+
 
 from collections import defaultdict
 from functools import partial
-
-# from utilize import *
 from basic.basic_layers import *
-from gnn.graph_layers import *
 from transformer.attention_layers import *
 from fno.spectral_layers import *
 from attention_layers import *
 from Utilizes.geometrics import *
 
 
-class SimpleTransformerEncoderLayer(nn.Module):
+class SimpleTransformerEncoderLayer(nn.Layer):
     """
     EncoderLayer for transformer
     """
@@ -89,8 +84,8 @@ class SimpleTransformerEncoderLayer(nn.Module):
         self.pos_dim = pos_dim
         self.add_layer_norm = layer_norm
         if layer_norm:
-            self.layer_norm1 = nn.LayerNorm(d_model, eps=norm_eps)
-            self.layer_norm2 = nn.LayerNorm(d_model, eps=norm_eps)
+            self.layer_norm1 = nn.LayerNorm(d_model, epsilon=norm_eps)
+            self.layer_norm2 = nn.LayerNorm(d_model, epsilon=norm_eps)
         dim_feedforward = default(dim_feedforward, 2 * d_model)
         self.ff = FeedForward(in_dim=d_model,
                               dim_feedforward=dim_feedforward,
@@ -119,9 +114,9 @@ class SimpleTransformerEncoderLayer(nn.Module):
             information if coords are in features
         '''
         if self.add_pos_emb:
-            x = x.permute((1, 0, 2))
+            x = x.transpose((1, 0, 2))
             x = self.pos_emb(x)
-            x = x.permute((1, 0, 2))
+            x = x.transpose((1, 0, 2))
 
         if pos is not None and self.pos_dim > 0:
             att_output, attn_weight = self.attn(
@@ -148,7 +143,7 @@ class SimpleTransformerEncoderLayer(nn.Module):
             return x
 
 
-class SimpleTransformerDecoderLayer(nn.Module):
+class SimpleTransformerDecoderLayer(nn.Layer):
     '''
     EncoderLayer for transformer
 
@@ -209,7 +204,7 @@ class SimpleTransformerDecoderLayer(nn.Module):
         self.pos_dim = pos_dim
         self.add_layer_norm = layer_norm
         if layer_norm:
-            self.layer_norm1 = nn.LayerNorm(d_model, eps=norm_eps)
+            self.layer_norm1 = nn.LayerNorm(d_model, epsilon=norm_eps)
         dim_feedforward = default(dim_feedforward, 2 * d_model)
         self.ff = FeedForward(in_dim=d_model,
                               dim_feedforward=dim_feedforward,
@@ -238,11 +233,11 @@ class SimpleTransformerDecoderLayer(nn.Module):
             information if coords are in features
         '''
         x_shape = x.shape
-        x = x.view(x_shape[0], -1, x_shape[-1])
+        x = x.reshape([x_shape[0], -1, x_shape[-1]])
         if self.add_pos_emb:
-            x = x.permute((1, 0, 2))
+            x = x.transpose((1, 0, 2))
             x = self.pos_emb(x)
-            x = x.permute((1, 0, 2))
+            x = x.transpose((1, 0, 2))
 
         if pos is not None and self.pos_dim > 0:
             att_output, attn_weight = self.attn(
@@ -266,7 +261,7 @@ class SimpleTransformerDecoderLayer(nn.Module):
             return x
 
 
-class PointwiseRegressor(nn.Module):
+class PointwiseRegressor(nn.Layer):
     '''
     A wrapper for a simple pointwise linear layers
     '''
@@ -289,7 +284,7 @@ class PointwiseRegressor(nn.Module):
         if self.spacial_fc:
             in_dim = in_dim + spacial_dim
             self.fc = nn.Linear(in_dim, n_hidden)
-        self.ff = nn.ModuleList([nn.Sequential(
+        self.ff = nn.LayerList([nn.Sequential(
             nn.Linear(n_hidden, n_hidden),
             activ,
         )])
@@ -313,7 +308,7 @@ class PointwiseRegressor(nn.Module):
             Output: (-1, n, n_targets)
         '''
         if self.spacial_fc:
-            x = torch.cat([x, grid], dim=-1)
+            x = paddle.concat([x, grid], axis=-1)
             x = self.fc(x)
 
         for layer in self.ff:
@@ -328,7 +323,7 @@ class PointwiseRegressor(nn.Module):
             return x
 
 
-class SpectralRegressor(nn.Module):
+class SpectralRegressor(nn.Layer):
     '''
     A wrapper for both SpectralConv1d SpectralConv2d and SpectralConv3d
     Ref: Li et 2020 FNO paper
@@ -371,7 +366,7 @@ class SpectralRegressor(nn.Module):
         if self.spacial_fc:
             self.fc = nn.Linear(in_dim + spacial_dim, n_hidden)
 
-        self.spectral_conv = nn.ModuleList([spectral_conv(in_dim=n_hidden,
+        self.spectral_conv = nn.LayerList([spectral_conv(in_dim=n_hidden,
                                                           out_dim=freq_dim,
                                                           modes=modes,
                                                           dropout=dropout,
@@ -413,14 +408,14 @@ class SpectralRegressor(nn.Module):
         x_fts = []
 
         if self.spacial_fc:
-            x = torch.cat([x, grid], dim=-1)
+            x = paddle.concat([x, grid], axis=-1)
             x = self.fc(x)
         if len(x.shape) == 3:
-            x = x.permute(0, 2, 1)
+            x = x.transpose([0, 2, 1])
         elif len(x.shape) == 4:
-            x = x.permute(0, 3, 1, 2)
+            x = x.transpose([0, 3, 1, 2])
         elif len(x.shape) == 5:
-            x = x.permute(0, 4, 1, 2, 3)
+            x = x.transpose([0, 4, 1, 2, 3])
         else:
             raise TypeError
 
@@ -435,11 +430,11 @@ class SpectralRegressor(nn.Module):
                 x_latent.append(x.contiguous())
 
         if len(x.shape) == 3:
-            x = x.permute(0, 2, 1)
+            x = x.transpose([0, 2, 1])
         elif len(x.shape) == 4:
-            x = x.permute(0, 2, 3, 1)
+            x = x.transpose([0, 2, 3, 1])
         elif len(x.shape) == 5:
-            x = x.permute(0, 2, 3, 4, 1)
+            x = x.transpose([0, 2, 3, 4, 1])
         else:
             raise TypeError
 
@@ -454,7 +449,7 @@ class SpectralRegressor(nn.Module):
             return x
 
 
-class BulkRegressor(nn.Module):
+class BulkRegressor(nn.Layer):
     '''
     Bulk regressor:
 
@@ -486,7 +481,7 @@ class BulkRegressor(nn.Module):
             nn.LeakyReLU(),  # frequency can be localized
             nn.Linear(n_hidden, pred_len),
         )
-        self.regressor = nn.ModuleList(
+        self.regressor = nn.LayerList(
             [copy.deepcopy(freq_out) for _ in range(n_targets)])
         self.dropout = nn.Dropout(dropout)
         self.sort_output = sort_output
@@ -501,14 +496,14 @@ class BulkRegressor(nn.Module):
         out = []
         for i, layer in enumerate(self.regressor):
             out.append(layer(x[:, i, :]))  # i-th target predict
-        x = torch.stack(out, dim=-1)
+        x = paddle.stack(out, axis=-1)
         x = self.dropout(x)
         if self.sort_output:
-            x, _ = torch.sort(x)
+            x, _ = paddle.sort(x)
         return x
 
 
-class SimpleAttnRegressor(nn.Module):
+class SimpleAttnRegressor(nn.Layer):
     """
     simpleTransformers
     https://github.com/scaomath/galerkin-transformer
@@ -534,7 +529,7 @@ class SimpleAttnRegressor(nn.Module):
         super(SimpleAttnRegressor, self).__init__()
 
         self.feature_transform = nn.Linear(in_dim, n_hidden)
-        self.attention_decoder = nn.ModuleList([])
+        self.attention_decoder = nn.LayerList([])
         for _ in range(num_layers - 1):
             self.attention_decoder.append(SimpleTransformerDecoderLayer
                                           (d_model=n_hidden,
@@ -598,7 +593,7 @@ class SimpleAttnRegressor(nn.Module):
                 return x
 
 
-class SimpleTransformer(nn.Module):
+class SimpleTransformer(nn.Layer):
     """
     simpleTransformers
     https://github.com/scaomath/galerkin-transformer
@@ -688,9 +683,11 @@ class SimpleTransformer(nn.Module):
         """
         for param in layer.parameters():
             if param.ndim > 1:
-                xavier_uniform_(param, gain=gain)
+                # xavier_uniform_(param, gain=gain)
+                nn.initializer.XavierUniform(param)
             else:
-                constant_(param, 0)
+                # constant_(param, 0)
+                nn.initializer.Constant(value=param)
 
     def _get_setting(self):
         """
@@ -714,25 +711,9 @@ class SimpleTransformer(nn.Module):
         """
         _get_feature
         """
-        if self.num_feat_layers > 0 and self.feat_extract_type == 'gcn':
-            self.feat_extract = GCN(node_feats=self.node_feats,
-                                    edge_feats=self.edge_feats,
-                                    num_gcn_layers=self.num_feat_layers,
-                                    out_features=self.n_hidden,
-                                    activation=self.graph_activation,
-                                    raw_laplacian=self.raw_laplacian,
-                                    debug=self.debug,
-                                    )
-        elif self.num_feat_layers > 0 and self.feat_extract_type == 'gat':
-            self.feat_extract = GAT(node_feats=self.node_feats,
-                                    out_features=self.n_hidden,
-                                    num_gcn_layers=self.num_feat_layers,
-                                    activation=self.graph_activation,
-                                    debug=self.debug,
-                                    )
-        else:
-            self.feat_extract = Identity(in_features=self.node_feats,
-                                         out_features=self.n_hidden)
+
+        self.feat_extract = Identity(in_features=self.node_feats,
+                                     out_features=self.n_hidden)
 
     def _get_encoder(self):
         """
@@ -766,7 +747,7 @@ class SimpleTransformer(nn.Module):
         #                                              dropout=self.encoder_dropout
         #                                              )
 
-        self.encoder_layers = nn.ModuleList(
+        self.encoder_layers = nn.LayerList(
             [copy.deepcopy(encoder_layer) for _ in range(self.num_encoder_layers)])
 
     def _get_freq_regressor(self):
@@ -789,7 +770,7 @@ class SimpleTransformer(nn.Module):
         """
         get_regressor
         """
-        torch.max()
+        paddle.max()
         if self.decoder_type == 'pointwise':
             self.regressor = PointwiseRegressor(in_dim=self.n_hidden,
                                                 n_hidden=self.n_hidden,
@@ -842,7 +823,7 @@ class SimpleTransformer(nn.Module):
         return self.encoder_layers
 
 
-class FourierTransformer(nn.Module):
+class FourierTransformer(nn.Layer):
     def __init__(self, **kwargs):
         super(FourierTransformer, self).__init__()
         self.config = defaultdict(lambda: None, **kwargs)
@@ -850,7 +831,7 @@ class FourierTransformer(nn.Module):
         self._initialize()
         self.__name__ = self.attention_type.capitalize() + 'Transformer'
 
-    def forward(self, node, pos, edge, grid, weight=None, boundary_value=None, return_weight=False):
+    def forward(self, node, pos=None, edge=None, grid=None, weight=None, boundary_value=None, return_weight=False):
         '''
         Args:
             - node: (batch_size, n, n, node_feats)
@@ -860,25 +841,25 @@ class FourierTransformer(nn.Module):
                 or (batch_size, n_s*n_s) when mass matrices are not provided (lumped mass)
             - grid: (batch_size, n-2, n-2, 2) excluding boundary
         '''
-        bsz = node.size(0)
-        n_s = int(pos.size(1))
-        x_latent = []
-        attn_weights = []
-
         if pos is None:
             pos = gen_uniform_grid(node)
 
         if edge is None:
-            edge = torch.ones((x.shape[0], 1))
+            edge = paddle.ones((node.shape[0], 1))
 
         if grid is None:
             grid = pos
 
+        bsz = node.shape[0]
+        n_s = int(pos.shape[1])
+        x_latent = []
+        attn_weights = []
+
         # if not self.downscaler_size:
-        node = torch.cat([node, pos], dim=-1)
+        node = paddle.concat([node, pos], axis=-1)
         x = self.downscaler(node)
-        x = x.view(bsz, -1, self.n_hidden)
-        pos = pos.view(bsz, -1, pos.shape[-1])
+        x = x.reshape([bsz, -1, self.n_hidden])
+        pos = pos.reshape([bsz, -1, pos.shape[-1]])
 
         x = self.feat_extract(x, edge)
         x = self.dpo(x)
@@ -891,19 +872,19 @@ class FourierTransformer(nn.Module):
                 x = encoder(x, pos, weight)
             else:
                 out_dim = self.n_head * self.pos_dim + self.n_hidden
-                x = x.view(bsz, -1, self.n_head, self.n_hidden // self.n_head).transpose(1, 2)
-                x = torch.cat([pos.repeat([1, self.n_head, 1, 1]), x], dim=-1)
-                x = x.transpose(1, 2).contiguous().view(bsz, -1, out_dim)
+                x = x.reshape([bsz, -1, self.n_head, self.n_hidden // self.n_head]).transpose(1, 2)
+                x = paddle.concat([pos.repeat([1, self.n_head, 1, 1]), x], axis=-1)
+                x = x.transpose(1, 2).contiguous().reshape([bsz, -1, out_dim])
                 x = encoder(x)
             if self.return_latent:
                 x_latent.append(x.contiguous())
 
         if self.spacial_dim == 3:
-            x = x.view(bsz, n_s, n_s, n_s, self.n_hidden)
+            x = x.reshape([bsz, n_s, n_s, n_s, self.n_hidden])
         elif self.spacial_dim == 2:
-            x = x.view(bsz, n_s, n_s, self.n_hidden)
+            x = x.reshape([bsz, n_s, n_s, self.n_hidden])
         else:
-            x = x.view(bsz, n_s, self.n_hidden)
+            x = x.reshape([bsz, n_s, self.n_hidden])
         x = self.upscaler(x)
 
         if self.return_latent:
@@ -967,23 +948,25 @@ class FourierTransformer(nn.Module):
     def _initialize_layer(layer, gain=1e-2):
         for param in layer.parameters():
             if param.ndim > 1:
-                xavier_uniform_(param, gain=gain)
+                # xavier_uniform_(param, gain=gain)
+                nn.initializer.XavierUniform(param)
             else:
-                constant_(param, 0)
+                # constant_(param, 0)
+                nn.initializer.Constant(value=param)
 
     @staticmethod
     def _get_pos(pos, downsample):
         '''
         get the downscaled position in 2d
         '''
-        bsz = pos.size(0)
-        n_grid = pos.size(1)
+        bsz = pos.shape[0]
+        n_grid = pos.shape[1]
         x, y = pos[..., 0], pos[..., 1]
-        x = x.view(bsz, n_grid, n_grid)
-        y = y.view(bsz, n_grid, n_grid)
+        x = x.reshape([bsz, n_grid, n_grid])
+        y = y.reshape([bsz, n_grid, n_grid])
         x = x[:, ::downsample, ::downsample].contiguous()
         y = y[:, ::downsample, ::downsample].contiguous()
-        return torch.stack([x, y], dim=-1)
+        return paddle.stack([x, y], axis=-1)
 
     def _get_setting(self):
         all_attr = list(self.config.keys()) + additional_attr
@@ -999,24 +982,7 @@ class FourierTransformer(nn.Module):
                                 'cosine', 'galerkin', 'linear', 'softmax']
 
     def _get_feature(self):
-        if self.feat_extract_type == 'gcn' and self.num_feat_layers > 0:
-            self.feat_extract = GCN(node_feats=self.n_hidden,
-                                    edge_feats=self.edge_feats,
-                                    num_gcn_layers=self.num_feat_layers,
-                                    out_features=self.n_hidden,
-                                    activation=self.graph_activation,
-                                    raw_laplacian=self.raw_laplacian,
-                                    debug=self.debug,
-                                    )
-        elif self.feat_extract_type == 'gat' and self.num_feat_layers > 0:
-            self.feat_extract = GAT(node_feats=self.n_hidden,
-                                    out_features=self.n_hidden,
-                                    num_gcn_layers=self.num_feat_layers,
-                                    activation=self.graph_activation,
-                                    debug=self.debug,
-                                    )
-        else:
-            self.feat_extract = Identity()
+        self.feat_extract = Identity()
 
     def _get_scaler(self):
         # if self.downscaler_size:
@@ -1067,7 +1033,7 @@ class FourierTransformer(nn.Module):
         #                                             )
         else:
             raise NotImplementedError("encoder type not implemented.")
-        self.encoder_layers = nn.ModuleList(
+        self.encoder_layers = nn.LayerList(
             [copy.deepcopy(encoder_layer) for _ in range(self.num_encoder_layers)])
 
     def _get_regressor(self):
@@ -1116,51 +1082,5 @@ class FourierTransformer(nn.Module):
 
 
 if __name__ == '__main__':
-    for graph in ['gcn', 'gat']:
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        config = defaultdict(lambda: None,
-                             node_feats=1,
-                             edge_feats=5,
-                             pos_dim=1,
-                             n_targets=1,
-                             n_hidden=96,
-                             num_feat_layers=2,
-                             num_encoder_layers=2,
-                             n_head=2,
-                             pred_len=0,
-                             n_freq_targets=0,
-                             dim_feedforward=96 * 2,
-                             feat_extract_type=graph,
-                             graph_activation=True,
-                             raw_laplacian=True,
-                             attention_type='fourier',  # no softmax
-                             xavier_init=1e-4,
-                             diagonal_weight=1e-2,
-                             symmetric_init=False,
-                             layer_norm=True,
-                             attn_norm=False,
-                             batch_norm=False,
-                             spacial_residual=False,
-                             return_attn_weight=True,
-                             seq_len=None,
-                             bulk_regression=False,
-                             decoder_type='pointwise',
-                             freq_dim=64,
-                             num_regressor_layers=2,
-                             fourier_modes=16,
-                             spacial_dim=1,
-                             spacial_fc=True,
-                             dropout=0.1,
-                             debug=False,
-                             )
 
-        ft = SimpleTransformer(**config)
-        ft.to(device)
         batch_size, seq_len = 8, 512
-        summary(ft, input_size=[(batch_size, seq_len, 1),
-                                (batch_size, seq_len, seq_len, 5),
-                                (batch_size, seq_len, 1),
-                                (batch_size, seq_len, 1)], device=device)
-
-    # layer = TransformerEncoderLayer(d_model=128, nhead=4)
-    # print(layer.__class__)

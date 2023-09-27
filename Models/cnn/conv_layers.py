@@ -8,11 +8,11 @@
 # @File    : conv_layers.py
 """
 from basic.basic_layers import Identity
-import torch.nn.functional as F
+import paddle.nn.functional as F
 from Models.configs import *
 
 
-class Conv1dResBlock(nn.Module):
+class Conv1dResBlock(nn.Layer):
     """
         1D残差卷积块
     """
@@ -33,25 +33,25 @@ class Conv1dResBlock(nn.Module):
         self.activation = activation_dict[activation]
         self.add_res = residual
         self.conv = nn.Sequential(
-            nn.Conv1d(in_dim, out_dim,
+            nn.Conv1D(in_dim, out_dim,
                       kernel_size=kernel_size,
                       padding=padding,
                       dilation=dilation,
                       stride=stride,
-                      bias=bias),
+                      bias_attr=bias),
             nn.Dropout(dropout),
         )
         self.basic_block = basic_block
         if self.basic_block:
             self.conv1 = nn.Sequential(
-                nn.BatchNorm1d(num_features=out_dim),
+                nn.BatchNorm1D(num_features=out_dim),
                 self.activation,
-                nn.Conv1d(out_dim, out_dim,
+                nn.Conv1D(out_dim, out_dim,
                           kernel_size=kernel_size,
                           padding=padding,
-                          bias=bias),
+                          bias_attr=bias),
                 nn.Dropout(dropout),
-                nn.BatchNorm1d(num_features=out_dim),
+                nn.BatchNorm1D(num_features=out_dim),
             )
         self.apply_shortcut = (in_dim != out_dim)
 
@@ -80,7 +80,7 @@ class Conv1dResBlock(nn.Module):
             return self.activation(x)
 
 
-class DeConv1dBlock(nn.Module):
+class DeConv1dBlock(nn.Layer):
     """
         1D反卷积块
     """
@@ -98,14 +98,14 @@ class DeConv1dBlock(nn.Module):
         # assert stride*2 == scaling_factor
         # padding1 = padding // 2 if padding // 2 >= 1 else 1
 
-        self.deconv0 = nn.ConvTranspose1d(in_channels=in_dim,
+        self.deconv0 = nn.Conv1DTranspose(in_channels=in_dim,
                                           out_channels=hidden_dim,
                                           kernel_size=kernel_size,
                                           stride=stride
                                           # output_padding=output_padding,
                                           # padding=padding
                                           )
-        self.conv0 = nn.Conv1d(in_channels=hidden_dim,
+        self.conv0 = nn.Conv1D(in_channels=hidden_dim,
                                out_channels=out_dim,
                                kernel_size=3,
                                stride=1,
@@ -134,7 +134,7 @@ class DeConv1dBlock(nn.Module):
         return x
 
 
-class Interp1dUpsample(nn.Module):
+class Interp1dUpsample(nn.Layer):
     """
         1维上采样插值块
     """
@@ -180,10 +180,10 @@ class Interp1dUpsample(nn.Module):
         return x
 
 
-class Conv2dResBlock(nn.Module):
+class Conv2dResBlock(nn.Layer):
     '''
     Conv2d + a residual block
-    https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
+    https://github.com/pypaddle/vision/blob/master/paddlevision/models/resnet.py
     Modified from ResNet's basic block, one conv less, no batchnorm
     No batchnorm
     '''
@@ -204,22 +204,22 @@ class Conv2dResBlock(nn.Module):
         self.activation = activation_dict[activation]
         self.add_res = residual
         self.conv = nn.Sequential(
-            nn.Conv2d(in_dim, out_dim,
+            nn.Conv2D(in_dim, out_dim,
                       kernel_size=kernel_size,
                       padding=padding,
                       dilation=dilation,
                       stride=stride,
-                      bias=bias),
+                      bias_attr=bias),
             nn.Dropout(dropout),
         )
         self.basic_block = basic_block
         if self.basic_block:
             self.conv1 = nn.Sequential(
                 self.activation,
-                nn.Conv2d(out_dim, out_dim,
+                nn.Conv2D(out_dim, out_dim,
                           kernel_size=kernel_size,
                           padding=padding,
-                          bias=bias),
+                          bias_attr=bias),
                 nn.Dropout(dropout),
             )
         self.apply_shortcut = (in_dim != out_dim)
@@ -249,7 +249,7 @@ class Conv2dResBlock(nn.Module):
             return self.activation(x)
 
 
-class DeConv2dBlock(nn.Module):
+class DeConv2dBlock(nn.Layer):
     '''
     Similar to a LeNet block
     4x upsampling, dimension hard-coded
@@ -268,14 +268,14 @@ class DeConv2dBlock(nn.Module):
         # assert stride*2 == scaling_factor
         # padding1 = padding // 2 if padding // 2 >= 1 else 1
 
-        self.deconv0 = nn.ConvTranspose2d(in_channels=in_dim,
+        self.deconv0 = nn.Conv2DTranspose(in_channels=in_dim,
                                           out_channels=hidden_dim,
                                           kernel_size=kernel_size,
                                           stride=stride
                                           # output_padding=output_padding,
                                           # padding=padding
                                           )
-        self.conv0 = nn.Conv2d(in_channels=hidden_dim,
+        self.conv0 = nn.Conv2D(in_channels=hidden_dim,
                                out_channels=out_dim,
                                kernel_size=3,
                                stride=1,
@@ -304,7 +304,7 @@ class DeConv2dBlock(nn.Module):
         return x
 
 
-class Interp2dUpsample(nn.Module):
+class Interp2dUpsample(nn.Layer):
     '''
     interpolate then Conv2dResBlock
     old code uses lambda and cannot be pickled
@@ -352,7 +352,7 @@ class Interp2dUpsample(nn.Module):
         return x
 
 
-class Conv3dResBlock(nn.Module):
+class Conv3dResBlock(nn.Layer):
     """
         3维残差卷积块
     """
@@ -373,22 +373,22 @@ class Conv3dResBlock(nn.Module):
         self.activation = activation_dict[activation]
         self.add_res = residual
         self.conv = nn.Sequential(
-            nn.Conv3d(in_dim, out_dim,
+            nn.Conv3D(in_dim, out_dim,
                       kernel_size=kernel_size,
                       padding=padding,
                       dilation=dilation,
                       stride=stride,
-                      bias=bias),
+                      bias_attr=bias),
             nn.Dropout(dropout),
         )
         self.basic_block = basic_block
         if self.basic_block:
             self.conv1 = nn.Sequential(
                 self.activation,
-                nn.Conv3d(out_dim, out_dim,
+                nn.Conv3D(out_dim, out_dim,
                           kernel_size=kernel_size,
                           padding=padding,
-                          bias=bias),
+                          bias_attr=bias),
                 nn.Dropout(dropout),
             )
         self.apply_shortcut = (in_dim != out_dim)
@@ -418,7 +418,7 @@ class Conv3dResBlock(nn.Module):
             return self.activation(x)
 
 
-class DeConv3dBlock(nn.Module):
+class DeConv3dBlock(nn.Layer):
     """
         3维反卷积块
     """
@@ -436,14 +436,14 @@ class DeConv3dBlock(nn.Module):
         # assert stride*2 == scaling_factor
         # padding1 = padding // 2 if padding // 2 >= 1 else 1
 
-        self.deconv0 = nn.ConvTranspose3d(in_channels=in_dim,
+        self.deconv0 = nn.Conv3DTranspose(in_channels=in_dim,
                                           out_channels=hidden_dim,
                                           kernel_size=kernel_size,
                                           stride=stride
                                           # output_padding=output_padding,
                                           # padding=padding
                                           )
-        self.conv0 = nn.Conv3d(in_channels=hidden_dim,
+        self.conv0 = nn.Conv3D(in_channels=hidden_dim,
                                out_channels=out_dim,
                                kernel_size=3,
                                stride=1,
@@ -466,7 +466,7 @@ class DeConv3dBlock(nn.Module):
         return x
 
 
-class Interp3dUpsample(nn.Module):
+class Interp3dUpsample(nn.Layer):
     '''
     interpolate then Conv3dResBlock
     old code uses lambda and cannot be pickled
@@ -515,47 +515,47 @@ class Interp3dUpsample(nn.Module):
 
 
 if __name__ == "__main__":
-    x = torch.ones([10, 3, 64])
+    x = paddle.ones([10, 3, 64])
     layer = Conv1dResBlock(in_dim=3, out_dim=10, residual=True)
     y = layer(x)
     print(y.shape)
 
-    x = torch.ones([10, 3, 64])
+    x = paddle.ones([10, 3, 64])
     layer = Interp1dUpsample(in_dim=3, out_dim=10, interp_size=[128])
     y = layer(x)
     print(y.shape)
 
-    x = torch.ones([10, 3, 5])
+    x = paddle.ones([10, 3, 5])
     layer = DeConv1dBlock(in_dim=3, hidden_dim=32, out_dim=10)
     y = layer(x)
     print(y.shape)
 
-    x = torch.ones([10, 3, 64, 66])
+    x = paddle.ones([10, 3, 64, 66])
     layer = Conv2dResBlock(in_dim=3, out_dim=10, residual=True)
     y = layer(x)
     print(y.shape)
 
-    x = torch.ones([10, 3, 64, 64])
+    x = paddle.ones([10, 3, 64, 64])
     layer = Interp2dUpsample(in_dim=3, out_dim=10, interp_size=[128, 128])
     y = layer(x)
     print(y.shape)
 
-    x = torch.ones([10, 3, 5, 5])
+    x = paddle.ones([10, 3, 5, 5])
     layer = DeConv2dBlock(in_dim=3, hidden_dim=32, out_dim=10)
     y = layer(x)
     print(y.shape)
 
-    x = torch.ones([10, 3, 64, 66, 66])
+    x = paddle.ones([10, 3, 64, 66, 66])
     layer = Conv3dResBlock(in_dim=3, out_dim=10, residual=True)
     y = layer(x)
     print(y.shape)
 
-    x = torch.ones([10, 3, 64, 64, 66])
+    x = paddle.ones([10, 3, 64, 64, 66])
     layer = Interp3dUpsample(in_dim=3, out_dim=10, interp_size=[258, 258, 258])
     y = layer(x)
     print(y.shape)
 
-    x = torch.ones([10, 3, 5, 5, 66])
+    x = paddle.ones([10, 3, 5, 5, 66])
     layer = DeConv3dBlock(in_dim=3, hidden_dim=32, out_dim=10)
     y = layer(x)
     print(y.shape)

@@ -2,7 +2,7 @@
 import os
 import numpy as np
 import yaml
-import torch
+import paddle
 from utilizes_rotor37 import get_quanlity_from_mat, get_grid, get_origin
 from post_process.post_data import Post_2d
 from train_model.model_whole_life import WorkPrj
@@ -17,7 +17,7 @@ def load_CFD_mat(sample_file, parameterList):
     quanlityList = ["Static Pressure", "Static Temperature",
                     'V2', 'W2', "DensityFlow"]
 
-    grid = get_grid(real_path=os.path.join("..", "data"))
+    grid = get_grid(realpath=os.path.join("..", "data"))
     design, fields = get_quanlity_from_mat(sample_file, quanlityList)
     post_true = Post_2d(fields, grid,
                         inputDict=None,
@@ -40,7 +40,7 @@ def load_CFD_mat_train(parameterList):
     quanlityList = ["Static Pressure", "Static Temperature",
                     'V2', 'W2', "DensityFlow"]
 
-    grid = get_grid(real_path=os.path.join("..", "data"))
+    grid = get_grid(realpath=os.path.join("..", "data"))
     design, fields = get_origin(realpath=os.path.join("..", "data"))
     design = design[:2500]
     fields = fields[:2500]
@@ -76,7 +76,7 @@ def get_pred_rst(work_path, name, x, Device):
     Net_model, inference, _, _ = build_model_yml(work.yml, Device, name=name)
     isExist = os.path.exists(work.pth)
     if isExist:
-        checkpoint = torch.load(work.pth, map_location=Device)
+        checkpoint = paddle.load(work.pth, map_location=Device)
         Net_model.load_state_dict(checkpoint['net_model'])
 
     Net_model.eval()
@@ -97,10 +97,10 @@ if __name__ == "__main__":
     name_opt = "EPM_optimization_tasks"
     name = "FNO"
 
-    if torch.cuda.is_available():
-        Device = torch.device('cuda')
+    if paddle.device.is_compiled_with_cuda():
+        Device = paddle.device.set_device('gpu')
     else:
-        Device = torch.device('cpu')
+        Device = paddle.device.set_device('cpu')
 
     data_path = os.path.join("..", "data", "opt_data")
     npz_path = os.path.join(data_path, name_opt + ".npz")

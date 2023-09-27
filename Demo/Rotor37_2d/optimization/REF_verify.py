@@ -2,7 +2,7 @@
 import os
 import numpy as np
 import yaml
-import torch
+import paddle
 from tabulate import tabulate
 import pandas as pd
 from CFD_verify import load_CFD_mat, get_pred_rst
@@ -13,10 +13,10 @@ if __name__ == "__main__":
     name_opt = "EPM_optimization_tasks"
     name = "FNO"
 
-    if torch.cuda.is_available():
-        Device = torch.device('cuda')
+    if paddle.device.is_compiled_with_cuda():
+        Device = paddle.device.set_device('gpu')
     else:
-        Device = torch.device('cpu')
+        Device = paddle.device.set_device('cpu')
 
 
     mat_path = os.path.join("..","data","sampleRstZip_57.mat")

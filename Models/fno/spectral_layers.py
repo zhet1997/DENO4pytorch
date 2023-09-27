@@ -7,15 +7,9 @@
 # @Site    :
 # @File    : spectral_layers.py
 """
-import math
-
 import paddle
-import paddle as torch
 import paddle.nn as nn
-import paddle.fft as fft
-import paddle.nn.functional as F
-# from paddle.nn.parameter import Parameter
-# from paddle.nn.init import xavier_uniform_, constant_, xavier_normal_
+
 
 from functools import partial
 from Models.configs import activation_dict
@@ -51,13 +45,13 @@ class SpectralConv1d(nn.Layer):
         self.linear = nn.Conv1D(self.in_dim, self.out_dim, 1)  # for residual
         # self.linear = nn.Linear(self.in_dim, self.out_dim)
         self.scale = (1 / (in_dim * out_dim))
-        self.weights1 = torch.create_parameter(self.scale * torch.rand(in_dim, out_dim, self.modes, dtype='float32'))
+        self.weights1 = paddle.create_parameter(self.scale * paddle.rand(in_dim, out_dim, self.modes, dtype='float32'))
         # xavier_normal_(self.weights1, gain=1 / (in_dim * out_dim))
 
     # Complex multiplication
     def compl_mul1d(self, input, weights):
         # (batch, in_channel, x ), (in_channel, out_channel, x) -> (batch, out_channel, x)
-        return torch.einsum("bix,iox->box", input, weights)
+        return paddle.einsum("bix,iox->box", input, weights)
 
     def forward(self, x):
         """
@@ -67,15 +61,15 @@ class SpectralConv1d(nn.Layer):
         # Compute Fourier coeffcients up to factor of e^(- something constant)
         res = self.linear(x)
         # x = self.dropout(x)
-        x_ft = torch.fft.rfft(x, norm=self.norm)
+        x_ft = paddle.fft.rfft(x, norm=self.norm)
 
         # Multiply relevant Fourier modes
-        shape = paddle.to_tensor([batchsize, self.out_dim, x.size(-1) // 2 + 1], place=x.place)
-        out_ft = torch.zeros(shape=shape, dtype=float)
+        shape = paddle.to_tensor([batchsize, self.out_dim, x.sshape[-1] // 2 + 1], place=x.place)
+        out_ft = paddle.zeros(shape=shape, dtype='float32')
         out_ft[:, :, :self.modes] = self.compl_mul1d(x_ft[:, :, :self.modes], self.weights1)
 
         # Return to physical space
-        x = torch.fft.irfft(out_ft, norm=self.norm)
+        x = paddle.fft.irfft(out_ft, norm=self.norm)
         x = self.activation(x + res)
 
         if self.return_freq:
@@ -121,15 +115,21 @@ class SpectralConv2d(nn.Layer):
         self.linear = nn.Conv2D(self.in_dim, self.out_dim, 1)  # for residual
 
         self.scale = (1 / (in_dim * out_dim))
-        self.weights1 = torch.create_parameter(
-            self.scale * torch.rand([in_dim, out_dim, self.modes1, self.modes2], dtype=float))
-        self.weights2 = torch.create_parameter(
-            self.scale * torch.rand([in_dim, out_dim, self.modes1, self.modes2], dtype=float))
-
+        weights1 = paddle.to_tensor(
+            self.scale * paddle.rand([in_dim, out_dim, self.modes1, self.modes2]), dtype='float32')
+        self.weights1 = paddle.create_parameter(shape=weights1.shape,
+                                               default_initializer=paddle.nn.initializer.Assign(weights1),
+                                               dtype='float32')
+        weights2 = paddle.to_tensor(
+            self.scale * paddle.rand([in_dim, out_dim, self.modes1, self.modes2]), dtype='float32')
+        self.weights2 = paddle.create_parameter(shape=weights2.shape,
+                                               default_initializer=paddle.nn.initializer.Assign(weights2),
+                                               dtype='float32')
     # Complex multiplication
     def compl_mul2d(self, input, weights):
         # (batch, in_channel, x,y ), (in_channel, out_channel, x,y) -> (batch, out_channel, x,y)
-        return torch.einsum("bixy,ioxy->boxy", input, weights)
+        temp = paddle.einsum("bixy,ioxy->boxy", input, weights)
+        return paddle.cast(temp, dtype='float32')
 
     def forward(self, x):
         """
@@ -139,18 +139,18 @@ class SpectralConv2d(nn.Layer):
         # Compute Fourier coeffcients up to factor of e^(- something constant)
         res = self.linear(x)
         x = self.dropout(x)
-        x_ft = torch.fft.rfft2(x, norm=self.norm)
+        x_ft = paddle.fft.rfft2(x, norm=self.norm)
 
         # Multiply relevant Fourier modes
-        shape = paddle.to_tensor([batch_size, self.out_dim, x.size(-2), x.size(-1) // 2 + 1], place=x.place)
-        out_ft = torch.zeros(shape=shape, dtype=float)
+        shape = paddle.to_tensor([batch_size, self.out_dim, x.shape[-2], x.shape[-1] // 2 + 1], place=x.place)
+        out_ft = paddle.zeros(shape=shape, dtype='float32')
         out_ft[:, :, :self.modes1, :self.modes2] = \
             self.compl_mul2d(x_ft[:, :, :self.modes1, :self.modes2], self.weights1)
         out_ft[:, :, -self.modes1:, :self.modes2] = \
             self.compl_mul2d(x_ft[:, :, -self.modes1:, :self.modes2], self.weights2)
 
         # Return to physical space
-        x = torch.fft.irfft2(out_ft, s=(x.size(-2), x.size(-1)), norm=self.norm)
+        x = paddle.fft.irfft2(out_ft, s=(x.shape[-2], x.shape[-1]), norm=self.norm)
         x = self.activation(x + res)
 
         if self.return_freq:
@@ -200,22 +200,22 @@ class SpectralConv3d(nn.Layer):
 
         self.scale = (1 / (in_dim * out_dim))
         self.weights1 = paddle.create_parameter(
-            self.scale * torch.rand([in_dim, out_dim, self.modes1, self.modes2, self.modes3],
-                                    dtype=float))
+            self.scale * paddle.rand([in_dim, out_dim, self.modes1, self.modes2, self.modes3],
+                                    dtype='float32'))
         self.weights2 = paddle.create_parameter(
-            self.scale * torch.rand([in_dim, out_dim, self.modes1, self.modes2, self.modes3],
-                                    dtype=float))
+            self.scale * paddle.rand([in_dim, out_dim, self.modes1, self.modes2, self.modes3],
+                                    dtype='float32'))
         self.weights3 = paddle.create_parameter(
-            self.scale * torch.rand([in_dim, out_dim, self.modes1, self.modes2, self.modes3],
-                                    dtype=float))
+            self.scale * paddle.rand([in_dim, out_dim, self.modes1, self.modes2, self.modes3],
+                                    dtype='float32'))
         self.weights4 = paddle.create_parameter(
-            self.scale * torch.rand([in_dim, out_dim, self.modes1, self.modes2, self.modes3],
-                                    dtype=float))
+            self.scale * paddle.rand([in_dim, out_dim, self.modes1, self.modes2, self.modes3],
+                                    dtype='float32'))
 
     # Complex multiplication
     def compl_mul3d(self, input, weights):
         # (batch, in_channel, x,y,t ), (in_channel, out_channel, x,y,t) -> (batch, out_channel, x,y,t)
-        return torch.einsum("bixyz,ioxyz->boxyz", input, weights)
+        return paddle.einsum("bixyz,ioxyz->boxyz", input, weights)
 
     def forward(self, x):
         """
@@ -225,10 +225,10 @@ class SpectralConv3d(nn.Layer):
         # Compute Fourier coeffcients up to factor of e^(- something constant)
         res = self.linear(x)
         # x = self.dropout(x)
-        x_ft = torch.fft.rfftn(x, axes=[-3, -2, -1], norm=self.norm)
+        x_ft = paddle.fft.rfftn(x, axes=[-3, -2, -1], norm=self.norm)
         # Multiply relevant Fourier modes
-        shape = paddle.to_tensor([batch_size, self.out_dim, x.size(-3), x.size(-2), x.size(-1) // 2 + 1], place=x.place)
-        out_ft = torch.zeros(shape=shape, dtype=float)
+        shape = paddle.to_tensor([batch_size, self.out_dim, x.shape[-3], x.shape[-2], x.shape[-1] // 2 + 1], place=x.place)
+        out_ft = paddle.zeros(shape=shape, dtype='float32')
         out_ft[:, :, :self.modes1, :self.modes2, :self.modes3] = \
             self.compl_mul3d(x_ft[:, :, :self.modes1, :self.modes2, :self.modes3], self.weights1)
         out_ft[:, :, -self.modes1:, :self.modes2, :self.modes3] = \
@@ -239,7 +239,7 @@ class SpectralConv3d(nn.Layer):
             self.compl_mul3d(x_ft[:, :, -self.modes1:, -self.modes2:, :self.modes3], self.weights4)
 
         # Return to physical space
-        x = torch.fft.irfftn(out_ft, s=(x.size(-3), x.size(-2), x.size(-1)), norm=self.norm)
+        x = paddle.fft.irfftn(out_ft, s=(x.shape[-3], x.shape[-2], x.shape[-1]), norm=self.norm)
         x = self.activation(x + res)
 
         if self.return_freq:
@@ -248,275 +248,40 @@ class SpectralConv3d(nn.Layer):
             return x
 
 
-class AdaptiveFourier1d(nn.Layer):
-    """
-    hidden_size: channel dimension size
-    num_blocks: how many blocks to use in the block diagonal weight matrices (higher => less complexity but less parameters)
-    sparsity_threshold: lambda for softshrink
-    hard_thresholding_fraction: how many frequencies you want to completely mask out (lower => hard_thresholding_fraction^2 less FLOPs)
-    """
-
-    def __init__(self, hidden_size, num_blocks=8,
-                 sparsity_threshold=0.01, hard_thresholding_fraction=1, hidden_size_factor=1, activation='relu'):
-        super().__init__()
-        assert hidden_size % num_blocks == 0, f"hidden_size {hidden_size} should be divisble by num_blocks {num_blocks}"
-
-        self.hidden_size = hidden_size
-        self.sparsity_threshold = sparsity_threshold
-        self.num_blocks = num_blocks
-        self.block_size = self.hidden_size // self.num_blocks
-        self.hard_thresholding_fraction = hard_thresholding_fraction
-        self.hidden_size_factor = hidden_size_factor
-        self.scale = 0.02
-        self.activation = activation_dict[activation]
-
-        self.weights1 = paddle.create_parameter(
-            self.scale * torch.rand([self.num_blocks, self.block_size, self.block_size * self.hidden_size_factor],
-                                    dtype=float))
-        self.weights2 = paddle.create_parameter(
-            self.scale * torch.rand([self.num_blocks, self.block_size, self.block_size * self.hidden_size_factor],
-                                    dtype=float))
-        self.bias1 = paddle.create_parameter(
-            self.scale * torch.rand([self.num_blocks, self.block_size * self.hidden_size_factor],
-                                    dtype=float))
-        self.bias2 = paddle.create_parameter(
-            self.scale * torch.rand([self.num_blocks, self.block_size],
-                                    dtype=float))
-
-    def compl_mul1d(self, input, weights, bias):
-        # (batch, num_blocks, block_size, l), (num_blocks, block_size, block_size * hidden_size_factor)
-        # -> (batch, num_blocks, block_size * hidden_size_factor, l)
-        return torch.einsum("...il, ...io->...ol", input, weights) + bias[..., None]
-
-    def forward(self, x):
-        bias = x
-
-        dtype = x.dtype
-        x = x.float()
-        B, C, N = x.shape
-
-        x = torch.fft.rfft(x, norm="ortho")
-        x = x.reshape(B, self.num_blocks, self.block_size, N // 2 + 1)
-
-        out_ft1 = torch.zeros([B, self.num_blocks, self.block_size * self.hidden_size_factor, N // 2 + 1],
-                              dtype=float)
-        out_ft2 = torch.zeros(x.shape, dtype=float)
-
-        total_modes = N // 2 + 1
-        kept_modes = int(total_modes * self.hard_thresholding_fraction)
-
-        # note that the activation function doesn't support complex type
-        out_ft1[..., :kept_modes] = torch.view_as_complex(
-            self.activation(torch.view_as_real(self.compl_mul1d(x[..., :kept_modes], self.weights1, self.bias1))))
-
-        out_ft2[..., :kept_modes] = self.compl_mul1d(out_ft1[..., :kept_modes], self.weights2, self.bias2)
-
-        x = torch.view_as_complex(
-            F.softshrink(torch.view_as_real(out_ft2), lambd=self.sparsity_threshold))
-
-        x = x.reshape(B, C, N // 2 + 1)
-        x = torch.fft.irfft(x, n=N, norm="ortho")
-        x = x.type(dtype)
-        return x + bias
-
-
-class AdaptiveFourier2d(nn.Module):
-    """
-    Modified Zongyi Li's AFNO2d PyTorch 1.6 code
-    using only real weights
-    https://github.com/zongyi-li/fourier_neural_operator/blob/master/fourier_2d.py
-
-    hidden_size: channel dimension size
-    num_blocks: how many blocks to use in the block diagonal weight matrices (higher => less complexity but less parameters)
-    sparsity_threshold: lambda for softshrink
-    hard_thresholding_fraction: how many frequencies you want to completely mask out (lower => hard_thresholding_fraction^2 less FLOPs)
-    """
-
-    def __init__(self, hidden_size, num_blocks=8,
-                 sparsity_threshold=0.01,
-                 hard_thresholding_fraction=1,
-                 hidden_size_factor=1, activation='gelu'):
-        super().__init__()
-        assert hidden_size % num_blocks == 0, f"hidden_size {hidden_size} should be divisble by num_blocks {num_blocks}"
-
-        self.hidden_size = hidden_size
-        self.sparsity_threshold = sparsity_threshold
-        self.num_blocks = num_blocks
-        self.block_size = self.hidden_size // self.num_blocks
-        self.hard_thresholding_fraction = hard_thresholding_fraction
-        self.hidden_size_factor = hidden_size_factor
-        self.scale = 0.02
-        self.activation = activation_dict[activation]
-
-        self.weights1 = nn.Parameter(
-            self.scale * torch.rand(self.num_blocks, self.block_size, self.block_size * self.hidden_size_factor,
-                                    dtype=torch.cfloat))
-        self.weights2 = nn.Parameter(
-            self.scale * torch.rand(self.num_blocks, self.block_size, self.block_size * self.hidden_size_factor,
-                                    dtype=torch.cfloat))
-        self.bias1 = nn.Parameter(
-            self.scale * torch.rand(self.num_blocks, self.block_size * self.hidden_size_factor,
-                                    dtype=torch.cfloat))
-        self.bias2 = nn.Parameter(
-            self.scale * torch.rand(self.num_blocks, self.block_size,
-                                    dtype=torch.cfloat))
-
-    def compl_mul2d(self, input, weights, bias):
-        # (batch, num_blocks, block_size, H, W), (num_blocks, block_size, block_size * hidden_size_factor)
-        # -> (batch, num_blocks, block_size * hidden_size_factor, H, W)
-        return torch.einsum("...ijk, ...io->...ojk", input, weights) + bias[..., None, None]
-
-    def forward(self, x):
-        bias = x
-
-        dtype = x.dtype
-        x = x.float()
-        B, C, H, W = x.shape
-
-        # x = x.reshape(B, C, H, W, D)
-        x = torch.fft.rfft2(x, norm="ortho")
-
-        x = x.reshape(B, self.num_blocks, self.block_size, x.shape[-2], x.shape[-1])
-
-        out_ft1 = torch.zeros([B, self.num_blocks, self.block_size * self.hidden_size_factor,
-                               x.shape[-2], x.shape[-1]], dtype=torch.cfloat, device=x.device)
-        out_ft2 = torch.zeros(x.shape, dtype=torch.cfloat, device=x.device)
-
-        total_modes = (H * W) // 2 + 1
-        kept_modes = int(total_modes * self.hard_thresholding_fraction)
-
-        # note that the activation function doesn't support complex type
-        out_ft1[..., :kept_modes] = torch.view_as_complex(
-            self.activation(torch.view_as_real(self.compl_mul2d(x[..., :kept_modes], self.weights1, self.bias1))))
-
-        out_ft2[..., :kept_modes] = self.compl_mul2d(out_ft1[..., :kept_modes], self.weights2, self.bias2)
-
-        x = torch.view_as_complex(
-            F.softshrink(torch.view_as_real(out_ft2), lambd=self.sparsity_threshold))
-
-        x = x.reshape(B, C, x.shape[-2], x.shape[-1])
-        x = torch.fft.irfft2(x, s=(H, W), norm="ortho")
-        x = x.type(dtype)
-
-        return x + bias
-
-
-class AdaptiveFourier3d(nn.Module):
-    """
-    Modified Zongyi Li's AFNO2d PyTorch 1.6 code
-    using only real weights
-    https://github.com/zongyi-li/fourier_neural_operator/blob/master/fourier_2d.py
-
-    hidden_size: channel dimension size
-    num_blocks: how many blocks to use in the block diagonal weight matrices (higher => less complexity but less parameters)
-    sparsity_threshold: lambda for softshrink
-    hard_thresholding_fraction: how many frequencies you want to completely mask out (lower => hard_thresholding_fraction^2 less FLOPs)
-    """
-
-    def __init__(self, hidden_size, num_blocks=8,
-                 sparsity_threshold=0.01,
-                 hard_thresholding_fraction=1,
-                 hidden_size_factor=1, activation='gelu'):
-        super().__init__()
-        assert hidden_size % num_blocks == 0, f"hidden_size {hidden_size} should be divisble by num_blocks {num_blocks}"
-
-        self.hidden_size = hidden_size
-        self.sparsity_threshold = sparsity_threshold
-        self.num_blocks = num_blocks
-        self.block_size = self.hidden_size // self.num_blocks
-        self.hard_thresholding_fraction = hard_thresholding_fraction
-        self.hidden_size_factor = hidden_size_factor
-        self.scale = 0.02
-        self.activation = activation_dict[activation]
-
-        self.weights1 = nn.Parameter(
-            self.scale * torch.rand(self.num_blocks, self.block_size, self.block_size * self.hidden_size_factor,
-                                    dtype=torch.cfloat))
-        self.weights2 = nn.Parameter(
-            self.scale * torch.rand(self.num_blocks, self.block_size, self.block_size * self.hidden_size_factor,
-                                    dtype=torch.cfloat))
-        self.bias1 = nn.Parameter(
-            self.scale * torch.rand(self.num_blocks, self.block_size * self.hidden_size_factor,
-                                    dtype=torch.cfloat))
-        self.bias2 = nn.Parameter(
-            self.scale * torch.rand(self.num_blocks, self.block_size,
-                                    dtype=torch.cfloat))
-
-    def compl_mul3d(self, input, weights, bias):
-        # (batch, num_blocks, block_size, H, W), (num_blocks, block_size, block_size * hidden_size_factor)
-        # -> (batch, num_blocks, block_size * hidden_size_factor, H, W)
-        return torch.einsum("...ijkl, ...io->...ojkl", input, weights) + bias[..., None, None, None]
-
-    def forward(self, x):
-        bias = x
-
-        dtype = x.dtype
-        x = x.float()
-        B, C, H, W, D = x.shape
-
-        # x = x.reshape(B, C, H, W, D)
-        x = torch.fft.rfftn(x, dim=[-3, -2, -1], norm="ortho")
-
-        x = x.reshape(B, self.num_blocks, self.block_size, x.shape[-3], x.shape[-2], x.shape[-1])
-
-        out_ft1 = torch.zeros([B, self.num_blocks, self.block_size * self.hidden_size_factor,
-                               x.shape[-3], x.shape[-2], x.shape[-1]], dtype=torch.cfloat, device=x.device)
-
-        out_ft2 = torch.zeros(x.shape, dtype=torch.cfloat, device=x.device)
-
-        total_modes = (H * W * D) // 2 + 1
-        kept_modes = int(total_modes * self.hard_thresholding_fraction)
-
-        # note that the activation function doesn't support complex type
-        out_ft1[..., :kept_modes] = torch.view_as_complex(
-            self.activation(torch.view_as_real(self.compl_mul3d(x[..., :kept_modes], self.weights1, self.bias1))))
-
-        out_ft2[..., :kept_modes] = self.compl_mul3d(out_ft1[..., :kept_modes], self.weights2, self.bias2)
-
-        x = torch.view_as_complex(
-            F.softshrink(torch.view_as_real(out_ft2), lambd=self.sparsity_threshold))
-
-        x = x.reshape(B, C, x.shape[-3], x.shape[-2], x.shape[-1])
-        x = torch.fft.irfftn(x, s=(H, W, D), norm="ortho")
-        x = x.type(dtype)
-
-        return x + bias
-
-
 if __name__ == '__main__':
-    x = torch.ones([10, 3, 64])
+    x = paddle.ones([10, 3, 64])
     layer = SpectralConv1d(in_dim=3, out_dim=10, modes=5)
     y = layer(x)
     print(y.shape)
 
-    # lossfunc = torch.nn.MSELoss()
-    # optimizer = torch.optim.Adam(layer.parameters(), lr=0.001)
-    # loss = lossfunc(y, torch.ones_like(y))
+    # lossfunc = paddle.nn.MSELoss()
+    # optimizer = paddle.optim.Adam(layer.parameters(), lr=0.001)
+    # loss = lossfunc(y, paddle.ones_like(y))
     # optimizer.zero_grad()
     # loss.backward()
     # optimizer.step()
     #
-    # x = torch.ones([10, 3, 55, 64])
+    # x = paddle.ones([10, 3, 55, 64])
     # layer = SpectralConv2d(in_dim=3, out_dim=10, modes=(5, 3))
     # y = layer(x)
     # print(y.shape)
     #
-    # x = torch.ones([10, 3, 16, 32, 48])
+    # x = paddle.ones([10, 3, 16, 32, 48])
     # layer = SpectralConv3d(in_dim=3, out_dim=4, modes=(5, 5, 5))
     # y = layer(x)
     # print(y.shape)
     #
-    # x = torch.ones(10, 64, 128)
+    # x = paddle.ones(10, 64, 128)
     # layer = AdaptiveFourier1d(hidden_size=64, num_blocks=4)
     # y = layer(x)
     # print(y.shape)
     #
-    # x = torch.ones(10, 64, 55, 64)
+    # x = paddle.ones(10, 64, 55, 64)
     # layer = AdaptiveFourier2d(hidden_size=64, num_blocks=4)
     # y = layer(x)
     # print(y.shape)
     #
-    # x = torch.ones(10, 64, 55, 64, 33)
+    # x = paddle.ones(10, 64, 55, 64, 33)
     # layer = AdaptiveFourier3d(hidden_size=64, num_blocks=4)
     # y = layer(x)
     # print(y.shape)
