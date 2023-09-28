@@ -6,7 +6,7 @@ import time
 import paddle
 import os
 from post_process.model_predict import DLModelPost
-from post_process.load_model import loaddata, rebuild_model, build_model_yml
+from post_process.load_model import loaddata, build_model_yml
 from Utilizes.process_data import DataNormer
 from train_model.model_whole_life import WorkPrj
 
@@ -75,8 +75,7 @@ def predictor_establish(name, work_load_path):
         if isExist:
             checkpoint = paddle.load(work.pth, map_location=Device)
             Net_model.load_state_dict(checkpoint['net_model'])
-    else:
-        Net_model, inference = rebuild_model(work_path, Device, name=nameReal)
+
     model_all = DLModelPost(Net_model, Device,
                         name=nameReal,
                         in_norm=x_normlizer,

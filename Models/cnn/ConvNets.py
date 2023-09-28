@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-# @Copyright (c) 2022 Baidu.com, Inc. All Rights Reserved
-# @Time    : 2022/11/26 3:16
-# @Author  : Liu Tianyuan (liutianyuan02@baidu.com)
-# @Site    : 
-# @File    : ConvNets.py
-"""
 from cnn.conv_layers import *
 from basic.basic_layers import *
 

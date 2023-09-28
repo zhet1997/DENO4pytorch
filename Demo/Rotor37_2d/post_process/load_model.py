@@ -1,9 +1,7 @@
 import paddle
 import os
 import numpy as np
-from paddle.io import DataLoader
-from post_process.post_data import Post_2d
-from Demo.Rotor37_2d.utilizes_rotor37 import get_grid, get_origin
+from Utilizes.utilizes_rotor37 import get_grid, get_origin
 from Utilizes.process_data import DataNormer
 import yaml
 
@@ -87,57 +85,6 @@ def loaddata(name,
                                                    batch_size=batch_size, shuffle=False, drop_last=True)
 
     return train_loader, valid_loader, x_normalizer, y_normalizer
-
-def rebuild_model(work_path, Device, in_dim=28, out_dim=5, name=None, mode=10):
-    """
-    rebuild the model with pth files
-    """
-    # rebuild the model
-    if 'MLP' in name:
-        from run_MLP import MLP
-        from run_MLP import inference
-        layer_mat = [in_dim, 256, 256, 256, 256, 256, 256, 256, 256, out_dim * 64 * 64]
-        Net_model = MLP(layer_mat, is_BatchNorm=False).to(Device)
-    elif 'deepONet' in name:
-        from don.DeepONets import DeepONetMulti
-        from run_deepONet import inference
-        Net_model = DeepONetMulti(input_dim=2, operator_dims=[28, ], output_dim=5,
-                                  planes_branch=[64] * 3, planes_trunk=[64] * 3).to(Device)
-    elif 'FNO' in name:
-        from fno.FNOs import FNO2d
-        from run_FNO import inference
-        Net_model = FNO2d(in_dim=in_dim, out_dim=out_dim, modes=mode, width=64, depth=4, steps=1,
-                          padding=8, activation='gelu').to(Device)
-    elif 'UNet' in name:
-        from cnn.ConvNets import UNet2d
-        from run_UNet import inference
-        Net_model = UNet2d(in_sizes=(64, 64, 28), out_sizes=(64, 64, 5), width=64,
-                           depth=4, steps=1, activation='gelu', dropout=0).to(Device)
-    elif 'Transformer' in name:
-        from basic.basic_layers import FcnSingle
-        from fno.FNOs import FNO2d
-        from transformer.Transformers import SimpleTransformer, FourierTransformer
-        from run_Trans import inference, predictor
-
-        with open(os.path.join('transformer_config.yml')) as f:
-            config = yaml.full_load(f)
-            config = config['Rotor37_2d']
-
-            # 建立网络
-        Tra_model = FourierTransformer(**config).to(Device)
-        FNO_model = FNO2d(in_dim=2, out_dim=config['n_targets'], modes=(16, 16), width=64, depth=4,
-                          padding=9, activation='gelu').to(Device)
-        MLP_model = FcnSingle(planes=(in_dim, 64, 64, config['n_targets']), last_activation=True).to(Device)
-        Net_model = predictor(trunc=FNO_model, branch=MLP_model, field_dim=out_dim).to(Device)
-
-    isExist = os.path.exists(os.path.join(work_path, 'latest_model.pth'))
-    if isExist:
-        checkpoint = paddle.load(os.path.join(work_path, 'latest_model.pth'), map_location=Device)
-        Net_model.load_state_dict(checkpoint['net_model'])
-        return Net_model, inference
-    else:
-        print("The pth file is not exist, CHECK PLEASE!")
-        return None, None
 
 def import_model_by_name(name):
     model_func = None

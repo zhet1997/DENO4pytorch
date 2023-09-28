@@ -1,13 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-# @Copyright (c) 2022 Baidu.com, Inc. All Rights Reserved
-# @Time    : 2022/11/6 17:37
-# @Author  : Liu Tianyuan (liutianyuan02@baidu.com)
-# @Site    :
-# @File    : attention_layers.py
-"""
-
 import copy
 import math
 import numpy as np
@@ -16,8 +6,6 @@ import paddle
 import paddle.nn as nn
 import paddle.fft as fft
 import paddle.nn.functional as F
-# from paddle.nn.parameter import Parameter
-
 from functools import partial
 from Models.configs import *
 
@@ -28,8 +16,6 @@ def trans_torch(ndim, dim0, dim1):
     perm[dim1] = temp
 
     return perm
-#
-# x.change = types.MethodType(change, x)
 
 def attention(query, key, value,
               mask=None, dropout=None, weight=None,

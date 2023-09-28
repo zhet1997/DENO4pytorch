@@ -1,7 +1,7 @@
 import os
 import paddle
 import numpy as np
-from utilizes_rotor37 import Rotor37WeightLoss
+from Utilizes.utilizes_rotor37 import Rotor37WeightLoss
 from train_task_construct import WorkPrj, add_yml, change_yml
 from post_process.load_model import build_model_yml, loaddata
 from post_process.model_predict import DLModelPost

@@ -10,8 +10,8 @@ def get_grid(realpath=None):
     xx = np.tile(xx, [64,1])
 
     if realpath is None:
-        hub_file = os.path.join('data', 'hub_lower.txt')
-        shroud_files = os.path.join('data', 'shroud_upper.txt')
+        hub_file = os.path.join('../Demo/Rotor37_2d/data', 'hub_lower.txt')
+        shroud_files = os.path.join('../Demo/Rotor37_2d/data', 'shroud_upper.txt')
     else:
         hub_file = os.path.join(realpath, 'hub_lower.txt')
         shroud_files = os.path.join(realpath, 'shroud_upper.txt')
@@ -39,9 +39,9 @@ def get_origin(quanlityList=None,
         quanlityList = ["Static Pressure", "Static Temperature",
                         'V2', 'W2', "DensityFlow"]
     if realpath is None:
-        sample_files = [os.path.join("data", "sampleRstZip_1500"),
-                        os.path.join("data", "sampleRstZip_500"),
-                        os.path.join("data", "sampleRstZip_970")
+        sample_files = [os.path.join("../Demo/Rotor37_2d/data", "sampleRstZip_1500"),
+                        os.path.join("../Demo/Rotor37_2d/data", "sampleRstZip_500"),
+                        os.path.join("../Demo/Rotor37_2d/data", "sampleRstZip_970")
                         ]
     else:
         sample_files = [os.path.join(realpath, "sampleRstZip_1500"),
@@ -62,7 +62,7 @@ def get_origin(quanlityList=None,
 
     if getridbad:
         if realpath is None:
-            file_path = os.path.join("data", "sus_bad_data.yml")
+            file_path = os.path.join("../Demo/Rotor37_2d/data", "sus_bad_data.yml")
         else:
             file_path = os.path.join(realpath, "sus_bad_data.yml")
         with open(file_path, 'r') as f:

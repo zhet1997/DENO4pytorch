@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-# @Copyright (c) 2022 Baidu.com, Inc. All Rights Reserved
-# @Time    : 2022/11/6 17:37
-# @Author  : Liu Tianyuan (liutianyuan02@baidu.com)
-# @Site    :
-# @File    : spectral_layers.py
-"""
 import paddle
 import paddle.nn as nn
 
@@ -254,34 +245,3 @@ if __name__ == '__main__':
     y = layer(x)
     print(y.shape)
 
-    # lossfunc = paddle.nn.MSELoss()
-    # optimizer = paddle.optim.Adam(layer.parameters(), lr=0.001)
-    # loss = lossfunc(y, paddle.ones_like(y))
-    # optimizer.zero_grad()
-    # loss.backward()
-    # optimizer.step()
-    #
-    # x = paddle.ones([10, 3, 55, 64])
-    # layer = SpectralConv2d(in_dim=3, out_dim=10, modes=(5, 3))
-    # y = layer(x)
-    # print(y.shape)
-    #
-    # x = paddle.ones([10, 3, 16, 32, 48])
-    # layer = SpectralConv3d(in_dim=3, out_dim=4, modes=(5, 5, 5))
-    # y = layer(x)
-    # print(y.shape)
-    #
-    # x = paddle.ones(10, 64, 128)
-    # layer = AdaptiveFourier1d(hidden_size=64, num_blocks=4)
-    # y = layer(x)
-    # print(y.shape)
-    #
-    # x = paddle.ones(10, 64, 55, 64)
-    # layer = AdaptiveFourier2d(hidden_size=64, num_blocks=4)
-    # y = layer(x)
-    # print(y.shape)
-    #
-    # x = paddle.ones(10, 64, 55, 64, 33)
-    # layer = AdaptiveFourier3d(hidden_size=64, num_blocks=4)
-    # y = layer(x)
-    # print(y.shape)

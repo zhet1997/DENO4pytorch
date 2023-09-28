@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-# @Copyright (c) 2022 Baidu.com, Inc. All Rights Reserved
-# @Time    : 2022/11/25 23:33
-# @Author  : Liu Tianyuan (liutianyuan02@baidu.com)
-# @Site    : 
-# @File    : conv_layers.py
-"""
 from basic.basic_layers import Identity
 import paddle.nn.functional as F
 from Models.configs import *
@@ -515,47 +506,4 @@ class Interp3dUpsample(nn.Layer):
 
 
 if __name__ == "__main__":
-    x = paddle.ones([10, 3, 64])
-    layer = Conv1dResBlock(in_dim=3, out_dim=10, residual=True)
-    y = layer(x)
-    print(y.shape)
-
-    x = paddle.ones([10, 3, 64])
-    layer = Interp1dUpsample(in_dim=3, out_dim=10, interp_size=[128])
-    y = layer(x)
-    print(y.shape)
-
-    x = paddle.ones([10, 3, 5])
-    layer = DeConv1dBlock(in_dim=3, hidden_dim=32, out_dim=10)
-    y = layer(x)
-    print(y.shape)
-
-    x = paddle.ones([10, 3, 64, 66])
-    layer = Conv2dResBlock(in_dim=3, out_dim=10, residual=True)
-    y = layer(x)
-    print(y.shape)
-
-    x = paddle.ones([10, 3, 64, 64])
-    layer = Interp2dUpsample(in_dim=3, out_dim=10, interp_size=[128, 128])
-    y = layer(x)
-    print(y.shape)
-
-    x = paddle.ones([10, 3, 5, 5])
-    layer = DeConv2dBlock(in_dim=3, hidden_dim=32, out_dim=10)
-    y = layer(x)
-    print(y.shape)
-
-    x = paddle.ones([10, 3, 64, 66, 66])
-    layer = Conv3dResBlock(in_dim=3, out_dim=10, residual=True)
-    y = layer(x)
-    print(y.shape)
-
-    x = paddle.ones([10, 3, 64, 64, 66])
-    layer = Interp3dUpsample(in_dim=3, out_dim=10, interp_size=[258, 258, 258])
-    y = layer(x)
-    print(y.shape)
-
-    x = paddle.ones([10, 3, 5, 5, 66])
-    layer = DeConv3dBlock(in_dim=3, hidden_dim=32, out_dim=10)
-    y = layer(x)
-    print(y.shape)
+    print('0')

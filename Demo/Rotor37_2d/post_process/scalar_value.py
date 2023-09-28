@@ -1,7 +1,7 @@
 # 获取所有样本8个参数的估计值
 import numpy as np
 import os
-from Demo.Rotor37_2d.utilizes_rotor37 import get_grid, get_origin
+from Utilizes.utilizes_rotor37 import get_grid, get_origin
 from post_process.post_data import Post_2d
 
 if __name__ == "__main__":
@@ -10,7 +10,7 @@ if __name__ == "__main__":
     isCreated = os.path.exists(work_path)
     if not isCreated: os.mkdir(work_path)
 
-    grid = get_grid(real_path=os.path.join("..", "data"))
+    grid = get_grid(realpath=os.path.join("..", "data"))
     design, field = get_origin(realpath=os.path.join("..", "data"), shuffled=True)
     true = field
     pred = true + np.random.rand(*true.shape) * 0.5 - 1

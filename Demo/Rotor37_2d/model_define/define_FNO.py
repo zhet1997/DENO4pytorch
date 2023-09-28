@@ -11,17 +11,14 @@ import os
 import numpy as np
 import paddle
 import paddle.nn as nn
-from paddle.io import DataLoader
-from paddle import summary
 from fno.FNOs import FNO2d
 from Utilizes.visual_data import MatplotlibVision
-from Utilizes.visual_data import MatplotlibVision, TextLogger
 from Utilizes.process_data import DataNormer
 import matplotlib.pyplot as plt
 import time
-import sys
-from utilizes_rotor37 import get_grid, get_origin
-from post_process.post_data import Post_2d
+from Utilizes.utilizes_rotor37 import get_grid, get_origin
+
+
 def feature_transform(x):
     """
     Args:

@@ -1,13 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-# @Copyright (c) 2022 Baidu.com, Inc. All Rights Reserved
-# @Time    : 2022/11/25 19:56
-# @Author  : Liu Tianyuan (liutianyuan02@baidu.com)
-# @Site    : 
-# @File    : configs.py
-"""
-
 import paddle.nn as nn
 
 

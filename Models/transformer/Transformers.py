@@ -1,25 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-# @Copyright (c) 2022 Baidu.com, Inc. All Rights Reserved
-# @Time    : 2022/11/6 17:37
-# @Author  : Liu Tianyuan (liutianyuan02@baidu.com)
-# @Site    :
-# @File    : Transformers.py
-"""
-
-import os
-import copy
-import sys
-import math
-import numpy as np
-
-import paddle
-import paddle.nn as nn
-import paddle.fft as fft
-import paddle.nn.functional as F
-
-
 from collections import defaultdict
 from functools import partial
 from basic.basic_layers import *
@@ -27,7 +5,6 @@ from transformer.attention_layers import *
 from fno.spectral_layers import *
 from attention_layers import *
 from Utilizes.geometrics import *
-
 
 class SimpleTransformerEncoderLayer(nn.Layer):
     """

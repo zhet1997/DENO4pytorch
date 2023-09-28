@@ -1,9 +1,8 @@
 # 将优化预测结果与CFD验证结果对比
 import os
 import numpy as np
-import yaml
 import paddle
-from utilizes_rotor37 import get_quanlity_from_mat, get_grid, get_origin
+from Utilizes.utilizes_rotor37 import get_quanlity_from_mat, get_grid, get_origin
 from post_process.post_data import Post_2d
 from train_model.model_whole_life import WorkPrj
 from Utilizes.process_data import DataNormer

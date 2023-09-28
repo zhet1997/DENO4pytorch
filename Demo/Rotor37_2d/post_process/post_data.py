@@ -1,6 +1,5 @@
 import numpy as np
 import inspect
-import os
 
 class Post_2d(object):
     def __init__(self,data_2d,grid,inputDict=None): #默认输入格式为64*64*5

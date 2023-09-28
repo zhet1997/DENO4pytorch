@@ -14,7 +14,7 @@ from Utilizes.process_data import DataNormer
 import matplotlib.pyplot as plt
 import time
 import os
-from utilizes_rotor37 import get_grid, get_origin
+from Utilizes.utilizes_rotor37 import get_grid, get_origin
 
 class MLP(nn.Layer):
     def __init__(self, layers=None, is_BatchNorm=True,

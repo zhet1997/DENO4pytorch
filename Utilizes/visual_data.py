@@ -1,10 +1,3 @@
-"""
--- coding: utf-8 --
-@Time : 2022/07/24 14:20
-@Author : Tianyuan Liu
-@Department : Baidu ACG
-@File : visual_data.py
-"""
 import os
 import logging
 import sys
@@ -19,9 +12,6 @@ from matplotlib.animation import FuncAnimation
 import matplotlib.tri as tri
 import matplotlib.cm as cm
 from matplotlib import ticker, rcParams
-from matplotlib.ticker import MultipleLocator
-import matplotlib as mpl
-
 
 def adjacent_values(vals, q1, q3):
     """

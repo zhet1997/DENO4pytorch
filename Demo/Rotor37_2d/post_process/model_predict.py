@@ -3,7 +3,7 @@ import os
 import numpy as np
 from post_process.post_data import Post_2d
 from train_model.train_task_construct import feature_transform
-from Demo.Rotor37_2d.utilizes_rotor37 import get_grid
+from Utilizes.utilizes_rotor37 import get_grid
 
 
 class DLModelPost(object):
