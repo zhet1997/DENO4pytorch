@@ -20,7 +20,7 @@ import torch.fft as fft
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 from torch.nn.init import xavier_uniform_, constant_, xavier_normal_
-from torchinfo import summary
+#from torchinfo import summary
 
 from collections import defaultdict
 from functools import partial

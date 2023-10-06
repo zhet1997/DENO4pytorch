@@ -213,9 +213,9 @@ def get_origin_GVRB(quanlityList=None,
         quanlityList = ["Static Pressure", "Static Temperature",
                         'Absolute Total Temperature',  "DensityFlow"]
     if realpath is None:
-        sample_files = [os.path.join("data", "sampleRstGV_RB")]
+        sample_files = [os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\sampleRstZip_2000")]
     else:
-        sample_files = [os.path.join("data", "sampleRstGV_RB")]
+        sample_files = [os.path.join( "D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\sampleRstZip_2000")]
     if existcheck:
         sample_files_exists = []
         for file in sample_files:
@@ -299,16 +299,16 @@ def get_quanlity_from_GVRBmat(sample_files, quanlityList):
         design.append(reader.read_field('design'))
         output = np.zeros([design[ii].shape[0], 128, 128, len(quanlityList)])
         for jj, quanlity in enumerate(quanlityList):
-            if quanlity == "DensityFlow":  # 设置一个需要计算获得的数据
-                Vm = np.sqrt(np.power(reader.read_field("Vxyz_X"), 2) + np.power(reader.read_field("Vxyz_Y"), 2))
-                output[:, :, :, jj] = (reader.read_field("Density") * Vm).copy()
+            # if quanlity == "DensityFlow":  # 设置一个需要计算获得的数据
+                # Vm = np.sqrt(np.power(reader.read_field("Vxyz_X"), 2) + np.power(reader.read_field("Vxyz_Y"), 2))
+                # output[:, :, :, jj] = (reader.read_field("Density") * Vm).copy()
             # elif quanlity == "Static Temperature":  # 设置一个需要计算获得的数据
             #     output[:, :, :, jj] = (reader.read_field("Static Temperature")) .copy()
             # elif quanlity == "Static Pressure":  # 设置一个需要计算获得的数据
             #     output[:, :, :, jj] = (reader.read_field("Static Pressure")).copy()
             # elif quanlity == "Absolute Total Temperature":  # 设置一个需要计算获得的数据
             #     output[:, :, :, jj] = (reader.read_field("Absolute Total Temperature")).copy()
-            else:
+            # else:
                 output[:, :, :, jj] = reader.read_field(quanlity).copy()
         fields.append(output)
 
