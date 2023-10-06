@@ -13,7 +13,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from torchinfo import summary
+# from torchinfo import summary
 from Utilizes.process_data import DataNormer, MatLoader
 from transformer.Transformers import SimpleTransformer, FourierTransformer
 from Utilizes.visual_data import MatplotlibVision, TextLogger
@@ -139,7 +139,7 @@ if __name__ == "__main__":
 
 
 
-        in_dim = 128*128
+        in_dim = 92
         out_dim = 4
         ntrain = 1500
         nvalid = 500
