@@ -3,10 +3,10 @@ from utilizes_draw import *
 
 if __name__ == "__main__":
 
-    name = 'FNO_1'
-    input_dim = 28
-    output_dim = 5
-    work_load_path = os.path.join("..", "work_train_FNO2")
+    name = 'Transformer'
+    input_dim = 92
+    output_dim = 4
+    work_load_path = os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_Trans\Transformer")
     workList = os.listdir(work_load_path)
     for name in workList:
         work_path = os.path.join(work_load_path, name)
@@ -55,11 +55,11 @@ if __name__ == "__main__":
             pred = y_normalizer.back(pred)
 
             input_para = {
-                "PressureStatic": 0,
-                "TemperatureStatic": 1,
-                "V2": 2,
-                "W2": 3,
-                "DensityFlow": 4,
+                # "PressureStatic": 0,
+                # "TemperatureStatic": 1,
+                "V2": 0,
+                "W2": 1,
+                "DensityFlow": 2,
             }
 
             grid = get_grid(real_path=os.path.join("..", "data"))

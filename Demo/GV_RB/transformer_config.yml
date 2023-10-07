@@ -1,5 +1,5 @@
 GV_RB:
-  node_feats: 96
+  node_feats: 92
   pos_dim: 2
   n_targets: 4
   n_hidden: 64

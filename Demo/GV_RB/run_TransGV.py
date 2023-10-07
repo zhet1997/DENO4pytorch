@@ -222,7 +222,7 @@ if __name__ == "__main__":
         # 下降策略
         Scheduler = torch.optim.lr_scheduler.StepLR(Optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
         # 可视化
-        Visual = MatplotlibVision(work_path, input_name=('x', 'y'), field_name=('p', 't', 'rho', 'alf', 'v'))
+        Visual = MatplotlibVision(work_path, input_name=('x', 'y'), field_name=('p', 't', 'rho', 'alf'))
 
         star_time = time.time()
         log_loss = [[], []]
@@ -230,7 +230,7 @@ if __name__ == "__main__":
         ################################################################
         # train process
         ################################################################
-        grid = get_grid(GV_RB=True)
+        grid = get_grid(GV_RB=True, grid_num=128)
         for epoch in range(epochs):
 
             Net_model.train()
@@ -256,7 +256,7 @@ if __name__ == "__main__":
             # Visualization
             ################################################################
 
-            if epoch > 0 and epoch % 100 == 0:
+            if epoch % 100 == 0:
                 # print('epoch: {:6d}, lr: {:.3e}, eqs_loss: {:.3e}, bcs_loss: {:.3e}, cost: {:.2f}'.
                 #       format(epoch, learning_rate, log_loss[-1][0], log_loss[-1][1], time.time()-star_time))
                 train_source, train_coord, train_true, train_pred = inference(train_loader, Net_model, Device)
@@ -265,15 +265,15 @@ if __name__ == "__main__":
                 torch.save({'log_loss': log_loss, 'net_model': Net_model.state_dict(), 'optimizer': Optimizer.state_dict()},
                            os.path.join(work_path, 'latest_model.pth'))
 
-                for fig_id in range(5):
-                    fig, axs = plt.subplots(out_dim, 3, figsize=(18, 25), num=2)
-                    Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], grid)
-                    fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
-                    plt.close(fig)
-
-                for fig_id in range(5):
-                    fig, axs = plt.subplots(out_dim, 3, figsize=(18, 25), num=3)
-                    Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], grid)
-                    fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
-                    plt.close(fig)
-
+                # for fig_id in range(5):
+                #     fig, axs = plt.subplots(out_dim, 3, figsize=(18, 25), num=2)
+                #     Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], grid)
+                #     fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
+                #     plt.close(fig)
+                #
+                # for fig_id in range(5):
+                #     fig, axs = plt.subplots(out_dim, 3, figsize=(18, 25), num=3)
+                #     Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], grid)
+                #     fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
+                #     plt.close(fig)
+                #
