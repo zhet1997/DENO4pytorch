@@ -93,8 +93,8 @@ def loaddata_Sql(name,
     return train_loader, valid_loader, x_normalizer, y_normalizer
 
 def loaddata(name,
-             ntrain=2500,
-             nvalid=400,
+             ntrain=1500,
+             nvalid=500,
              shuffled=False,
              noise_scale=None,
              batch_size=32):
@@ -166,7 +166,7 @@ def loaddata(name,
 
     return train_loader, valid_loader, x_normalizer, y_normalizer
 
-def rebuild_model(work_path, Device, in_dim=28, out_dim=5, name=None, mode=10):
+def rebuild_model(work_path, Device, in_dim=92, out_dim=4, name=None, mode=10):
     """
     rebuild the model with pth files
     """
@@ -197,9 +197,9 @@ def rebuild_model(work_path, Device, in_dim=28, out_dim=5, name=None, mode=10):
         from transformer.Transformers import SimpleTransformer, FourierTransformer
         from run_Trans import inference, predictor
 
-        with open(os.path.join('transformer_config.yml')) as f:
+        with open(os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\transformer_config.yml")) as f:
             config = yaml.full_load(f)
-            config = config['Rotor37_2d']
+            config = config['GV_RB']
 
             # 建立网络
         Tra_model = FourierTransformer(**config).to(Device)
@@ -276,7 +276,7 @@ def build_model_yml(yml_path, device, name=None):
 
 
 def get_true_pred(loader, Net_model, inference, Device,
-                  name=None, out_dim=5, iters=0, alldata=False):
+                  name=None, out_dim=4, iters=0, alldata=False):
     true_list = []
     pred_list = []
     set_size_sub  = 32
@@ -310,8 +310,8 @@ def get_true_pred(loader, Net_model, inference, Device,
             _, true, pred = inference(sub_loader, Net_model, Device)
         else:
             _, _, true, pred = inference(sub_loader, Net_model, Device)
-        true = true.reshape([true.shape[0], 64, 64, out_dim])
-        pred = pred.reshape([pred.shape[0], 64, 64, out_dim])
+        true = true.reshape([true.shape[0], 128, 128, out_dim])
+        pred = pred.reshape([pred.shape[0], 128, 128, out_dim])
 
         true_list.append(true)
         pred_list.append(pred)

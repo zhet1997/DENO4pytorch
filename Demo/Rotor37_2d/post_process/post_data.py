@@ -9,11 +9,11 @@ class Post_2d(object):
 
         if inputDict is None:
             self.inputDict = {
-                "PressureStatic": 0,
-                "TemperatureStatic": 1,
-                "V2": 2,
-                "W2": 3,
-                "DensityFlow": 4,
+                # "PressureStatic": 0,
+                # "TemperatureStatic": 1,
+                "V2": 0,
+                "W2": 1,
+                "DensityFlow": 2,
             }
         else:
             self.inputDict = inputDict
@@ -695,6 +695,10 @@ class Post_2d(object):
 
 
 if __name__ == "__main__":
-    grid = np.random.rand(64,64,2)
-    post = Post_2d(np.random.rand(64,64,5),grid)
+    # grid = np.random.rand(64,64,2)
+    # post = Post_2d(np.random.rand(64,64,5),grid)
+    # print(post.PressureStatic[:,0])
+
+    grid = np.random.rand(128,128,2)
+    post = Post_2d(np.random.rand(128,128,4),grid)
     print(post.PressureStatic[:,0])
