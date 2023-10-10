@@ -1,8 +1,10 @@
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 import torch
+print(torch.cuda.device_count())
 torch.cuda.set_device(0)
-from post_process.load_model import build_model_yml, loaddata,loaddata_Sql
+
+from post_process.load_model import build_model_yml, loaddata
 from model_whole_life import WorkPrj, DLModelWhole, change_yml, add_yml
 
 def work_construct(para_list_dict):
@@ -14,41 +16,27 @@ def work_construct(para_list_dict):
 
     return work_list
 
-def work_construct_togethor(para_list_dict):
-    work_list = []
-    num = 1
-    for key in para_list_dict.keys():
-        num = num * len(para_list_dict[key])
-
-    for ii in range(num):
-        dict_new = {}
-        for key in para_list_dict.keys():
-            idx = ii % len(para_list_dict[key])
-            dict_new.update({key:para_list_dict[key][idx]})
-        work_list.append(dict_new)
-    return work_list
 
 
 if __name__ == "__main__":
-    name = "FNO"
+    name = "deepONet"
+    start_id = 0
     if torch.cuda.is_available():
         Device = torch.device('cuda')
     else:
         Device = torch.device('cpu')
-    start_id = 9
+
     dict = {
-    'modes': [4, 6],
-    'width': [128],
-    'depth': [4, 6],
-    'activation': ['gelu', 'relu']
+        'ntrain': [500, 1000, 1500, 2000],
+        'noise_scale': [0.005, 0.01, 0.05, 0.1],
     }
 
-    worklist = work_construct_togethor(dict)
+    worklist = work_construct(dict)
 
     for id, config_dict in enumerate(worklist):
-        work = WorkPrj(os.path.join("..", "work_train_FNO2", name + "_" + str(id)))
-        change_yml(name, yml_path=work.yml, **config_dict)
-        add_yml(["Optimizer_config", "Scheduler_config", "Basic_config"], yml_path=work.yml)
+        work = WorkPrj(os.path.join("..", "work_noise_deepONet", name + "_" + str(id + start_id)))
+        change_yml("Basic", yml_path=work.yml, **config_dict)
+        add_yml(["Optimizer_config", "Scheduler_config", name+"_config"], yml_path=work.yml)
         train_loader, valid_loader, x_normalizer, y_normalizer = loaddata(name, **work.config("Basic"))
         x_normalizer.save(work.x_norm)
         y_normalizer.save(work.y_norm)

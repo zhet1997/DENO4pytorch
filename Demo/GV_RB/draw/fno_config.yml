@@ -1,0 +1,9 @@
+GV_RB:
+    activation: relu
+    depth: 6
+    in_dim: 92
+    modes: 2
+    out_dim: 4
+    padding: 8
+    steps: 1
+    width: 128
