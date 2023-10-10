@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
         else:
             Net_model, inference = rebuild_model(work_path, Device, name=nameReal)
-        train_loader, valid_loader, _, _ = loaddata(nameReal, 2500, 400, shuffled=True)
+        train_loader, valid_loader, _, _ = loaddata(nameReal, 1500, 400, shuffled=True)
 
         for type in ["valid"]:
             if type == "valid":

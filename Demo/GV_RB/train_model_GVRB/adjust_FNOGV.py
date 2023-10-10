@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import torch
 torch.cuda.set_device(0)
 from post_process.load_model import build_model_yml, loaddata,loaddata_Sql
@@ -37,19 +37,19 @@ if __name__ == "__main__":
         Device = torch.device('cpu')
     start_id = 9
     dict = {
-    'modes': [4, 6],
+    'modes': [4, 6, 8],
     'width': [128],
-    'depth': [4, 6],
+    # 'depth': [4, 6],
     'activation': ['gelu', 'relu']
     }
 
     worklist = work_construct_togethor(dict)
 
     for id, config_dict in enumerate(worklist):
-        work = WorkPrj(os.path.join("..", "work_train_FNO2", name + "_" + str(id)))
+        work = WorkPrj(os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_FNO2", name + "_" + str(id)))
         change_yml(name, yml_path=work.yml, **config_dict)
         add_yml(["Optimizer_config", "Scheduler_config", "Basic_config"], yml_path=work.yml)
-        train_loader, valid_loader, x_normalizer, y_normalizer = loaddata(name, **work.config("Basic"))
+        train_loader, valid_loader, x_normalizer, y_normalizer = loaddata_Sql(name, **work.config("Basic"))
         x_normalizer.save(work.x_norm)
         y_normalizer.save(work.y_norm)
         DL_model = DLModelWhole(Device, name=name, work=work)

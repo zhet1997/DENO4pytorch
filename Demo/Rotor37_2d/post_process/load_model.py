@@ -6,7 +6,7 @@ from post_process.post_data import Post_2d
 from Demo.Rotor37_2d.utilizes_rotor37 import get_grid, get_origin
 from Utilizes.process_data import DataNormer
 import yaml
-from utilizes_rotor37 import get_gemodata_from_mat,get_origin_gemo
+from utilizes_rotor37 import get_gemodata_from_mat,get_origin_gemo,get_origin_GVRB
 
 def get_noise(shape, scale):
     random_array = np.random.randn(np.prod(shape)) #  randn生成的是标准正态分布
@@ -16,25 +16,28 @@ def get_noise(shape, scale):
     return random_array * scale
 
 def loaddata_Sql(name,
-             ntrain=2500,
-             nvalid=400,
+             ntrain=1500,
+             nvalid=500,
              shuffled=False,
              noise_scale=None,
              batch_size=32):
 
-    design, fields = get_origin_gemo(realpath=os.path.join("..", "data"),shuffled=shuffled) # 获取原始数据
+    # design, fields = get_origin_gemo(realpath=os.path.join("..", "data"),shuffled=shuffled) # 获取原始数据
+    design, fields = get_origin_GVRB()
     if name in ("FNO", "FNM", "UNet", "Transformer"):
-        input = np.tile(design[:, None, None, :], (1, 64, 64, 1))
-        r1 = 10
-        input = design[:, :, ::r1, :]
-        input = input.reshape([input.shape[0], -1])  # 二维数据
-        input = np.tile(input[:, None, None, :], (1, 64, 64, 1))
+        # input = np.tile(design[:, None, None, :], (1, 128, 128, 1))
+        # r1 = 10
+        # input = design[:, :, ::r1, :]
+        # input = input.reshape([input.shape[0], -1])  # 二维数据
+        # input = np.tile(input[:, None, None, :], (1, 64, 64, 1))
+        input = np.tile(design[:, None, None, :], (1, 128, 128, 1))
     else:
         input = design
+
     output = fields
 
-    # input = torch.tensor(input, dtype=torch.float)
-    # output = torch.tensor(output, dtype=torch.float)
+    input = torch.tensor(input, dtype=torch.float)
+    output = torch.tensor(output, dtype=torch.float)
     print(input.shape, output.shape)
 
     train_x = input[:ntrain, :]
@@ -195,7 +198,7 @@ def rebuild_model(work_path, Device, in_dim=92, out_dim=4, name=None, mode=10):
         from basic.basic_layers import FcnSingle
         from fno.FNOs import FNO2d
         from transformer.Transformers import SimpleTransformer, FourierTransformer
-        from run_Trans import inference, predictor
+        from run_TransGV import inference, predictor
 
         with open(os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\transformer_config.yml")) as f:
             config = yaml.full_load(f)
@@ -253,9 +256,9 @@ def import_model_by_name(name):
         from run_UNet import inference, train, valid
         model_func = UNet2d
     elif 'Transformer' in name:
-        from transformer.Transformers import FourierTransformer2D
-        from run_Trans import inference, train, valid
-        model_func = FourierTransformer2D
+        from transformer.Transformers import FourierTransformer
+        from run_TransGV import inference, train, valid
+        model_func = FourierTransformer
 
     return model_func, inference, train, valid
 
@@ -306,12 +309,13 @@ def get_true_pred(loader, Net_model, inference, Device,
                                                      shuffle=False,
                                                      drop_last=False)
     # for ii in range(iters):
-        if name in ('MLP','Transformer'):
+        if name in ('MLP'):
             _, true, pred = inference(sub_loader, Net_model, Device)
         else:
             _, _, true, pred = inference(sub_loader, Net_model, Device)
         true = true.reshape([true.shape[0], 128, 128, out_dim])
         pred = pred.reshape([pred.shape[0], 128, 128, out_dim])
+        # pred = pred.reshape([pred.shape[0], 32, 92])
 
         true_list.append(true)
         pred_list.append(pred)
