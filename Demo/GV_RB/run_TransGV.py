@@ -123,8 +123,8 @@ if __name__ == "__main__":
 
         # name = 'Transformer_' + str(mode)
 
-        name = 'Transformer'
-        work_path = os.path.join('work_Trans', name)
+        name = 'Transformer_2'
+        work_path = os.path.join('work_Trans_old1', name)
         isCreated = os.path.exists(work_path)
         if not isCreated:
             os.makedirs(work_path)
@@ -139,7 +139,7 @@ if __name__ == "__main__":
 
 
 
-        in_dim = 92
+        in_dim = 96
         out_dim = 4
         ntrain = 1500
         nvalid = 500
@@ -194,6 +194,9 @@ if __name__ == "__main__":
         y_normalizer = DataNormer(train_y.numpy(), method='mean-std')
         train_y = y_normalizer.norm(train_y)
         valid_y = y_normalizer.norm(valid_y)
+
+        x_normalizer.save(os.path.join(work_path, 'x_norm.pkl'))  # 将normalizer保存下来
+        y_normalizer.save(os.path.join(work_path, 'y_norm.pkl'))
 
         train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_y),
                                                    batch_size=batch_size, shuffle=True, drop_last=True)
@@ -264,15 +267,15 @@ if __name__ == "__main__":
                 torch.save({'log_loss': log_loss, 'net_model': Net_model.state_dict(), 'optimizer': Optimizer.state_dict()},
                            os.path.join(work_path, 'latest_model.pth'))
 
-                # for fig_id in range(5):
-                #     fig, axs = plt.subplots(out_dim, 3, figsize=(18, 25), num=2)
-                #     Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], grid)
-                #     fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
-                #     plt.close(fig)
-                #
-                # for fig_id in range(5):
-                #     fig, axs = plt.subplots(out_dim, 3, figsize=(18, 25), num=3)
-                #     Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], grid)
-                #     fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
-                #     plt.close(fig)
-                #
+                for fig_id in range(5):
+                    fig, axs = plt.subplots(out_dim, 3, figsize=(18, 25), num=2)
+                    Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], grid)
+                    fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
+                    plt.close(fig)
+
+                for fig_id in range(5):
+                    fig, axs = plt.subplots(out_dim, 3, figsize=(18, 25), num=3)
+                    Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], grid)
+                    fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
+                    plt.close(fig)
+
