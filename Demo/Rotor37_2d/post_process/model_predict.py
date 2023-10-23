@@ -9,7 +9,7 @@ from Utilizes.process_data import DataNormer
 from train_model.model_whole_life import WorkPrj
 
 
-def predictor_establish(name, work_load_path):
+def predictor_establish(name, work_load_path, predictor=True):
 
     nameReal = name.split("_")[0]
     id = None
@@ -36,21 +36,24 @@ def predictor_establish(name, work_load_path):
     y_normlizer = DataNormer(np.array([1, 1]), method="mean-std", axis=0)
     y_normlizer.load(norm_save_y)
 
-    if os.path.exists(work.yml):
-        Net_model, inference, _, _ = build_model_yml(work.yml, Device, name=nameReal)
-        isExist = os.path.exists(work.pdparams)
-        if isExist:
-            # checkpoint = paddle.load(work.pth, map_location=Device)
-            checkpoint = paddle.load(work.pdparams)
-            # Net_model.load_state_dict(checkpoint['net_model'])
-            Net_model.set_state_dict(checkpoint)
+    assert os.path.exists(work.yml), print('The yml file is not exist')
+    Net_model, inference, _, _ = build_model_yml(work.yml, Device, name=nameReal)
+    isExist = os.path.exists(work.pdparams)
+    if isExist:
+        # checkpoint = paddle.load(work.pth, map_location=Device)
+        checkpoint = paddle.load(work.pdparams)
+        # Net_model.load_state_dict(checkpoint['net_model'])
+        Net_model.set_state_dict(checkpoint)
 
+    if predictor:
         model_all = DLModelPost(Net_model, Device,
                             name=nameReal,
                             in_norm=x_normlizer,
                             out_norm=y_normlizer,
                             )
         return model_all
+    else:
+        return Net_model, inference, Device, x_normlizer, y_normlizer
 
 class DLModelPost(object):
     def __init__(self, netmodel, Device,
@@ -161,7 +164,7 @@ class DLModelPost(object):
         if soft_constraint is None:
             soft_constraint = []
 
-        grid = get_grid(realpath=os.path.join("..", "data"))
+        grid = get_grid(real_path=os.path.join("..", "data"))
         post_pred = Post_2d(pred_2d, grid,
                             inputDict=input_para,
                             )

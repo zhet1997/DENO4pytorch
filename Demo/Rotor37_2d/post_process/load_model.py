@@ -17,6 +17,7 @@ def loaddata(name,
              nvalid=400,
              shuffled=False,
              noise_scale=None,
+             loader=True,
              batch_size=32):
 
     design, fields = get_origin(realpath=os.path.join("..", "data"), shuffled=shuffled)  # 获取原始数据
@@ -84,7 +85,10 @@ def loaddata(name,
         valid_loader = paddle.io.DataLoader(paddle.io.TensorDataset([valid_x, valid_y]),
                                                    batch_size=batch_size, shuffle=False, drop_last=True)
 
-    return train_loader, valid_loader, x_normalizer, y_normalizer
+    if loader:
+        return train_loader, valid_loader, x_normalizer, y_normalizer
+    else:
+        return train_x, train_y, valid_x, valid_y
 
 def import_model_by_name(name):
     model_func = None

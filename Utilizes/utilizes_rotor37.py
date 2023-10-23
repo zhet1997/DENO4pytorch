@@ -5,16 +5,16 @@ from Utilizes.process_data import MatLoader
 from post_process.post_data import Post_2d
 import os
 
-def get_grid(realpath=None):
+def get_grid(real_path=None):
     xx = np.linspace(-0.127, 0.126, 64)
     xx = np.tile(xx, [64,1])
 
-    if realpath is None:
+    if real_path is None:
         hub_file = os.path.join('../Demo/Rotor37_2d/data', 'hub_lower.txt')
         shroud_files = os.path.join('../Demo/Rotor37_2d/data', 'shroud_upper.txt')
     else:
-        hub_file = os.path.join(realpath, 'hub_lower.txt')
-        shroud_files = os.path.join(realpath, 'shroud_upper.txt')
+        hub_file = os.path.join(real_path, 'hub_lower.txt')
+        shroud_files = os.path.join(real_path, 'shroud_upper.txt')
 
     hub = np.loadtxt(hub_file)
     shroud = np.loadtxt(shroud_files)
