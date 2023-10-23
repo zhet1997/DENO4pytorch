@@ -6,7 +6,7 @@ from post_process.post_data import Post_2d
 import os
 import torch
 
-def get_grid(real_path=None, GV_RB=False, grid_num=64):
+def get_grid(real_path=None, GV_RB=False, grid_num=128):
 
     if real_path is None:
         hub_file = os.path.join('data', 'hub_lower.txt')
@@ -215,9 +215,9 @@ def get_origin_GVRB(quanlityList=None,
         quanlityList = ["Static Pressure", "Static Temperature",
                         'Absolute Total Temperature',  "DensityFlow"]
     if realpath is None:
-        sample_files = [os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\sampleRstZip_2000")]
+        sample_files = [os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\sampleRstZip_2000_old")]
     else:
-        sample_files = [os.path.join( "D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\sampleRstZip_2000")]
+        sample_files = [os.path.join( "D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\sampleRstZip_2000_old")]
     if existcheck:
         sample_files_exists = []
         for file in sample_files:

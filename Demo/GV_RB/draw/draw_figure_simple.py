@@ -4,20 +4,20 @@ import yaml
 from transformer.Transformers import SimpleTransformer, FourierTransformer
 from fno.FNOs import FNO2d
 from run_MLP import MLP
-from run_MLPGV import inference
+from run_TransGV import inference
 from model_whole_life import WorkPrj, DLModelWhole, change_yml, add_yml
 if __name__ == "__main__":
 
-    name = 'MLP'
-    input_dim = 92
+    name = 'Transformer'
+    input_dim = 96
     output_dim = 4
-    work_path = os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_MLP1")
+    work_path = os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_Trans_old1")
     workList = os.listdir(work_path)
-    folder_template = 'MLP_{}'
+    folder_template = 'Transformer_{}'
     for i in [0]:
         # 根据i值创建文件夹名称
         work_name = folder_template.format(i)
-
+        work_name = "Transformer"
         # 构建文件夹的完整路径
         work_load_path = os.path.join(work_path, work_name)
         work = WorkPrj(work_load_path)
@@ -39,24 +39,29 @@ if __name__ == "__main__":
 
 
         # with open('D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_FNO1\FNO_2\config.yml') as f:
-        with open('D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_MLP1\MLP_0\config.yml') as f:
+
+        # with open('D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_MLP1\MLP_0\config.yml') as f:
+        with open(r"D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\transformer_config.yml") as f:
             config = yaml.full_load(f)
-            config = config['MLP_config']
+            config = config['GV_RB']
             # config['modes'] = 4
 
 
 
         # 建立网络
         ##only MLP
-        layer_mat = [92, 256, 256, 256, 256, 512, 4 * 128 * 128]
-        Net_model = MLP(layers=layer_mat, is_BatchNorm=False)
-        Net_model = Net_model.to(Device)
+        # layer_mat = [92, 256, 256, 256, 256, 512, 4 * 128 * 128]
+        # Net_model = MLP(layers=layer_mat, is_BatchNorm=False)
+        # Net_model = Net_model.to(Device)
 
         # Net_model = FourierTransformer(**config).to(Device)
         # Net_model = FNO2d(in_dim=92, out_dim=4, modes=(4,4), width=128, depth=4, steps=1,
         #                   padding=8, activation='relu').to(Device)
 
-        work_pth = 'D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_MLP1\MLP_0\latest_model.pth'
+        Net_model = FourierTransformer(**config).to(Device)
+        Net_model = Net_model.to(Device)
+
+        work_pth = 'D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_Trans_old1\Transformer\latest_model.pth'
         isExist = os.path.exists(work_pth)
         if isExist:
             checkpoint = torch.load(work_pth, map_location=Device)
@@ -95,8 +100,8 @@ if __name__ == "__main__":
 
 
             ## only MLP
-            train_coord, train_true, train_pred = inference(train_loader, Net_model, Device)
-            valid_coord, valid_true, valid_pred = inference(valid_loader, Net_model, Device)
+            # train_coord, train_true, train_pred = inference(train_loader, Net_model, Device)
+            # valid_coord, valid_true, valid_pred = inference(valid_loader, Net_model, Device)
             Visual = MatplotlibVision(work_load_path, input_name=('x', 'y'), field_name=('Static Pressure', 'Static Temperature','Absolute Total Temperature', 'DensityFlow'))
             for fig_id in range(5):
                 fig, axs = plt.subplots(4, 3, figsize=(30, 40), num=2)

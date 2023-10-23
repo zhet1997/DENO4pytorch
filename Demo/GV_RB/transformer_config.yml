@@ -1,5 +1,5 @@
 GV_RB:
-  node_feats: 92
+  node_feats: 96
   pos_dim: 2
   n_targets: 4
   n_hidden: 64
@@ -23,7 +23,7 @@ GV_RB:
   freq_dim: 64
   num_regressor_layers: 1
   regressor_activation: gelu
-  fourier_modes: 16
+  fourier_modes: 8
   spacial_dim: 2
   spacial_fc: True
   dropout: 0.0
