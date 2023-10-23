@@ -7,7 +7,7 @@ from pymoo.optimize import minimize
 from pymoo_optimizer import Rotor37Predictor, predictor_establish
 
 def generate_tasks():
-    yml_path = os.path.join("EPM_optmization_tasks.yml")
+    yml_path = os.path.join("EPM_optmization_tasks_Rst.yml")
     task_1 = {
         'parameterList' :["Efficiency", "PressureRatioV"],
         'softconstrList' : [],
@@ -22,15 +22,15 @@ def generate_tasks():
 
 if __name__ == "__main__":
     # 设置需要优化的函数
-    name = 'FNO_1'
+    name = 'FNO'
     input_dim = 28
     output_dim = 5
-    work_load_path = os.path.join("..", "work_train_FNO2")
+    work_load_path = os.path.join("..", 'work', 'model_save')
     # work_load_path = os.path.join("..", "work")
 
     model_all = predictor_establish(name, work_load_path)
 
-    yml_path = os.path.join("EPM_optmization_tasks_20230703.yml")
+    yml_path = os.path.join('..','data','opt_data',"EPM_optmization_tasks.yml")
 
     with open(yml_path) as f:
         config = yaml.full_load(f)
@@ -56,7 +56,7 @@ if __name__ == "__main__":
                            algorithm,
                            termination=('n_gen', 80),
                            verbose=True,
-                           save_history=True
+                           # save_history=True
                            )# 打印最优解
 
             end_time=time.time()
@@ -67,8 +67,8 @@ if __name__ == "__main__":
 
             # 保存到文件中
 
-            dict["task_" + str(task_id + ii*8) + "_sample"] = res.X
-            dict["task_" + str(task_id + ii*8) + "_value"] = res.F
-
-        # 保存数据
-        np.savez(os.path.join("..", "data", "opt_data", 'EPM_optmization_tasks_20230703.npz'), **dict)
+        #     dict["task_" + str(task_id + ii*8) + "_sample"] = res.X
+        #     dict["task_" + str(task_id + ii*8) + "_value"] = res.F
+        #
+        # # 保存数据
+        # np.savez(os.path.join("..", "data", "opt_data", 'EPM_optmization_tasks_20230703.npz'), **dict)

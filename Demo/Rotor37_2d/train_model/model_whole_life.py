@@ -2,9 +2,8 @@ import os
 import paddle
 import numpy as np
 from Utilizes.utilizes_rotor37 import Rotor37WeightLoss
-from train_task_construct import WorkPrj, add_yml, change_yml
+from train_model.train_task_construct import WorkPrj, add_yml, change_yml
 from post_process.load_model import build_model_yml, loaddata
-from post_process.model_predict import DLModelPost
 from Utilizes.visual_data import MatplotlibVision
 import matplotlib.pyplot as plt
 import yaml
@@ -45,7 +44,7 @@ class DLModelWhole(object):
         self.Scheduler = paddle.optimizer.lr.StepDecay(**config["Scheduler_config"])
         self.Optimizer = paddle.optimizer.Momentum(learning_rate=self.Scheduler, parameters=self.net_model.parameters())
 
-    def train_epochs(self, train_loader, valid_loader):
+    def train_epochs(self, train_loader, valid_loader, save_iter=100):
         work = self.work
         Visual = MatplotlibVision(work.root, input_name=('x', 'y'), field_name=('unset',))
         star_time = time.time()
@@ -60,18 +59,19 @@ class DLModelWhole(object):
             # print(os.environ['CUDA_VISIBLE_DEVICES'])
             star_time = time.time()
 
-            if epoch > 0 and epoch % 5 == 0:
-                fig, axs = plt.subplots(1, 1, figsize=(15, 8), num=1)
-                Visual.plot_loss(fig, axs, np.arange(len(log_loss[0])), np.array(log_loss)[0, :], 'train_step')
-                Visual.plot_loss(fig, axs, np.arange(len(log_loss[0])), np.array(log_loss)[1, :], 'valid_step')
-                fig.suptitle('training loss')
-                fig.savefig(work.svg)
-                plt.close(fig)
+            # if epoch > 0 and epoch % 5 == 0:
+            #     fig, axs = plt.subplots(1, 1, figsize=(15, 8), num=1)
+            #     Visual.plot_loss(fig, axs, np.arange(len(log_loss[0])), np.array(log_loss)[0, :], 'train_step')
+            #     Visual.plot_loss(fig, axs, np.arange(len(log_loss[0])), np.array(log_loss)[1, :], 'valid_step')
+            #     fig.suptitle('training loss')
+            #     fig.savefig(work.svg)
+            #     plt.close(fig)
 
-            if epoch > 0 and epoch % 100 == 0:
-                paddle.save(
-                    {'log_loss': log_loss, 'net_model': self.net_model.state_dict(), 'optimizer': self.Optimizer.state_dict()},
-                    work.pth)
+            if epoch > 0 and epoch % save_iter == 0:
+                paddle.save(self.net_model.state_dict(), work.pdparams)
+                # paddle.save(
+                #     {'log_loss': log_loss, 'net_model': self.net_model.state_dict(), 'optimizer': self.Optimizer.state_dict()},
+                #     work.pdparams)
 
 
 if __name__ == "__main__":

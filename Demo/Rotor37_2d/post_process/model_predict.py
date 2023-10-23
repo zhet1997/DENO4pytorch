@@ -4,7 +4,53 @@ import numpy as np
 from post_process.post_data import Post_2d
 from train_model.train_task_construct import feature_transform
 from Utilizes.utilizes_rotor37 import get_grid
+from post_process.load_model import loaddata, build_model_yml
+from Utilizes.process_data import DataNormer
+from train_model.model_whole_life import WorkPrj
 
+
+def predictor_establish(name, work_load_path):
+
+    nameReal = name.split("_")[0]
+    id = None
+    if len(name.split("_")) == 2:
+        id = int(name.split("_")[1])
+
+    work_path = os.path.join(work_load_path, name)
+    work = WorkPrj(work_path)
+    print(work.device)
+    # if paddle.cuda.is_available():
+    #     Device = paddle.device('cuda')
+    # else:
+    Device = paddle.device.set_device('cpu') #优化就在CPU
+
+    if os.path.exists(work.x_norm):
+        norm_save_x = work.x_norm
+        norm_save_y = work.y_norm
+    else:
+        norm_save_x = os.path.join("..", "data", "x_norm_1250.pkl")
+        norm_save_y = os.path.join("..", "data", "y_norm_1250.pkl")
+
+    x_normlizer = DataNormer(np.array([1, 1]), method="mean-std", axis=0)
+    x_normlizer.load(norm_save_x)
+    y_normlizer = DataNormer(np.array([1, 1]), method="mean-std", axis=0)
+    y_normlizer.load(norm_save_y)
+
+    if os.path.exists(work.yml):
+        Net_model, inference, _, _ = build_model_yml(work.yml, Device, name=nameReal)
+        isExist = os.path.exists(work.pdparams)
+        if isExist:
+            # checkpoint = paddle.load(work.pth, map_location=Device)
+            checkpoint = paddle.load(work.pdparams)
+            # Net_model.load_state_dict(checkpoint['net_model'])
+            Net_model.set_state_dict(checkpoint)
+
+        model_all = DLModelPost(Net_model, Device,
+                            name=nameReal,
+                            in_norm=x_normlizer,
+                            out_norm=y_normlizer,
+                            )
+        return model_all
 
 class DLModelPost(object):
     def __init__(self, netmodel, Device,
@@ -37,11 +83,10 @@ class DLModelPost(object):
 
         if self.name in ("FNO", "UNet", "Transformer"):
             input = paddle.to_tensor(np.tile(input[:, None, None, :], (1, self.grid_size, self.grid_size, 1)), dtype='float32')
-            input = input.to(self.Device)
             grid = feature_transform(input)
             pred = self.netmodel(input, grid)
         else:
-            input = input.to(self.Device)
+            input = paddle.to_tensor(input)
             pred = self.netmodel(input)
 
         pred = pred.reshape([pred.shape[0], self.grid_size, self.grid_size, -1])

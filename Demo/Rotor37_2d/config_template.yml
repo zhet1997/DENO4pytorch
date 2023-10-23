@@ -76,7 +76,6 @@ UNet_config:
 Optimizer_config:
   learning_rate: 0.001
 
-
 Scheduler_config:
   learning_rate: 0.001
   step_size: 800

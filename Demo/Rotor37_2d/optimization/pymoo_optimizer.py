@@ -1,15 +1,10 @@
-
 from pymoo.algorithms.soo.nonconvex.ga import GA
 from pymoo.core.problem import Problem
 from pymoo.optimize import minimize
 import time
 import paddle
 import os
-from post_process.model_predict import DLModelPost
-from post_process.load_model import loaddata, build_model_yml
-from Utilizes.process_data import DataNormer
-from train_model.model_whole_life import WorkPrj
-
+from post_process.model_predict import predictor_establish
 
 # 定义目标函数
 class Rotor37Predictor(Problem):
@@ -43,53 +38,12 @@ class Rotor37Predictor(Problem):
                 out["G"] = self.model.predictor_hardConstraint(x, hardconstrList=self.hardConstrIneqList)
 
 
-def predictor_establish(name, work_load_path):
-
-    nameReal = name.split("_")[0]
-    id = None
-    if len(name.split("_")) == 2:
-        id = int(name.split("_")[1])
-
-    work_path = os.path.join(work_load_path, name)
-    work = WorkPrj(work_path)
-    # if paddle.cuda.is_available():
-    #     Device = paddle.device('cuda')
-    # else:
-    Device = paddle.device.set_device('cpu') #优化就在CPU
-
-    if os.path.exists(work.x_norm):
-        norm_save_x = work.x_norm
-        norm_save_y = work.y_norm
-    else:
-        norm_save_x = os.path.join("..", "data", "x_norm_1250.pkl")
-        norm_save_y = os.path.join("..", "data", "y_norm_1250.pkl")
-
-    x_normlizer = DataNormer([1, 1], method="mean-std", axis=0)
-    x_normlizer.load(norm_save_x)
-    y_normlizer = DataNormer([1, 1], method="mean-std", axis=0)
-    y_normlizer.load(norm_save_y)
-
-    if os.path.exists(work.yml):
-        Net_model, inference, _, _ = build_model_yml(work.yml, Device, name=nameReal)
-        isExist = os.path.exists(work.pth)
-        if isExist:
-            checkpoint = paddle.load(work.pth, map_location=Device)
-            Net_model.load_state_dict(checkpoint['net_model'])
-
-    model_all = DLModelPost(Net_model, Device,
-                        name=nameReal,
-                        in_norm=x_normlizer,
-                        out_norm=y_normlizer,
-                        )
-    return model_all
-
-
 if __name__ == "__main__":
     # 设置需要优化的函数
-    name = 'FNO_1'
+    name = 'FNO'
     input_dim = 28
     output_dim = 5
-    work_load_path = os.path.join("..", "work_train_FNO2")
+    work_load_path = os.path.join("..", 'work', 'model_save')
     # work_load_path = os.path.join("..", "work")
 
     model_all = predictor_establish(name, work_load_path)
@@ -128,7 +82,7 @@ if __name__ == "__main__":
                    algorithm,
                    termination=('n_gen', 80),
                    verbose=True,
-                   save_history=True
+                   # save_history=True
                    )  # 打印最优解
 
     end_time = time.time()

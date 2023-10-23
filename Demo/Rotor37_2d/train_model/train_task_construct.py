@@ -89,6 +89,7 @@ class WorkPrj(object):
         if not isExist:
             os.mkdir(self.root)
         self.pth = os.path.join(self.root, 'latest_model.pth')
+        self.pdparams = os.path.join(self.root, 'latest_model.pdparams')
         self.svg = os.path.join(self.root, 'log_loss.svg')
         self.yml= os.path.join(self.root, 'config.yml')
         self.x_norm = os.path.join(self.root, 'x_norm.pkl')

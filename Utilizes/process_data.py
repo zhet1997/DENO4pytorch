@@ -79,11 +79,11 @@ class DataNormer(object):
         """
         if paddle.is_tensor(x):
             if self.method == "min-max":
-                x = (x + 1) / 2 * (paddle.to_tensor(self.max, place=x.device)
-                                   - paddle.to_tensor(self.min, place=x.device) + 1e-10) + paddle.to_tensor(self.min,
-                                                                                                     place=x.device)
+                x = (x + 1) / 2 * (paddle.to_tensor(self.max, place=x.place)
+                                   - paddle.to_tensor(self.min, place=x.place) + 1e-10) + paddle.to_tensor(self.min,
+                                                                                                     place=x.place)
             elif self.method == "mean-std":
-                x = x * (paddle.to_tensor(self.std + 1e-10, place=x.device)) + paddle.to_tensor(self.mean, place=x.device)
+                x = x * (paddle.to_tensor(self.std + 1e-10, place=x.place)) + paddle.to_tensor(self.mean, place=x.place)
         else:
             if self.method == "min-max":
                 x = (x + 1) / 2 * (self.max - self.min + 1e-10) + self.min
@@ -125,10 +125,10 @@ class DataNormer(object):
 
 # reading data
 class MatLoader(object):
-    def __init__(self, file_path, to_paddle=True, to_cuda=False, to_float=True):
+    def __init__(self, file_path, to_torch=True, to_cuda=False, to_float=True):
         super(MatLoader, self).__init__()
 
-        self.to_paddle = to_paddle
+        self.to_torch = to_torch
         self.to_cuda = to_cuda
         self.to_float = to_float
 
@@ -161,7 +161,7 @@ class MatLoader(object):
         if self.to_float:
             x = x.astype(np.float32)
 
-        if self.to_paddle:
+        if self.to_torch:
             x = paddle.to_tensor(x)
 
             if self.to_cuda:
@@ -172,8 +172,8 @@ class MatLoader(object):
     def set_cuda(self, to_cuda):
         self.to_cuda = to_cuda
 
-    def set_paddle(self, to_paddle):
-        self.to_paddle = to_paddle
+    def set_torch(self, to_torch):
+        self.to_torch = to_torch
 
     def set_float(self, to_float):
         self.to_float = to_float
