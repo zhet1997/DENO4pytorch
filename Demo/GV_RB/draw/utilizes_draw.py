@@ -4,7 +4,8 @@ import torch
 from Utilizes.visual_data import MatplotlibVision
 from Utilizes.process_data import DataNormer, MatLoader
 import matplotlib.pyplot as plt
-from post_process.post_data import Post_2d
+# from post_process.post_data import Post_2d
+from TestData.post_CFD import cfdPost_2d
 from Demo.Rotor37_2d.utilizes_rotor37 import get_grid, get_origin
 from post_process.load_model import loaddata, rebuild_model, get_true_pred, build_model_yml
 from train_model.model_whole_life import WorkPrj
@@ -262,6 +263,7 @@ def plot_error(post_true, post_pred, parameterList,
     """
     针对某个对象0维性能参数，绘制预测误差表示图
     """
+
     dict_save = {}
     if not isinstance(parameterList, list):
         parameterList = [parameterList]
@@ -272,40 +274,45 @@ def plot_error(post_true, post_pred, parameterList,
     for parameter_Name in parameterList:
         fig, axs = plt.subplots(1, 1, figsize=(10, 10), num=1)
 
-        if parameter_Name in ("MassFlow"):
-            value_span_true = post_true.get_MassFlow()
-            value_span_pred = post_pred.get_MassFlow()
+        # if parameter_Name in ("MassFlow"):
+        # if parameter_Name[1] == "MassFlow":
+        #     value_span_true = post_true.get_MassFlow()
+        #     value_span_pred = post_pred.get_MassFlow()
+        #
+        # else:
+            # value_span_true = getattr(post_true, parameter_Name[1]) #shape[num, 64, 64]
+            # value_span_true = post_true.span_density_average(value_span_true[:, :, -1]) # shape[num, 1]
+            # value_span_pred = getattr(post_pred, parameter_Name[1])
+            # value_span_pred = post_true.span_density_average(value_span_pred[:, :, -1])
+        value_span_true = post_true.get_performance('Isentropic_efficiency',type='spanwised')
+        value_span_pred = post_pred.get_performance('Isentropic_efficiency',type='spanwised')
 
+        # Visual.plot_regression(fig, axs, value_span_true.squeeze(), value_span_pred.squeeze(),
+        #                        title=parameter_Name)
 
-        else:
-            value_span_true = getattr(post_true, parameter_Name) #shape[num, 64, 64]
-            value_span_true = post_true.span_density_average(value_span_true[:, :, -1]) # shape[num, 1]
-            value_span_pred = getattr(post_pred, parameter_Name)
-            value_span_pred = post_true.span_density_average(value_span_pred[:, :, -1])
+        plt.plot(value_span_pred[0, :], np.linspace(0, 1, 128))
+        plt.show()
+    #     # if save_path is None:
+    #     jpg_path1 = os.path.join(work_path, type + parameter_Name +"_error_" + str(fig_id) + '.jpg')
+    #     fig.savefig(jpg_path1) # 暂时修改
+    #     plt.close(fig)
+    # #
+    #     dict_save.update({parameter_Name : value_span_pred})
+    #     Err = np.abs((value_span_pred - value_span_true) / value_span_true)
+    #     Err_all.append(Err)
+    #
+    # # Err_all = np.concatenate(Err_all, axis=1)
+    # Err_all = np.stack(Err_all, axis=1)
+    # fig, axs = plt.subplots(1, 1, figsize=(10, 10), num=1)
+    # Visual.plot_box(fig, axs, Err_all, xticks=Visual.field_name)
+    #
+    # jpg_path = os.path.join(work_path, "_error-box.jpg")
+    # fig.savefig(jpg_path)
+    # plt.close(fig)
+    #
+    # return dict_save
 
-        Visual.plot_regression(fig, axs, value_span_true.squeeze(), value_span_pred.squeeze(),
-                               title=parameter_Name)
-
-        if save_path is None:
-            jpg_path = os.path.join(work_path, type + parameter_Name + "_error_" + str(fig_id) + '.jpg')
-        # fig.savefig(jpg_path) # 暂时修改
-        plt.close(fig)
-
-        dict_save.update({parameter_Name : value_span_pred})
-        Err = np.abs((value_span_pred - value_span_true) / value_span_true)
-        Err_all.append(Err)
-
-    Err_all = np.concatenate(Err_all, axis=1)
-    fig, axs = plt.subplots(1, 1, figsize=(10, 10), num=1)
-    Visual.plot_box(fig, axs, Err_all, xticks=Visual.field_name)
-
-    jpg_path = os.path.join(work_path, type + "_error-box.jpg")
-    fig.savefig(jpg_path)
-    plt.close(fig)
-
-    return dict_save
-
-def plot_error_new(post_true, post_pred_list, parameterList,
+def plot_error_new(post_true, post_predList, parameterList,
                    save_path = None, fig_id = 0,
                    label=None, work_path=None, type=None, paraNameList = None,
                    colorList=None
@@ -330,25 +337,38 @@ def plot_error_new(post_true, post_pred_list, parameterList,
 
     for parameter_Name in parameterList:
         fig, axs = plt.subplots(1, 1, figsize=(10, 10), num=1)
-        # fig, axs = plt.subplots(1, 1, figsize=(5, 5), num=1)
-        for ii, post_pred in enumerate(post_pred_list):
+        fig, axs = plt.subplots(1, 1, figsize=(5, 5), num=1)
+        for ii, post_pred in enumerate(post_predList):
 
-            # if ii==3:
+          if ii==3:
 
-            if parameter_Name in ("MassFlow"):
-                value_span_true = post_true.get_MassFlow()
-                value_span_pred = post_pred.get_MassFlow()
+             if parameter_Name in ('MassFlow'):
+                 value_span_true = post_true.get_MassFlow()
+                 value_span_tred = post_pred.get_MassFlow()
 
 
-            else:
-                value_span_true = getattr(post_true, parameter_Name) #shape[num, 64, 64]
-                value_span_true = post_true.span_density_average(value_span_true[:, :, -1]) # shape[num, 1]
-                value_span_pred = getattr(post_pred, parameter_Name)
-                value_span_pred = post_true.span_density_average(value_span_pred[:, :, -1])
+             else:
+                 value_span_true = getattr(post_true, parameter_Name) #shape[num, 64, 64]
+                 value_span_true = post_true.span_density_average(value_span_true[:, :, -1]) # shape[num, 1]
+                 value_span_pred = getattr(post_pred, parameter_Name)
+                 value_span_pred = post_true.span_density_average(value_span_pred[:, :, -1])
 
-            Visual.plot_regression_dot(fig, axs, value_span_true.squeeze(), value_span_pred.squeeze(),
-                                   title=parameter_Name, color=colorList[ii], label=labelList[ii])
+             Visual.plot_regression_dot(fig, axs, value_span_true.squeeze(), value_span_pred.squeeze(),
+                                    title=parameter_Name, color=colorList[ii], label=labelList[ii])
 
+        # if parameter_Name[1] == "MassFlow":
+        #     value_span_true = post_true.get_MassFlow()
+        #     value_span_pred = post_pred.get_MassFlow()
+        #
+        #
+        # else:
+        #     value_span_true = getattr(post_true, parameter_Name[1]) #shape[num, 64, 64]
+        #     value_span_true = post_true.span_density_average(value_span_true[:, :, -1]) # shape[num, 1]
+        #     value_span_pred = getattr(post_pred, parameter_Name[1])
+        #     value_span_pred = post_true.span_density_average(value_span_pred[:, :, -1])
+        #
+        # Visual.plot_regression_dot(fig, axs, value_span_true.squeeze(), value_span_pred.squeeze(),
+        #                            title=parameter_Name)
         if save_path is None:
             jpg_path = os.path.join(work_path, parameter_Name + "_error_" + str(fig_id) + '.jpg')
         # plt.locator_params(axis='x', nbins=4)

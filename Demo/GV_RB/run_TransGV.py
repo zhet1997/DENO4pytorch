@@ -9,8 +9,9 @@
 """
 import os
 import numpy as np
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import torch
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+torch.cuda.is_available()
 import torch.nn as nn
 from torch.utils.data import DataLoader
 # from torchinfo import summary
@@ -25,6 +26,9 @@ import sys
 import yaml
 from utilizes_rotor37 import get_grid, get_origin, get_origin_GVRB
 from post_process.post_data import Post_2d
+from post_process.load_model import loaddata, loaddata_Sql
+from post_process.load_model import loaddata, rebuild_model, get_true_pred, build_model_yml
+from model_whole_life import WorkPrj
 
 def feature_transform(x):
     """
@@ -123,8 +127,8 @@ if __name__ == "__main__":
 
         # name = 'Transformer_' + str(mode)
 
-        name = 'Transformer_2'
-        work_path = os.path.join('work_Trans_old1', name)
+        name = 'Transformer'
+        work_path = os.path.join('work_Trans5000_3', name)
         isCreated = os.path.exists(work_path)
         if not isCreated:
             os.makedirs(work_path)
@@ -138,11 +142,10 @@ if __name__ == "__main__":
             Device = torch.device('cpu')
 
 
-
         in_dim = 96
-        out_dim = 4
-        ntrain = 1500
-        nvalid = 500
+        out_dim = 8
+        ntrain = 4000
+        nvalid = 1000
 
         # modes = (12, 12)
         # width = 32
@@ -171,8 +174,11 @@ if __name__ == "__main__":
         ################################################################
         # load data
         ################################################################
-        design, fields = get_origin_GVRB()
-
+        # design, fields = get_origin_GVRB()
+        design, fields = get_origin_GVRB(quanlityList=["Static Pressure", "Static Temperature", "Density",
+                                                       "Vx", "Vy", "Vz",
+                                                       'Relative Total Temperature',
+                                                       'Absolute Total Temperature'])
         input = np.tile(design[:, None, None, :], (1, 128, 128, 1))
         input = torch.tensor(input, dtype=torch.float)
 
@@ -206,7 +212,7 @@ if __name__ == "__main__":
         ################################################################
         #  Neural Networks
         ################################################################
-        with open(os.path.join('transformer_config.yml')) as f:
+        with open(os.path.join('transformer_config_8.yml')) as f:
             config = yaml.full_load(f)
             config = config['GV_RB']
 
@@ -261,21 +267,52 @@ if __name__ == "__main__":
             if epoch % 100 == 0:
                 # print('epoch: {:6d}, lr: {:.3e}, eqs_loss: {:.3e}, bcs_loss: {:.3e}, cost: {:.2f}'.
                 #       format(epoch, learning_rate, log_loss[-1][0], log_loss[-1][1], time.time()-star_time))
-                train_source, train_coord, train_true, train_pred = inference(train_loader, Net_model, Device)
-                valid_source, valid_coord, valid_true, valid_pred = inference(valid_loader, Net_model, Device)
+                # train_source, train_coord, train_true, train_pred = inference(train_loader, Net_model, Device)
+                # valid_source, valid_coord, valid_true, valid_pred = inference(valid_loader, Net_model, Device)
 
                 torch.save({'log_loss': log_loss, 'net_model': Net_model.state_dict(), 'optimizer': Optimizer.state_dict()},
                            os.path.join(work_path, 'latest_model.pth'))
 
-                for fig_id in range(5):
-                    fig, axs = plt.subplots(out_dim, 3, figsize=(18, 25), num=2)
-                    Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], grid)
-                    fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
-                    plt.close(fig)
+                # for fig_id in range(5):
+                #     fig, axs = plt.subplots(out_dim, 3, figsize=(18, 25), num=2)
+                #     Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], grid)
+                #     fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
+                #     plt.close(fig)
+                #
+                # for fig_id in range(5):
+                #     fig, axs = plt.subplots(out_dim, 3, figsize=(18, 25), num=3)
+                #     Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], grid)
+                #     fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
+                #     plt.close(fig)
+                work = WorkPrj(os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_Trans5000_3",name))
+                # train_loader, valid_loader, _, _ = loaddata_Sql(name, **work.config("Basic"))
 
-                for fig_id in range(5):
-                    fig, axs = plt.subplots(out_dim, 3, figsize=(18, 25), num=3)
-                    Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], grid)
-                    fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
-                    plt.close(fig)
+                for type in ["valid", "train"]:
+                    if type == "valid":
+                        true, pred = get_true_pred(valid_loader, Net_model, inference, Device,
+                                                   name=name, iters=1, alldata=False)
+                    elif type == "train":
+                        true, pred = get_true_pred(train_loader, Net_model, inference, Device,
+                                                   name=name, iters=1, alldata=False)
 
+                    true = y_normalizer.back(true)
+                    pred = y_normalizer.back(pred)
+
+                    grid = get_grid(GV_RB=True, grid_num=128)
+
+                    quanlityList = ["Static Pressure", "Static Temperature", "Density",
+                                    "Vx", "Vy", "Vz",
+                                    'Relative Total Temperature',
+                                    'Absolute Total Temperature']
+
+
+                    Visual = MatplotlibVision(work_path, input_name=('x', 'y'), field_name=(
+                    "Static Pressure", "Static Temperature", "Density",
+                                                   "Vx", "Vy", "Vz",
+                                                   'Relative Total Temperature',
+                                                   'Absolute Total Temperature'))
+                    for fig_id in range(5):
+                        fig, axs = plt.subplots(8, 3, figsize=(30, 40), num=2)
+                        Visual.plot_fields_ms(fig, axs, true[fig_id], pred[fig_id], grid)
+                        fig.savefig(os.path.join(work_path, 'solution_' + type + "_" + str(fig_id) + '.jpg'))
+                        plt.close(fig)

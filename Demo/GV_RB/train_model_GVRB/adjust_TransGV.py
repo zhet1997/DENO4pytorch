@@ -41,7 +41,7 @@ if __name__ == "__main__":
     dict_model = {
                 'num_encoder_layers': [4],
                 # 'n_hidden': [128],
-                'dropout': [0.5],
+                # 'dropout': [0.5],
                 # 'encoder_dropout': [0.5],
                 # 'decoder_dropout': [0.5],
                 'n_head': [4,8],
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     model_list = work_construct_togethor(dict_model)
 
     for id, config_dict in enumerate(model_list[start_id:]):
-        work = WorkPrj(os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_Trans1", name + "_" + str(id)))
+        work = WorkPrj(os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_Trans3000_2", name + "_" + str(id)))
 
         # work = WorkPrj(os.path.join("..", "work_train_Trans4", name + "_" + str(id+ start_id)))
 

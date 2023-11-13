@@ -18,8 +18,8 @@ def get_grid(real_path=None, GV_RB=False, grid_num=128):
         xx = np.linspace(-0.127, 0.126, grid_num)
 
     if GV_RB:
-        hub_file = os.path.join('D:\WQN\CODE\DENO4pytorch-main\Demo\Rotor37_2d\data\hub_lower_GV.txt')
-        shroud_files = os.path.join('D:\WQN\CODE\DENO4pytorch-main\Demo\Rotor37_2d\data\shroud_upper_GV.txt')
+        hub_file = os.path.join('D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\hub_lower_GV.txt')
+        shroud_files = os.path.join('D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\shroud_upper_GV.txt')
         xx = np.linspace(-0.06, 0.12, grid_num)
 
     xx = np.tile(xx, [grid_num, 1])
@@ -215,9 +215,9 @@ def get_origin_GVRB(quanlityList=None,
         quanlityList = ["Static Pressure", "Static Temperature",
                         'Absolute Total Temperature',  "DensityFlow"]
     if realpath is None:
-        sample_files = [os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\sampleRstZip_2000_old")]
+        sample_files = [os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\sampleALL_5000")]
     else:
-        sample_files = [os.path.join( "D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\sampleRstZip_2000_old")]
+        sample_files = [os.path.join( "D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\sampleALL_5000")]
     if existcheck:
         sample_files_exists = []
         for file in sample_files:
@@ -301,13 +301,23 @@ def get_quanlity_from_GVRBmat(sample_files, quanlityList):
         design.append(reader.read_field('design'))
         output = np.zeros([design[ii].shape[0], 128, 128, len(quanlityList)])
         for jj, quanlity in enumerate(quanlityList):
-             if quanlity == "DensityFlow":  # 设置一个需要计算获得的数据
-                 Vm = np.sqrt(np.power(reader.read_field("Vxyz_X"), 2) + np.power(reader.read_field("Vxyz_Y"), 2))
-                 output[:, :, :, jj] = (reader.read_field("Density") * Vm).copy()
+             if quanlity == "Static Pressure":  # 设置一个需要计算获得的数据
+                 output[:, :, :, jj] = (reader.read_field("Static Pressure")).copy()
              elif quanlity == "Static Temperature":  # 设置一个需要计算获得的数据
                  output[:, :, :, jj] = (reader.read_field("Static Temperature")) .copy()
-             elif quanlity == "Static Pressure":  # 设置一个需要计算获得的数据
-                 output[:, :, :, jj] = (reader.read_field("Static Pressure")).copy()
+             # elif quanlity == "DensityFlow":  # 设置一个需要计算获得的数据
+             #     Vm = np.sqrt(np.power(reader.read_field("Vx"), 2) + np.power(reader.read_field("Vy"), 2))
+             #     output[:, :, :, jj] = (reader.read_field("Density") * Vm).copy()
+             elif quanlity == "Density":  # 设置一个需要计算获得的数据
+                 output[:, :, :, jj] = (reader.read_field("Density")).copy()
+             elif quanlity == "Vx":  # 设置一个需要计算获得的数据
+                 output[:, :, :, jj] = (reader.read_field("Vx")).copy()
+             elif quanlity == "Vy":  # 设置一个需要计算获得的数据
+                 output[:, :, :, jj] = (reader.read_field("Vy")).copy()
+             elif quanlity == "Vz":  # 设置一个需要计算获得的数据
+                 output[:, :, :, jj] = (reader.read_field("Vz")).copy()
+             elif quanlity == "Relative Total Temperature":  # 设置一个需要计算获得的数据
+                 output[:, :, :, jj] = (reader.read_field("Relative Total Temperature")).copy()
              elif quanlity == "Absolute Total Temperature":  # 设置一个需要计算获得的数据
                  output[:, :, :, jj] = (reader.read_field("Absolute Total Temperature")).copy()
              else:

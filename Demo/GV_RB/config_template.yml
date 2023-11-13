@@ -1,5 +1,6 @@
 Transformer_config:
-  node_feats: 92
+
+  node_feats: 96
   pos_dim: 2
   n_targets: 4
   n_hidden: 64

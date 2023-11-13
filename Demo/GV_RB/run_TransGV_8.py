@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 # @Copyright (c) 2022 Baidu.com, Inc. All Rights Reserved
@@ -9,8 +8,8 @@
 # @File    : run_Trans.py
 """
 import os
-import numpy as np
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -24,7 +23,7 @@ import time
 
 import sys
 import yaml
-from run_MLP import get_grid, get_origin
+from utilizes_rotor37 import get_grid, get_origin, get_origin_GVRB
 from post_process.post_data import Post_2d
 
 def feature_transform(x):
@@ -61,7 +60,8 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
         yy = yy.to(device)
         grid, edge = feature_transform(xx)
 
-        pred = netmodel(xx, grid, edge, grid)['preds']
+        # pred = netmodel(xx, grid, edge, grid)['preds']
+        pred = netmodel(xx, grid, edge, grid)
         loss = lossfunc(pred, yy)
 
         optimizer.zero_grad()
@@ -88,7 +88,8 @@ def valid(dataloader, netmodel, device, lossfunc):
             yy = yy.to(device)
             grid, edge = feature_transform(xx)
 
-            pred = netmodel(xx, grid, edge, grid)['preds']
+            # pred = netmodel(xx, grid, edge, grid)['preds']
+            pred = netmodel(xx, grid, edge, grid)
             loss = lossfunc(pred, yy)
             valid_loss += loss.item()
 
@@ -107,7 +108,8 @@ def inference(dataloader, netmodel, device):
         xx, yy = next(iter(dataloader))
         xx = xx.to(device)
         grid, edge = feature_transform(xx)
-        pred = netmodel(xx, grid, edge, grid)['preds']
+        # pred = netmodel(xx, grid, edge, grid)['preds']
+        pred = netmodel(xx, grid, edge, grid)
 
     # equation = model.equation(u_var, y_var, out_pred)
     return xx.cpu().numpy(), grid.cpu().numpy(), yy.numpy(), pred.cpu().numpy()
@@ -117,12 +119,12 @@ if __name__ == "__main__":
     ################################################################
     # configs
     ################################################################
-    for mode in [8,10,12,14,16]:
+    # for mode in [8,10,12,14,16]:
 
-        name = 'Transformer_' + str(mode)
+        # name = 'Transformer_' + str(mode)
 
-        # name = 'Transformer'
-        work_path = os.path.join('work', name)
+        name = 'Transformer_test'
+        work_path = os.path.join('work_Trans5000_1', name)
         isCreated = os.path.exists(work_path)
         if not isCreated:
             os.makedirs(work_path)
@@ -135,12 +137,11 @@ if __name__ == "__main__":
         else:
             Device = torch.device('cpu')
 
-        design, fields = get_origin()
 
-        in_dim = 28
-        out_dim = 5
-        ntrain = 2700
-        nvalid = 200
+        in_dim = 96
+        out_dim = 8
+        ntrain = 4000
+        nvalid = 1000
 
         # modes = (12, 12)
         # width = 32
@@ -149,7 +150,7 @@ if __name__ == "__main__":
         # padding = 9
         # dropout = 0.0
 
-        batch_size = 32
+        batch_size = 2
         epochs = 1001
         learning_rate = 0.001
         scheduler_step = 800
@@ -157,21 +158,24 @@ if __name__ == "__main__":
 
         print(epochs, learning_rate, scheduler_step, scheduler_gamma)
 
-        #这部分应该是重采样
-        #不进行稀疏采样
-        r_train = 1
-        h_train = int(((64 - 1) / r_train) + 1)
-        s_train = h_train
-
-        r_valid = 1
-        h_valid = int(((64 - 1) / r_valid) + 1)
-        s_valid = h_valid
+        #不进行重采样
+        # r_train = 1
+        # h_train = int(((64 - 1) / r_train) + 1)
+        # s_train = h_train
+        #
+        # r_valid = 1
+        # h_valid = int(((64 - 1) / r_valid) + 1)
+        # s_valid = h_valid
 
         ################################################################
         # load data
         ################################################################
+        design, fields = get_origin_GVRB(quanlityList = ["Static Pressure", "Static Temperature", "Density",
+                        "Vx", "Vy", "Vz",
+                        'Relative Total Temperature',
+                        'Absolute Total Temperature'])
 
-        input = np.tile(design[:, None, None, :], (1, 64, 64, 1))
+        input = np.tile(design[:, None, None, :], (1, 128, 128, 1))
         input = torch.tensor(input, dtype=torch.float)
 
         # output = fields[:, 0, :, :, :].transpose((0, 2, 3, 1))
@@ -193,6 +197,9 @@ if __name__ == "__main__":
         train_y = y_normalizer.norm(train_y)
         valid_y = y_normalizer.norm(valid_y)
 
+        x_normalizer.save(os.path.join(work_path, 'x_norm.pkl'))  # 将normalizer保存下来
+        y_normalizer.save(os.path.join(work_path, 'y_norm.pkl'))
+
         train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_y),
                                                    batch_size=batch_size, shuffle=True, drop_last=True)
         valid_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(valid_x, valid_y),
@@ -201,14 +208,14 @@ if __name__ == "__main__":
         ################################################################
         #  Neural Networks
         ################################################################
-        with open(os.path.join('transformer_config.yml')) as f:
+        with open(os.path.join('transformer_config_8.yml')) as f:
             config = yaml.full_load(f)
-            config = config['Rotor37_2d']
+            config = config['GV_RB']
 
-        config['fourier_modes'] = mode
+        # config['fourier_modes'] = mode
 
         # 建立网络
-        Net_model = FourierTransformer2D(**config).to(Device)
+        Net_model = FourierTransformer(**config).to(Device)
         # summary(Net_model, input_size=(batch_size, train_x.shape[1]), device=Device)
 
         # 损失函数
@@ -216,9 +223,10 @@ if __name__ == "__main__":
         # Loss_func = nn.SmoothL1Loss()
         # 优化算法
         Optimizer = torch.optim.Adam(Net_model.parameters(), lr=learning_rate, betas=(0.7, 0.9), weight_decay=1e-4)
-
+        # 下降策略
+        Scheduler = torch.optim.lr_scheduler.StepLR(Optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
         # 可视化
-        Visual = MatplotlibVision(work_path, input_name=('x', 'y'), field_name=('p', 't', 'rho', 'alf', 'v'))
+        Visual = MatplotlibVision(work_path, input_name=('x', 'y'), field_name=('p', 't', 'rho', 'alf'))
 
         star_time = time.time()
         log_loss = [[], []]
@@ -226,11 +234,12 @@ if __name__ == "__main__":
         ################################################################
         # train process
         ################################################################
-        grid = get_grid()
+        grid = get_grid(GV_RB=True, grid_num=128)
         for epoch in range(epochs):
 
             Net_model.train()
             log_loss[0].append(train(train_loader, Net_model, Device, Loss_func, Optimizer, Scheduler))
+            # log_loss[0].append(train(train_loader, Net_model, Device, Loss_func, Optimizer))
 
             Net_model.eval()
             log_loss[1].append(valid(valid_loader, Net_model, Device, Loss_func))
