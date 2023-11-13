@@ -4,8 +4,8 @@ import os
 from Utilizes.visual_data import MatplotlibVision
 from train_model.model_whole_life import WorkPrj
 import torch
-from utilizes_draw import plot_span_curve_marker, plot_error_new
-from utilizes_rotor37 import get_grid, get_origin
+from utilizes_draw import plot_error_new
+from Demo.GVRB_2d.utilizes_GVRB import get_grid
 from post_process.load_model import loaddata, rebuild_model, build_model_yml,get_true_pred
 from Utilizes.process_data import DataNormer
 # from draw_figure_pred import predicter

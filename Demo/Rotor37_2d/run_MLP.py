@@ -10,14 +10,14 @@ import numpy as np
 import torch
 import torch.nn as nn
 from Utilizes.visual_data import MatplotlibVision
-from Utilizes.process_data import DataNormer, MatLoader
+from Utilizes.process_data import DataNormer
 from collections import OrderedDict
-from torchsummary import summary
+# from torchsummary import summary
 import matplotlib.pyplot as plt
 import time
 import os
-from utilizes_rotor37 import get_grid, get_origin
-from post_process.post_data import Post_2d
+from Demo.GVRB_2d.utilizes_GVRB import get_grid, get_origin
+
 
 class MLP(nn.Module):
     def __init__(self, layers=None, is_BatchNorm=True,

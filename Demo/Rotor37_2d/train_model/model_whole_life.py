@@ -1,17 +1,13 @@
 import os
 import torch
 import numpy as np
-from post_process.post_data import Post_2d
-from run_FNO import feature_transform
-from Demo.Rotor37_2d.utilizes_rotor37 import get_grid
-from utilizes_rotor37 import Rotor37WeightLoss
+from Demo.GVRB_2d.utilizes_GVRB import Rotor37WeightLoss
 from post_process.load_model import build_model_yml, loaddata
 from post_process.model_predict import DLModelPost
 from Utilizes.visual_data import MatplotlibVision
 import matplotlib.pyplot as plt
 import yaml
 import time
-from torchsummary import summary
 
 
 def change_yml(name, yml_path=None, **kwargs):
@@ -64,6 +60,7 @@ class WorkPrj(object):
         self.yml= os.path.join(self.root, 'config.yml')
         self.x_norm = os.path.join(self.root, 'x_norm.pkl')
         self.y_norm = os.path.join(self.root, 'y_norm.pkl')
+        self.g_norm = os.path.join(self.root, 'g_norm.pkl')
 
     def config(self, name):
         with open(self.yml) as f:

@@ -1,16 +1,9 @@
 import os
 
 import numpy as np
-import torch
-from post_process.load_model import loaddata, rebuild_model, build_model_yml
-from Utilizes.process_data import DataNormer, MatLoader, SquareMeshGenerator
-from Demo.Rotor37_2d.utilizes_rotor37 import get_grid, get_origin
-from draw_figure import plot_span_std, plot_span_curve, plot_field_2d, plot_flow_curve
-from Utilizes.visual_data import MatplotlibVision
-import matplotlib.pyplot as plt
+from Demo.GVRB_2d.utilizes_GVRB import get_grid, get_origin
+from draw_figure import plot_flow_curve
 from post_process.post_data import Post_2d
-from train_model.model_whole_life import WorkPrj
-from run_FNO import feature_transform
 
 if __name__ == "__main__":
     # 数据读入

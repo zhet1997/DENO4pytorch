@@ -2,11 +2,10 @@ import torch
 import os
 import numpy as np
 from torch.utils.data import DataLoader
-from post_process.post_data import Post_2d
-from Demo.Rotor37_2d.utilizes_rotor37 import get_grid, get_origin
+from Demo.GVRB_2d.utilizes_GVRB import get_grid, get_origin
 from Utilizes.process_data import DataNormer
 import yaml
-from utilizes_rotor37 import get_gemodata_from_mat,get_origin_gemo
+# from Demo.GVRB_2d.utilizes_GVRB import get_origin
 
 def get_noise(shape, scale):
     random_array = np.random.randn(np.prod(shape)) #  randn生成的是标准正态分布
@@ -22,7 +21,7 @@ def loaddata_Sql(name,
              noise_scale=None,
              batch_size=32):
 
-    design, fields = get_origin_gemo(realpath=os.path.join("..", "data"),shuffled=shuffled) # 获取原始数据
+    design, fields = get_origin(realpath=os.path.join("..", "data"),shuffled=shuffled) # 获取原始数据
     if name in ("FNO", "FNM", "UNet", "Transformer"):
         input = np.tile(design[:, None, None, :], (1, 64, 64, 1))
         r1 = 10
@@ -193,7 +192,7 @@ def rebuild_model(work_path, Device, in_dim=28, out_dim=5, name=None, mode=10):
                                   planes_branch=[64] * 3, planes_trunk=[64] * 3).to(Device)
     elif 'FNO' in name:
         from fno.FNOs import FNO2d
-        from run_FNO import inference
+        from Demo.GVRB_2d.run_FNO import inference
         Net_model = FNO2d(in_dim=in_dim, out_dim=out_dim, modes=mode, width=64, depth=4, steps=1,
                           padding=8, activation='gelu').to(Device)
     elif 'UNet' in name:
@@ -204,7 +203,7 @@ def rebuild_model(work_path, Device, in_dim=28, out_dim=5, name=None, mode=10):
     elif 'Transformer' in name:
         from basic.basic_layers import FcnSingle
         from fno.FNOs import FNO2d
-        from transformer.Transformers import SimpleTransformer, FourierTransformer
+        from transformer.Transformers import FourierTransformer
         from run_Trans import inference, predictor
 
         # with open(os.path.join('transformer_config.yml')) as f:
@@ -253,7 +252,7 @@ def import_model_by_name(name):
         model_func = DeepONetMulti
     elif 'FNO' in name:
         from fno.FNOs import FNO2d
-        from run_FNO import inference, train, valid
+        from Demo.GVRB_2d.run_FNO import inference, train, valid
         model_func = FNO2d
     elif 'FNM' in name:
         from fno.FNOs import FNO2dMultChannel
