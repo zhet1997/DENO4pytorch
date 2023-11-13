@@ -11,7 +11,7 @@ if __name__ == "__main__":
     name = 'Transformer'
     input_dim = 96
     output_dim = 4
-    work_path = os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_Trans_old1")
+    work_path = os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_Trans5000_2")
     workList = os.listdir(work_path)
     folder_template = 'Transformer_{}'
     for i in [0]:
@@ -41,7 +41,7 @@ if __name__ == "__main__":
         # with open('D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_FNO1\FNO_2\config.yml') as f:
 
         # with open('D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_MLP1\MLP_0\config.yml') as f:
-        with open(r"D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\transformer_config.yml") as f:
+        with open(r"D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\transformer_config_8.yml") as f:
             config = yaml.full_load(f)
             config = config['GV_RB']
             # config['modes'] = 4
@@ -61,13 +61,13 @@ if __name__ == "__main__":
         Net_model = FourierTransformer(**config).to(Device)
         Net_model = Net_model.to(Device)
 
-        work_pth = 'D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_Trans_old1\Transformer\latest_model.pth'
+        work_pth = 'D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_Trans5000_2\Transformer\latest_model.pth'
         isExist = os.path.exists(work_pth)
         if isExist:
             checkpoint = torch.load(work_pth, map_location=Device)
             Net_model.load_state_dict(checkpoint['net_model'])
 
-
+        Net_model.eval()
         train_loader, valid_loader, _, _ = loaddata_Sql(name, **work.config("Basic"))
 
         for type in ["valid","train"]:
@@ -84,8 +84,10 @@ if __name__ == "__main__":
             grid = get_grid(GV_RB=True, grid_num=128)
 
             parameterList = [
-                "Static Pressure", "Static Temperature",
-                "Absolute Total Temperature", "DensityFlow"]
+                "Static Pressure", "Static Temperature", "Density",
+                                                       "Vx", "Vy", "Vz",
+                                                       'Relative Total Temperature',
+                                                       'Absolute Total Temperature']
 
 
 
@@ -104,7 +106,7 @@ if __name__ == "__main__":
             # valid_coord, valid_true, valid_pred = inference(valid_loader, Net_model, Device)
             Visual = MatplotlibVision(work_load_path, input_name=('x', 'y'), field_name=('Static Pressure', 'Static Temperature','Absolute Total Temperature', 'DensityFlow'))
             for fig_id in range(5):
-                fig, axs = plt.subplots(4, 3, figsize=(30, 40), num=2)
+                fig, axs = plt.subplots(8, 3, figsize=(30, 40), num=2)
                 Visual.plot_fields_ms(fig, axs, true[fig_id], pred[fig_id], grid)
                 fig.savefig(os.path.join(work_load_path, 'solution_' + type + "_" + str(fig_id) + '.jpg'))
                 plt.close(fig)

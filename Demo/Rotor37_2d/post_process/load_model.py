@@ -16,14 +16,18 @@ def get_noise(shape, scale):
     return random_array * scale
 
 def loaddata_Sql(name,
-             ntrain=1500,
-             nvalid=500,
+             ntrain=4000,
+             nvalid=1000,
              shuffled=False,
              noise_scale=None,
              batch_size=32):
 
     # design, fields = get_origin_gemo(realpath=os.path.join("..", "data"),shuffled=shuffled) # 获取原始数据
-    design, fields = get_origin_GVRB()
+    # design, fields = get_origin_GVRB()
+    design, fields = get_origin_GVRB(quanlityList=["Static Pressure", "Static Temperature", "Density",
+                                                   "Vx", "Vy", "Vz",
+                                                   'Relative Total Temperature',
+                                                   'Absolute Total Temperature'])
     if name in ("FNO", "FNM", "UNet", "Transformer"):
         # input = np.tile(design[:, None, None, :], (1, 128, 128, 1))
         # r1 = 10
@@ -42,8 +46,12 @@ def loaddata_Sql(name,
 
     train_x = input[:ntrain, :]
     train_y = output[:ntrain, :]
-    valid_x = input[-nvalid:, :]
-    valid_y = output[-nvalid:, :]
+
+    valid_x = input[ntrain:ntrain + nvalid, :, :]
+    valid_y = output[ntrain:ntrain + nvalid, :, :]
+
+    # valid_x = input[-nvalid:, :]
+    # valid_y = output[-nvalid:, :]
 
     x_normalizer = DataNormer(train_x, method='mean-std')
     train_x = x_normalizer.norm(train_x)
@@ -279,7 +287,7 @@ def build_model_yml(yml_path, device, name=None):
 
 
 def get_true_pred(loader, Net_model, inference, Device,
-                  name=None, out_dim=4, iters=0, alldata=False):
+                  name=None, out_dim=8, iters=0, alldata=False):
     true_list = []
     pred_list = []
     set_size_sub  = 32

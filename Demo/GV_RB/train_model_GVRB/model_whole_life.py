@@ -16,7 +16,7 @@ import time
 
 def change_yml(name, yml_path=None, **kwargs):
     # 加载config模板
-    template_path = os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\Rotor37_2d\data\config_template.yml")
+    template_path = os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\config_template.yml")
     with open(template_path, 'r', encoding="utf-8") as f:
         config_all = yaml.full_load(f)
         config_para = config_all[name + '_config']
@@ -40,7 +40,7 @@ def change_yml(name, yml_path=None, **kwargs):
         yaml.dump(data, f)
 
 def add_yml(key_set_list, yml_path=None):
-    template_path = os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\Rotor37_2d\data\config_template.yml")
+    template_path = os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\config_template.yml")
     with open(template_path, 'r', encoding="utf-8") as f:
     # 加载config模板
         config_all = yaml.full_load(f)

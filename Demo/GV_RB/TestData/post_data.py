@@ -9,11 +9,19 @@ class Post_2d(object):
 
         if inputDict is None:
             self.inputDict = {
-                # "PressureStatic": 0,
-                # "TemperatureStatic": 1,
-                "V2": 0,
-                "W2": 1,
-                "DensityFlow": 2,
+            #     # "PressureStatic": 0,
+            #     # "TemperatureStatic": 1,
+            #     "V2": 0,
+            #     "W2": 1,
+            #     "DensityFlow": 2,
+                'Static Pressure': 0,
+                             'Absolute Total Pressure': 1,
+                             'Static Temperature': 2,
+                             'Absolute Total Temperature': 3,
+                             'Vx': 4,
+                             'Vy': 5,
+                             'Vz': 6,
+                             'Density': 7,
             }
         else:
             self.inputDict = inputDict
@@ -72,7 +80,7 @@ class Post_2d(object):
         self._MachIsentropic = None
         self._Load = None
         self._LoadR = None
-        self._IS
+        self._IsentropicE = None
 
     def set_basic_const(self,
                         kappa = 1.400,
@@ -93,26 +101,7 @@ class Post_2d(object):
             # 如果不设置，就对全局进行计算
             shape_index = [np.arange(self.n_1d),np.arange(self.n_2d)]
 
-    def input_check(self):
-        gridshape = self.grid.shape
-        datashape = self.data_2d.shape
 
-        if len(gridshape) != 3 or gridshape[2] != 2:
-            print("invalid grid input!")
-        if len(gridshape) != 3 and len(gridshape):
-            print("invalid data input!")
-        if len(datashape) == 3:
-            self.data_2d = self.data_2d[None, :, :, :]
-            datashape = self.data_2d.shape
-            print("one sample input!")
-        if len(datashape) == 4:
-            self.num = datashape[0]
-            print(str(self.num) + " samples input!")
-        if gridshape[:2] != datashape[1:3]:
-            print("dismatch data & grid input!")
-
-        self.n_1d = self.data_2d.shape[1]
-        self.n_2d = self.data_2d.shape[2]
 
     def field_density_average(self, parameter_Name, shape_index=None, location="outlet"):
         data = getattr(self, parameter_Name) # 整个二维空间的取值
@@ -548,6 +537,24 @@ class Post_2d(object):
             return rst
         else:
             return self._Efficiency
+
+    def IsentropicE(self):
+        if self._IsentropicE is None:
+            temp1 = np.abs(np.power(self.inputDict["Absolute total temperature"], (self.kappa - 1) / self.kappa) - 1)
+            temp2 = np.abs(self.TemperatureRatioV - 1)
+            delta = 1e-3
+            idx1 = temp1 < delta
+            temp1[idx1] = delta
+            idx2 = temp2 < delta
+            temp2[idx2] = delta
+
+            rst = temp1/temp2
+
+            self._Efficiency = rst
+            return rst
+        else:
+            return self._Efficiency
+
 
     def get_EfficiencyPoly(self):
         if self._EfficiencyPoly is None:

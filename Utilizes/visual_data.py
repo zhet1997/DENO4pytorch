@@ -405,12 +405,14 @@ class MatplotlibVision(object):
 
         # plt.ylim((min_value, max_value))
         axs.set_xlim((min_value, max_value))
+        axs.set_ylim((min_value, max_value))
         axs.grid(True)  # 添加网格
         axs.set_xlabel(xylabels[0], fontdict=self.font)
         axs.set_ylabel(xylabels[1], fontdict=self.font)
         axs.tick_params('both', labelsize=self.font["size"], )
         axs.set_title(title, fontdict=self.font)
         axs.legend(['真实-预测', 'y=x', '±{:.2f}%'.format(error_ratio*100)], prop=self.font)
+
 
         # plt.ylim((-0.2, 0.2))
         # plt.pause(0.001)

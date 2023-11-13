@@ -125,7 +125,7 @@ if __name__ == "__main__":
     for mode in [8]:
 
         name = 'FNO_' + str(mode)
-        work_path = os.path.join('work_FNO2', name)
+        work_path = os.path.join('work_FNO3000_1', name)
         isCreated = os.path.exists(work_path)
         if not isCreated:
             os.makedirs(work_path)
@@ -146,10 +146,10 @@ if __name__ == "__main__":
         #                                           ])  # 获取原始数据
         design, fields = get_origin_GVRB()
 
-        in_dim = 92
+        in_dim = 96
         out_dim = 4
-        ntrain = 1800
-        nvalid = 200
+        ntrain = 4600
+        nvalid = 400
 
         # modes = (10, 10)
         modes = (4, 4)
