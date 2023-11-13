@@ -20,7 +20,7 @@ import torch.fft as fft
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 from torch.nn.init import xavier_uniform_, constant_, xavier_normal_
-from torchinfo import summary
+# from torchinfo import summary
 
 from collections import defaultdict
 from functools import partial
@@ -611,7 +611,7 @@ class SimpleTransformer(nn.Module):
         self._initialize()
         self.__name__ = self.attention_type.capitalize() + 'Transformer'
 
-    def forward(self, node, pos, edge=None, grid=None, weight=None, return_weight=False):
+    def forward(self, node, pos=None, edge=None, grid=None, weight=None, return_weight=False):
         '''
         seq_len: n, number of grid points
         node_feats: number of features of the inputs
@@ -627,6 +627,19 @@ class SimpleTransformer(nn.Module):
         for classic Transformer: pos_dim = n_hidden = 512
         pos encodings is added to the latent representation
         '''
+        if pos is None:
+            pos = node
+            # pos = gen_uniform_grid(node)
+
+        if edge is None:
+            edge = torch.ones((node.shape[0], 1))
+
+        if grid is None:
+            grid = pos
+
+        # bsz = node.size(0)
+        # n_s = int(pos.size(1))
+
         x_latent = []
         attn_weights = []
 
@@ -789,7 +802,7 @@ class SimpleTransformer(nn.Module):
         """
         get_regressor
         """
-        torch.max()
+        # torch.max() #??? what's this?
         if self.decoder_type == 'pointwise':
             self.regressor = PointwiseRegressor(in_dim=self.n_hidden,
                                                 n_hidden=self.n_hidden,
@@ -872,6 +885,8 @@ class FourierTransformer(nn.Module):
 
         bsz = node.size(0)
         n_s = int(pos.size(1))
+        n_s_1 = int(pos.size(1))
+        n_s_2 = int(pos.size(2))
         x_latent = []
         attn_weights = []
 
@@ -902,7 +917,7 @@ class FourierTransformer(nn.Module):
         if self.spacial_dim == 3:
             x = x.view(bsz, n_s, n_s, n_s, self.n_hidden)
         elif self.spacial_dim == 2:
-            x = x.view(bsz, n_s, n_s, self.n_hidden)
+            x = x.view(bsz, n_s_1, n_s_2, self.n_hidden)
         else:
             x = x.view(bsz, n_s, self.n_hidden)
         x = self.upscaler(x)
@@ -1158,10 +1173,10 @@ if __name__ == '__main__':
         ft = SimpleTransformer(**config)
         ft.to(device)
         batch_size, seq_len = 8, 512
-        summary(ft, input_size=[(batch_size, seq_len, 1),
-                                (batch_size, seq_len, seq_len, 5),
-                                (batch_size, seq_len, 1),
-                                (batch_size, seq_len, 1)], device=device)
+        # summary(ft, input_size=[(batch_size, seq_len, 1),
+        #                         (batch_size, seq_len, seq_len, 5),
+        #                         (batch_size, seq_len, 1),
+        #                         (batch_size, seq_len, 1)], device=device)
 
     # layer = TransformerEncoderLayer(d_model=128, nhead=4)
     # print(layer.__class__)

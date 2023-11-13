@@ -155,7 +155,7 @@ class FNO2d(nn.Module):
             grid = self.feature_transform(x)
         x = torch.cat((x, grid), dim=-1)
         x = self.fc0(x)
-        x = x.permute(0, 3, 1, 2)
+        x = x.permute(0, 3, 1, 2) #把代表了坐标的两个维度挪到了后面
 
         if self.padding != 0:
             x = F.pad(x, [0, self.padding, 0, self.padding])  # pad the domain if input is non-periodic
@@ -165,7 +165,7 @@ class FNO2d(nn.Module):
 
         if self.padding != 0:
             x = x[..., :-self.padding, :-self.padding]
-        x = x.permute(0, 2, 3, 1)  # pad the domain if input is non-periodic
+        x = x.permute(0, 2, 3, 1)  # pad the domain if input is non-periodic # 恢复原样
         x = self.fc1(x)
         x = F.gelu(x)
         x = self.fc2(x)

@@ -1,13 +1,10 @@
 import numpy as np
 import os
-import torch
 from Utilizes.visual_data import MatplotlibVision
-from Utilizes.process_data import DataNormer, MatLoader
+from Utilizes.process_data import DataNormer
 import matplotlib.pyplot as plt
 from post_process.post_data import Post_2d
-from Demo.Rotor37_2d.utilizes_rotor37 import get_grid, get_origin
-from post_process.load_model import loaddata, rebuild_model, get_true_pred, build_model_yml
-from train_model.model_whole_life import WorkPrj
+from Demo.GVRB_2d.utilizes_GVRB import get_grid, get_origin
 from Utilizes.loss_metrics import FieldsLpLoss
 from scipy.interpolate import splrep, splev
 

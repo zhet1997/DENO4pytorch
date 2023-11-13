@@ -2,8 +2,8 @@ import torch
 import os
 import numpy as np
 from post_process.post_data import Post_2d
-from run_FNO import feature_transform
-from Demo.Rotor37_2d.utilizes_rotor37 import get_grid
+from Demo.Rotor37_2d.run_FNO import feature_transform
+from Demo.GVRB_2d.utilizes_GVRB import get_grid
 
 
 class DLModelPost(object):

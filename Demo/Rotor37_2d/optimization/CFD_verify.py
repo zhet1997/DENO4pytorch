@@ -1,9 +1,8 @@
 # 将优化预测结果与CFD验证结果对比
 import os
 import numpy as np
-import yaml
 import torch
-from utilizes_rotor37 import get_quanlity_from_mat, get_grid, get_origin
+from Demo.GVRB_2d.utilizes_GVRB import get_quanlity_from_mat, get_grid, get_origin
 from post_process.post_data import Post_2d
 from train_model.model_whole_life import WorkPrj
 from Utilizes.process_data import DataNormer

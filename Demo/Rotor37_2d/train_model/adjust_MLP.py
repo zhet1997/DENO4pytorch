@@ -4,15 +4,7 @@ import torch
 torch.cuda.set_device(0)
 # print(torch.cuda.device_count())
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-from post_process.post_data import Post_2d
-from run_FNO import feature_transform
-from Demo.Rotor37_2d.utilizes_rotor37 import get_grid
-from post_process.load_model import build_model_yml, loaddata
-from post_process.model_predict import DLModelPost
-from Utilizes.visual_data import MatplotlibVision
-import matplotlib.pyplot as plt
-import yaml
-import time
+from post_process.load_model import loaddata
 from model_whole_life import WorkPrj, DLModelWhole, change_yml, add_yml
 
 def work_construct(para_list_dict):

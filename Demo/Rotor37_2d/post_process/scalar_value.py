@@ -1,7 +1,7 @@
 # 获取所有样本8个参数的估计值
 import numpy as np
 import os
-from Demo.Rotor37_2d.utilizes_rotor37 import get_grid, get_origin
+from Demo.GVRB_2d.utilizes_GVRB import get_grid, get_origin
 from post_process.post_data import Post_2d
 
 
