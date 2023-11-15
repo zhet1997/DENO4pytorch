@@ -21,48 +21,42 @@ class TransBasedNeuralOperator(nn.Module):
 
     def __init__(self, 
                  in_dim=None,
-<<<<<<< HEAD
-                 out_dim=None
-                 ):
-
-        super(TransBasedNeuralOperator, self).__init__()
-        yml_path = find_file_in_directory(os.path.join('..'), 'transformer_config_gvrb.yml')
-=======
                  out_dim=None,
                  n_hidden_b=64,
                  num_layers_b=2,
                  n_hidden_s=64,
-                 num_layers_s=1,
+                 num_layers_s=0,
                  yml_path=None,
                  ):
 
         super(TransBasedNeuralOperator, self).__init__()
         if yml_path is None:
             yml_path = find_file_in_directory(os.path.join('..'), 'transformer_config_gvrb.yml')
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
         with open(yml_path) as f:
             config = yaml.full_load(f)
             config = config['GVRB_2d']
 
         # 建立网络
         Tra_model = FourierTransformer(**config)
-<<<<<<< HEAD
         # MLP_model = FcnSingle(planes=(in_dim, 128, 128, 128, config['n_targets']), last_activation=True)
         MLP_model = FcnSingle(planes=(in_dim, 64, 64, config['n_targets']), last_activation=True)
 
         self.branch_net = MLP_model
         self.trunc_net = Tra_model
         self.field_net = nn.Linear(self.branch_net.planes[-1], out_dim)
-=======
         hidden_b = [int(n_hidden_b)] * int(num_layers_b)
-        hidden_s = [int(n_hidden_s)] * int(num_layers_s)
         MLP_model = FcnSingle(planes=(in_dim, *hidden_b, config['n_targets']), last_activation=True)
-        Share_model = FcnSingle(planes=(config['n_targets'], *hidden_s, out_dim), last_activation=True)
+
+        if num_layers_s>0:
+            hidden_s = [int(n_hidden_s)] * int(num_layers_s)
+            Share_model = FcnSingle(planes=(config['n_targets'], *hidden_s, out_dim), last_activation=True)
+        else:
+            nn.Linear(self.branch_net.planes[-1], out_dim)
 
         self.branch_net = MLP_model
         self.trunc_net = Tra_model
         self.field_net = Share_model
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
+
 
         
     def forward(self, design, coords):
@@ -99,12 +93,9 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
         optimizer: optimizer
         scheduler: scheduler
     """
-<<<<<<< HEAD
-    grid = gen_uniform_grid(torch.tensor(np.zeros([1, 64, 128, 8])))
-=======
+
     _, bb = next(iter(dataloader))
     grid = gen_uniform_grid(torch.tensor(np.zeros([1, bb.shape[1], bb.shape[2], bb.shape[3]])))
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
     train_loss = 0
     for batch, (xx, yy) in enumerate(dataloader):
         xx = xx.to(device)
@@ -114,11 +105,8 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
         pred = netmodel(xx, coords)
         loss = lossfunc(pred, yy)
 
-<<<<<<< HEAD
-        optimizer.clear_grad()
-=======
+
         optimizer.zero_grad()
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
         loss.backward()
         optimizer.step()
 
@@ -135,12 +123,9 @@ def valid(dataloader, netmodel, device, lossfunc):
         model: Network
         lossfunc: Loss function
     """
-<<<<<<< HEAD
-    grid = gen_uniform_grid(torch.tensor(np.zeros([1, 64, 128, 8])))
-=======
+
     _, bb = next(iter(dataloader))
     grid = gen_uniform_grid(torch.tensor(np.zeros([1, bb.shape[1], bb.shape[2], bb.shape[3]])))
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
     valid_loss = 0
     with torch.no_grad():
         for batch, (xx, yy) in enumerate(dataloader):
@@ -162,12 +147,9 @@ def inference(dataloader, netmodel, device):
     Returns:
         out_pred: predicted fields
     """
-<<<<<<< HEAD
-    grid = gen_uniform_grid(torch.tensor(np.zeros([1, 64, 128, 8])))
-=======
+
     _, bb = next(iter(dataloader))
     grid = gen_uniform_grid(torch.tensor(np.zeros([1, bb.shape[1], bb.shape[2], bb.shape[3]])))
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
     with torch.no_grad():
         xx, yy = next(iter(dataloader))
         xx = xx.to(device)

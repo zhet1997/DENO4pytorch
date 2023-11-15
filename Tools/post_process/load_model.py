@@ -5,12 +5,10 @@ from torch.utils.data import DataLoader
 from Demo.Rotor37_2d.utilizes_rotor37 import get_grid, get_origin
 from Utilizes.process_data import DataNormer
 import yaml
-<<<<<<< HEAD
 # from utilizes_rotor37 import get_origin_GVRB
 from Demo.GVRB_2d.utilizes_GVRB import get_grid, get_origin
-=======
-from utilizes_rotor37 import get_origin_GVRB
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
+
+
 
 def get_noise(shape, scale):
     random_array = np.random.randn(np.prod(shape)) #  randn生成的是标准正态分布
@@ -20,7 +18,6 @@ def get_noise(shape, scale):
     return random_array * scale
 
 def loaddata_Sql(name,
-<<<<<<< HEAD
             ntrain=4000,
             nvalid=1000,
             shuffled=False,
@@ -38,33 +35,6 @@ def loaddata_Sql(name,
                                                      'Relative Total Temperature',
                                                      'Absolute Total Temperature']
                                        )
-    # design, fields = get_origin_GVRB(quanlityList=["Static Pressure", "Static Temperature", "Density",
-    #                                                "Vx", "Vy", "Vz",
-    #                                                'Relative Total Temperature',
-    #                                                'Absolute Total Temperature'])
-=======
-             ntrain=4000,
-             nvalid=1000,
-             shuffled=False,
-             noise_scale=None,
-             batch_size=32,
-             norm_x=None,
-             norm_y=None,
-                 ):
-
-    nameReal = name.split("_")[0]
-    id = None
-    if len(name.split("_")) == 2:
-        id = int(name.split("_")[1])
-
-    name = nameReal
-    # design, fields = get_origin_gemo(realpath=os.path.join("..", "data"),shuffled=shuffled) # 获取原始数据
-    # design, fields = get_origin_GVRB()
-    design, fields = get_origin_GVRB(quanlityList=["Static Pressure", "Static Temperature", "Density",
-                                                   "Vx", "Vy", "Vz",
-                                                   'Relative Total Temperature',
-                                                   'Absolute Total Temperature'])
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
     if name in ("FNO", "FNM", "UNet", "Transformer"):
         # input = np.tile(design[:, None, None, :], (1, 128, 128, 1))
         # r1 = 10
@@ -81,19 +51,13 @@ def loaddata_Sql(name,
     output = torch.tensor(output, dtype=torch.float)
     print(input.shape, output.shape)
 
-<<<<<<< HEAD
+
     train_x = input[:ntrain]
     train_y = output[:ntrain]
 
-    # valid_x = input[ntrain:ntrain + nvalid]
-    # valid_y = output[ntrain:ntrain + nvalid]
 
-=======
-    train_x = input[:ntrain, :]
-    train_y = output[:ntrain, :]
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
-    valid_x = input[-nvalid:, :]
-    valid_y = output[-nvalid:, :]
+    valid_x = input[-nvalid:]
+    valid_y = output[-nvalid:]
 
     if norm_x is None:
         x_normalizer = DataNormer(train_x, method='mean-std')
@@ -303,25 +267,14 @@ def import_model_by_name(name):
         from fno.FNOs import FNO2d
         from run_FNO import inference, train, valid
         model_func = FNO2d
-    elif 'FNM' in name:
-        from fno.FNOs import FNO2dMultChannel
-        from run_FNO_multi import inference, train, valid
-        model_func = FNO2dMultChannel
     elif 'UNet' in name:
         from cnn.ConvNets import UNet2d
         from run_UNet import inference, train, valid
         model_func = UNet2d
-<<<<<<< HEAD
     # elif 'Transformer' in name:
     #     from transformer.Transformers import FourierTransformer
     #     from run_TransGV import inference, train, valid
     #     model_func = FourierTransformer
-=======
-    elif 'Transformer' in name:
-        from transformer.Transformers import FourierTransformer
-        from run_TransGV import inference, train, valid
-        model_func = FourierTransformer
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
     elif 'TNO' in name:
         from Tools.model_define.define_TNO import TransBasedNeuralOperator
         from Tools.model_define.define_TNO import inference, train, valid
@@ -376,21 +329,12 @@ def get_true_pred(loader, Net_model, inference, Device,
                                                      shuffle=False,
                                                      drop_last=False)
     # for ii in range(iters):
-<<<<<<< HEAD
         if name in ('MLP','TNO'):
             _, true, pred = inference(sub_loader, Net_model, Device)
         else:
             _, _, true, pred = inference(sub_loader, Net_model, Device)
         true = true.reshape([true.shape[0], 64, 128, out_dim])
         pred = pred.reshape([pred.shape[0], 64, 128, out_dim])
-=======
-        if name in ('MLP'):
-            _, true, pred = inference(sub_loader, Net_model, Device)
-        else:
-            _, _, true, pred = inference(sub_loader, Net_model, Device)
-        true = true.reshape([true.shape[0], 128, 128, out_dim])
-        pred = pred.reshape([pred.shape[0], 128, 128, out_dim])
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
         # pred = pred.reshape([pred.shape[0], 32, 92])
 
         true_list.append(true)

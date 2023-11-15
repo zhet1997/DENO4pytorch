@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 import time
 import sys
 from run_MLP import get_grid, get_origin
-from post_process.post_data import Post_2d
+from Tools.post_process.post_data import Post_2d
 
 
 

@@ -4,16 +4,10 @@ import numpy as np
 from Tools.post_process.post_data import Post_2d
 from Tools.post_process.load_model import loaddata, build_model_yml
 from Tools.train_model.train_task_construct import WorkPrj
-<<<<<<< HEAD
-# from run_FNO import feature_transform
-from Demo.Rotor37_2d.utilizes_rotor37 import get_grid
-from Utilizes.process_data import DataNormer
-=======
 from run_FNO import feature_transform
 from Demo.Rotor37_2d.utilizes_rotor37 import get_grid
 from Utilizes.process_data import DataNormer
 from TestData.post_CFD import cfdPost_2d
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
 
 def predictor_establish(name, work_load_path, predictor=True):
 
@@ -62,11 +56,8 @@ class DLModelPost(object):
                  name=None,
                  in_norm=None,
                  out_norm=None,
-<<<<<<< HEAD
-                 grid_size=64,
-=======
-                 grid_size=128,
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
+                 grid_size_r=64,
+                 grid_size_z=128,
                  ):
         self.netmodel = netmodel
         self.Device = Device
@@ -74,7 +65,8 @@ class DLModelPost(object):
 
         self.in_norm = in_norm
         self.out_norm = out_norm
-        self.grid_size = grid_size
+        self.grid_size_r = grid_size_r
+        self.grid_size_z = grid_size_z
 
     def predicter_2d(self, input, input_norm=False):
         """
@@ -91,7 +83,7 @@ class DLModelPost(object):
         self.netmodel.eval()
 
         if self.name in ("FNO", "UNet", "Transformer"):
-            input = torch.tensor(np.tile(input[:, None, None, :], (1, self.grid_size, self.grid_size, 1)), dtype=torch.float)
+            input = torch.tensor(np.tile(input[:, None, None, :], (1, self.grid_size_r, self.grid_size_z, 1)), dtype=torch.float)
             input = input.to(self.Device)
             grid = feature_transform(input)
             pred = self.netmodel(input, grid)
@@ -99,16 +91,13 @@ class DLModelPost(object):
             input = input.to(self.Device)
             pred = self.netmodel(input)
 
-        pred = pred.reshape([pred.shape[0], self.grid_size, self.grid_size, -1])
+        pred = pred.reshape([pred.shape[0], self.grid_size_r, self.grid_size_z, -1])
         pred = self.out_norm.back(pred)
 
         return pred.detach().cpu().numpy()
 
-<<<<<<< HEAD
-    def predicter_loader(self, input_data):
-=======
+
     def predicter_loader(self, input_all, input_norm=False,):
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
         """
         加载完整的模型预测输入的坐标
         Net_model 训练完成的模型
@@ -116,9 +105,7 @@ class DLModelPost(object):
         先转换数据，分批计算
         """
         # torch.utils.data.TensorDataset(input_data)
-<<<<<<< HEAD
-        loader = torch.utils.data.DataLoader(input_data,
-=======
+
         if len(input_all.shape) == 1:
             input_all = input_all[np.newaxis, :]
         if not input_norm:  # 如果没有归一化，需要将输入归一化
@@ -126,24 +113,17 @@ class DLModelPost(object):
         input_all = torch.tensor(input_all, dtype=torch.float)
 
         loader = torch.utils.data.DataLoader(input_all,
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
                                              batch_size=32,
                                              shuffle=False,
                                              drop_last=False)
         pred = []
-<<<<<<< HEAD
-        for input in loader:
-            if self.name in ("FNO", "UNet", "Transformer"):
-                with torch.no_grad():
-                    input = torch.tensor(np.tile(input[:, None, None, :], (1, 64, 64, 1)),dtype=torch.float32)
-=======
+
 
 
         for input in loader:
             if self.name in ("FNO", "UNet", "Transformer"):
                 with torch.no_grad():
-                    input = torch.tensor(np.tile(input[:, None, None, :], (1,self.grid_size, self.grid_size, 1)),dtype=torch.float32)
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
+                    input = torch.tensor(np.tile(input[:, None, None, :], (1,self.grid_size_r, self.grid_size_z, 1)),dtype=torch.float32)
                     input = input.to(self.Device)
                     grid = feature_transform(input)
                     temp = self.netmodel(input, grid)
@@ -157,14 +137,11 @@ class DLModelPost(object):
                     temp = None
 
         pred = torch.cat(pred, dim=0)
-<<<<<<< HEAD
-        return pred
-=======
-        pred = pred.reshape([pred.shape[0], self.grid_size, self.grid_size, -1])
+        pred = pred.reshape([pred.shape[0], self.grid_size_r, self.grid_size_z, -1])
         pred = self.out_norm.back(pred)
 
         return pred.detach().cpu().numpy()
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
+
 
     def predictor_value(self, input,
                         input_para=None, parameterList=None,
@@ -227,8 +204,7 @@ class DLModelPost(object):
 
         return np.concatenate(Rst, axis=1)
 
-<<<<<<< HEAD
-=======
+
     def predictor_cfd_value(self, input,
                         input_para=None, parameterList=None,
                         input_norm=False, setOpt=True,
@@ -260,7 +236,7 @@ class DLModelPost(object):
         if soft_constraint is None:
             soft_constraint = []
 
-        grid = get_grid(real_path='D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\TestData', GV_RB=True)
+        grid = get_grid(real_path='E:\WQN\CODE\DENO4pytorch\Demo\GV_RB\TestData', GV_RB=True)
         post_pred = cfdPost_2d(pred_2d, grid, inputDict=input_para)
         # post_pred = Post_2d(pred_2d, grid,
         #                     inputDict=input_para,
@@ -284,7 +260,6 @@ class DLModelPost(object):
 
         return np.concatenate(Rst, axis=-1)
 
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
     def predictor_hardConstraint(self, input, hardconstrList):
         pred = self.predictor_value(input,
                                     input_para=None, parameterList=hardconstrList,
