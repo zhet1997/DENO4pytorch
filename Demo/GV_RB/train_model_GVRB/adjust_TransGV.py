@@ -4,7 +4,7 @@ import torch
 print(torch.cuda.device_count())
 torch.cuda.is_available()
 
-from post_process.load_model import loaddata, loaddata_Sql
+from Tools.post_process.load_model import loaddata_Sql
 from model_whole_life import WorkPrj, DLModelWhole, change_yml, add_yml
 
 def work_construct(para_list_dict):

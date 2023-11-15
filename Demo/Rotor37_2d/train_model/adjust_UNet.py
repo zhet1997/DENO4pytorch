@@ -3,9 +3,9 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 import torch
 print(torch.cuda.device_count())
 
-from post_process.load_model import build_model_yml, loaddata
+from Tools.post_process.load_model import loaddata
 from model_whole_life import WorkPrj, DLModelWhole, change_yml, add_yml
-from adjust_FNO import work_construct, work_construct_togethor
+from adjust_FNO import work_construct_togethor
 
 
 if __name__ == "__main__":

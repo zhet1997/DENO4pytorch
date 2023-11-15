@@ -14,21 +14,17 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 # from torchinfo import summary
 # from torchsummary import summary
-from Utilizes.process_data import DataNormer, MatLoader
+from Utilizes.process_data import DataNormer
 from basic.basic_layers import FcnSingle
-from fno.FNOs import FNO2d
-from transformer.Transformers import SimpleTransformer, FourierTransformer
+from transformer.Transformers import FourierTransformer
 from Utilizes.geometrics import gen_uniform_grid
 from Utilizes.visual_data import MatplotlibVision, TextLogger
 
 import matplotlib.pyplot as plt
 import time
 
-import sys
 import yaml
-from utilizes_rotor37 import get_grid, get_origin_GVRB, Rotor37WeightLoss
-from train_model.model_whole_life import WorkPrj, DLModelWhole, change_yml, add_yml
-from post_process.post_data import Post_2d
+from utilizes_rotor37 import get_origin_GVRB, Rotor37WeightLoss
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
