@@ -6,22 +6,20 @@
 @Site ：run_FNO.py
 @File ：run_FNO.py
 """
+import os
 import numpy as np
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import torch
+print(torch.cuda.device_count())
+print(torch.cuda.is_available())
 import torch.nn as nn
 from Utilizes.visual_data import MatplotlibVision
-from Utilizes.process_data import DataNormer
+from Utilizes.process_data import DataNormer, MatLoader
 from collections import OrderedDict
-# from torchsummary import summary
 import matplotlib.pyplot as plt
 import time
 import os
-<<<<<<< HEAD
-from Demo.GVRB_2d.utilizes_GVRB import get_grid, get_origin
-=======
-from utilizes_rotor37 import get_grid, get_origin
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
-
+from utilizes_rotor37 import get_grid, get_origin, get_origin_GVRB
 
 class MLP(nn.Module):
     def __init__(self, layers=None, is_BatchNorm=True,
@@ -123,7 +121,7 @@ if __name__ == "__main__":
 # configs
 ################################################################
     name = 'MLP'
-    work_path = os.path.join('work', name)
+    work_path = os.path.join('work_MLP1', name)
     isCreated = os.path.exists(work_path)
     if not isCreated:
         os.makedirs(work_path)
@@ -133,11 +131,11 @@ if __name__ == "__main__":
     else:
         Device = torch.device('cpu')
 
-    in_dim = 28
-    out_dim = 5
+    in_dim = 92
+    out_dim = 4
 
-    ntrain = 2700
-    nvalid = 250
+    ntrain = 1700
+    nvalid = 300
 
     batch_size = 32
     epochs = 1001
@@ -152,19 +150,23 @@ if __name__ == "__main__":
 # load data
 ################################################################
 
-    design, fields = get_origin()
-    # design = get_gemodata()
+    design, fields = get_origin_GVRB()
 
-    input = design
-    input = torch.tensor(input, dtype=torch.float)
+    # input = np.tile(design[:, None, None, :], (1, 128, 128, 1))
+    input = torch.tensor(design, dtype=torch.float)
+
+    # output = fields[:, 0, :, :, :].transpose((0, 2, 3, 1))
     output = fields
     output = torch.tensor(output, dtype=torch.float)
+
     print(input.shape, output.shape)
 
     train_x = input[:ntrain, :]
-    train_y = output[:ntrain, :]
-    valid_x = input[-nvalid:, :]
-    valid_y = output[-nvalid:, :]
+    train_y = output[:ntrain, :, :]
+    valid_x = input[ntrain:ntrain + nvalid, :]
+    valid_y = output[ntrain:ntrain + nvalid, :, :]
+
+
 
     x_normalizer = DataNormer(train_x.numpy(), method='mean-std')
     x_normalizer.save(os.path.join(work_path, 'x_norm.pkl')) # 将normalizer保存下来
@@ -190,16 +192,12 @@ if __name__ == "__main__":
 ################################################################
 
     # 建立网络
-    layer_mat = [in_dim, 256, 256, 256, 256, 256, 256, 256, 256, out_dim*64*64]
-    Net_model = MLP(layer_mat=layer_mat, is_BatchNorm=False)
+    layer_mat = [in_dim, 256, 256, 256, 256, 512, out_dim*128*128]
+    Net_model = MLP(layers=layer_mat, is_BatchNorm=False)
     Net_model = Net_model.to(Device)
     print(name)
     # summary(Net_model, input_size=(batch_size, train_x.shape[1]), device=Device)
-<<<<<<< HEAD
-    summary(Net_model, [(64, 64, 28)])
-=======
     # summary(Net_model, [(64, 64, 28)])
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
 
 # 损失函数
     Loss_func = nn.MSELoss()
@@ -209,7 +207,7 @@ if __name__ == "__main__":
     # 下降策略
     Scheduler = torch.optim.lr_scheduler.StepLR(Optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
     # 可视化
-    Visual = MatplotlibVision(work_path, input_name=('x', 'y'), field_name=('Ps', 'Ts', 'rhoV', 'Pt', 'Tt'))
+    Visual = MatplotlibVision(work_path, input_name=('x', 'y'), field_name=('Ps', 'Ts', 'rhoV', 'Pt'))
 
     star_time = time.time()
     log_loss = [[], []]
@@ -217,7 +215,8 @@ if __name__ == "__main__":
     ################################################################
     # train process
     ################################################################
-    grid = get_grid()
+    grid = get_grid(GV_RB=True, grid_num=128)
+
 
     for epoch in range(epochs):
 
@@ -252,21 +251,21 @@ if __name__ == "__main__":
             torch.save({'log_loss': log_loss, 'net_model': Net_model.state_dict(), 'optimizer': Optimizer.state_dict()},
                        os.path.join(work_path, 'latest_model.pth'))
 
-            train_true = train_true.reshape([train_true.shape[0], 64, 64, out_dim])
-            train_pred = train_pred.reshape([train_pred.shape[0], 64, 64, out_dim])
-            valid_true = valid_true.reshape([valid_true.shape[0], 64, 64, out_dim])
-            valid_pred = valid_pred.reshape([valid_pred.shape[0], 64, 64, out_dim])
-
-            for fig_id in range(5):
-                fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20), num=2)
-
-                Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id],grid)
-                fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
-                plt.close(fig)
-
-            for fig_id in range(5):
-                fig, axs = plt.subplots(out_dim, 3, figsize=(20, 15), num=3)
-                Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id],grid)
-                fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
-                plt.close(fig)
+            # train_true = train_true.reshape([train_true.shape[0], 64, 64, out_dim])
+            # train_pred = train_pred.reshape([train_pred.shape[0], 64, 64, out_dim])
+            # valid_true = valid_true.reshape([valid_true.shape[0], 64, 64, out_dim])
+            # valid_pred = valid_pred.reshape([valid_pred.shape[0], 64, 64, out_dim])
+            #
+            # for fig_id in range(5):
+            #     fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20), num=2)
+            #
+            #     Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id],grid)
+            #     fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
+            #     plt.close(fig)
+            #
+            # for fig_id in range(5):
+            #     fig, axs = plt.subplots(out_dim, 3, figsize=(20, 15), num=3)
+            #     Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id],grid)
+            #     fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
+            #     plt.close(fig)
 

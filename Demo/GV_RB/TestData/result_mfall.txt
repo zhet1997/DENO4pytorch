@@ -1,0 +1,2 @@
+file_name	Static_pressure_ratio	Absolute_total_pressure_ratio	Static_temperature_ratio	Absolute_total_temperature_ratio	Isentropic_efficiency	Polytropic_efficiency	Axial_thrust	Torque	Power	
+stage_computation_1	0.40619	0.42914	0.7935	0.80601	0.9035	0.89225	2937.7	1789.2	1551200.0	
