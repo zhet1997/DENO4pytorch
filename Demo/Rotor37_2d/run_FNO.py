@@ -17,14 +17,10 @@ from torch.utils.data import DataLoader
 from fno.FNOs import FNO2d
 from cnn.ConvNets import UNet2d
 from Utilizes.visual_data import MatplotlibVision
-from Utilizes.visual_data import MatplotlibVision, TextLogger
 from Utilizes.process_data import DataNormer
 import matplotlib.pyplot as plt
 import time
-import sys
 from run_MLP import get_grid, get_origin
-from post_process.post_data import Post_2d
-
 
 
 def feature_transform(x):
@@ -117,7 +113,8 @@ if __name__ == "__main__":
     grid = get_grid()
 
 
-    name = 'FNO_' + str(mode)
+
+    name = 'FNO_' + str(0)
     work_path = os.path.join('../Rotor37_2d/work', name)
     isCreated = os.path.exists(work_path)
     if not isCreated:
@@ -137,6 +134,7 @@ if __name__ == "__main__":
                                               "DensityFlow",
                                               'Relative Total Pressure', 'Relative Total Temperature'
                                               ])  # 获取原始数据
+
 
     in_dim = 28
     out_dim = 5
@@ -197,8 +195,6 @@ if __name__ == "__main__":
     ################################################################
     # Neural Networks
     ################################################################
-
-    # 建立网络
 
     Net_model = FNO2d(in_dim=in_dim, out_dim=out_dim, modes=modes, width=width, depth=depth, steps=steps,
                       padding=padding, activation='gelu').to(Device)

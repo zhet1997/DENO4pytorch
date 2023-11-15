@@ -20,7 +20,11 @@ import torch.fft as fft
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 from torch.nn.init import xavier_uniform_, constant_, xavier_normal_
+<<<<<<< HEAD
 # from torchinfo import summary
+=======
+#from torchinfo import summary
+>>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
 
 from collections import defaultdict
 from functools import partial
@@ -885,11 +889,18 @@ class FourierTransformer(nn.Module):
 
         bsz = node.size(0)
         n_s = int(pos.size(1))
+<<<<<<< HEAD
         n_s_1 = int(pos.size(1))
         n_s_2 = int(pos.size(2))
         x_latent = []
         attn_weights = []
 
+=======
+        x_latent = []
+        attn_weights = []
+
+
+>>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
         # if not self.downscaler_size:
         node = torch.cat([node, pos], dim=-1)
         x = self.downscaler(node)
