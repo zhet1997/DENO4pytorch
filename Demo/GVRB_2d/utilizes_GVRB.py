@@ -104,10 +104,10 @@ def get_origin(quanlityList=None,
             sus_bad_idx = np.array(sus_bad_idx)
         sus_bad_idx = np.unique(np.concatenate((sus_bad_idx,np.array(invalid_idx)),axis=0))
 
-        design = np.delete(design, sus_bad_idx, axis=0)
-        fields = np.delete(fields, sus_bad_idx, axis=0)
+        design = np.delete(design, sus_bad_idx.astype('int64'), axis=0)
+        fields = np.delete(fields, sus_bad_idx.astype('int64'), axis=0)
         if type == 'unstruct':
-            grid = np.delete(grid, sus_bad_idx, axis=0)
+            grid = np.delete(grid, sus_bad_idx.astype('int64'), axis=0)
 
     if shuffled:
         np.random.seed(8905)
