@@ -18,20 +18,14 @@ from torch.utils.data import DataLoader
 # from torchinfo import summary
 # from torchsummary import summary
 from fno.FNOs import FNO2d
-from cnn.ConvNets import UNet2d
 
 from Utilizes.visual_data import MatplotlibVision
-
-from Utilizes.visual_data import MatplotlibVision, TextLogger
 from Utilizes.process_data import DataNormer
 
 import matplotlib.pyplot as plt
 import time
 
-import sys
-from utilizes_rotor37 import get_grid, get_origin, get_origin_GVRB
-from post_process.post_data import Post_2d
-
+from utilizes_rotor37 import get_grid, get_origin_GVRB
 
 
 def feature_transform(x):

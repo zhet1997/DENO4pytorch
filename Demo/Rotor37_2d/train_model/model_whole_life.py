@@ -1,12 +1,9 @@
 import os
 import torch
 import numpy as np
-from post_process.post_data import Post_2d
-from run_FNO import feature_transform
-from Demo.Rotor37_2d.utilizes_rotor37 import get_grid
 from utilizes_rotor37 import Rotor37WeightLoss
-from post_process.load_model import build_model_yml, loaddata
-from post_process.model_predict import DLModelPost
+from Tools.post_process.load_model import build_model_yml, loaddata
+from Tools.post_process.model_predict import DLModelPost
 from Utilizes.visual_data import MatplotlibVision
 import matplotlib.pyplot as plt
 import yaml

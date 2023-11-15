@@ -14,8 +14,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 # from torchinfo import summary
-from Utilizes.process_data import DataNormer, MatLoader
-from transformer.Transformers import SimpleTransformer, FourierTransformer
+from Utilizes.process_data import DataNormer
+from transformer.Transformers import FourierTransformer
 from Utilizes.visual_data import MatplotlibVision, TextLogger
 
 import matplotlib.pyplot as plt
@@ -23,8 +23,8 @@ import time
 
 import sys
 import yaml
-from utilizes_rotor37 import get_grid, get_origin, get_origin_GVRB
-from post_process.post_data import Post_2d
+from utilizes_rotor37 import get_grid, get_origin_GVRB
+
 
 def feature_transform(x):
     """

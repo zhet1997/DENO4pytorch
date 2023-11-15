@@ -16,7 +16,6 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 # from torchinfo import summary
-from torchsummary import summary
 from fno.FNOs import FNO2d
 from cnn.ConvNets import UNet2d
 from Utilizes.visual_data import MatplotlibVision
@@ -24,10 +23,8 @@ from Utilizes.process_data import DataNormer
 
 import matplotlib.pyplot as plt
 import time
-from run_MLP import get_grid
 from run_MLP import get_grid, get_origin
-from utilizes_rotor37 import get_gemodata_from_mat,get_origin_gemo
-from post_process.post_data import Post_2d
+from Tools.post_process.post_data import Post_2d
 
 def feature_transform(x):
     """

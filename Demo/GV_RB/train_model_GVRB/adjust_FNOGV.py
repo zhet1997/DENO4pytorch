@@ -2,7 +2,7 @@ import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import torch
 torch.cuda.set_device(0)
-from post_process.load_model import build_model_yml, loaddata,loaddata_Sql
+from Tools.post_process.load_model import loaddata_Sql
 from model_whole_life import WorkPrj, DLModelWhole, change_yml, add_yml
 
 def work_construct(para_list_dict):

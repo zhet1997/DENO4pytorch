@@ -38,14 +38,14 @@ def get_grid_interp(grid_num_s=128,
 if __name__ == "__main__":
     pathNpz = os.path.join('sampleRstZip.npz')
     data = np.load(pathNpz)
-    inputdict = {'Static Pressure':0,
-                 'Absolute Total Pressure':1,
-                 'Static Temperature':2,
-                 'Absolute Total Temperature':3,
-                 'Vx':4,
-                 'Vy':5,
-                 'Vz':6,
-                 'Density':7,
+    inputdict = {'Static Pressure': 0,
+                 'Static Temperature': 1,
+                 'Density': 2,
+                 'Vx': 3,
+                 'Vy': 4,
+                 'Vz': 5,
+                 'Relative Total Temperature': 6,
+                 'Absolute Total Temperature': 7,
                  }
     data_2d = np.zeros([10,128,128,8])
     for key in inputdict.keys():

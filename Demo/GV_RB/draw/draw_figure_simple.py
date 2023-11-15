@@ -1,11 +1,10 @@
 from utilizes_draw import *
-from post_process.load_model import loaddata, loaddata_Sql
+from Tools.post_process.load_model import loaddata_Sql
 import yaml
-from transformer.Transformers import SimpleTransformer, FourierTransformer
-from fno.FNOs import FNO2d
-from run_MLP import MLP
+from transformer.Transformers import FourierTransformer
 from run_TransGV import inference
-from model_whole_life import WorkPrj, DLModelWhole, change_yml, add_yml
+from model_whole_life import WorkPrj
+
 if __name__ == "__main__":
 
     name = 'Transformer'

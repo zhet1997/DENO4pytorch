@@ -14,19 +14,14 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchinfo import summary
-from fno.FNOs import FNO2d, FNO2dMultChannel
-from cnn.ConvNets import UNet2d
+from fno.FNOs import FNO2dMultChannel
 from Utilizes.visual_data import MatplotlibVision
-from Utilizes.visual_data import MatplotlibVision, TextLogger
 from Utilizes.process_data import DataNormer
 
 import matplotlib.pyplot as plt
 import time
 
-import sys
 from run_MLP import get_grid, get_origin
-from post_process.post_data import Post_2d
-
 
 
 def feature_transform(x):
