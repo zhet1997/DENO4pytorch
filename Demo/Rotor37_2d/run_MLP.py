@@ -16,12 +16,7 @@ from collections import OrderedDict
 import matplotlib.pyplot as plt
 import time
 import os
-<<<<<<< HEAD
 from Demo.GVRB_2d.utilizes_GVRB import get_grid, get_origin
-=======
-from utilizes_rotor37 import get_grid, get_origin
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
-
 
 class MLP(nn.Module):
     def __init__(self, layers=None, is_BatchNorm=True,
@@ -195,12 +190,6 @@ if __name__ == "__main__":
     Net_model = Net_model.to(Device)
     print(name)
     # summary(Net_model, input_size=(batch_size, train_x.shape[1]), device=Device)
-<<<<<<< HEAD
-    summary(Net_model, [(64, 64, 28)])
-=======
-    # summary(Net_model, [(64, 64, 28)])
->>>>>>> cff4be051e3f854e9289062ad56e8e0de145ba0d
-
 # 损失函数
     Loss_func = nn.MSELoss()
     # Loss_func = nn.SmoothL1Loss()

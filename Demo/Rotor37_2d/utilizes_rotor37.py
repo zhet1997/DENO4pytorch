@@ -18,9 +18,14 @@ def get_grid(real_path=None, GV_RB=False, grid_num=128):
         xx = np.linspace(-0.127, 0.126, grid_num)
 
     if GV_RB:
-        hub_file = os.path.join('hub_lower_GV.txt')
-        shroud_files = os.path.join('shroud_upper_GV.txt')
-        xx = np.linspace(-0.06, 0.12, grid_num)
+        if real_path is None:
+            hub_file = os.path.join('hub_lower_GV.txt')
+            shroud_files = os.path.join('shroud_upper_GV.txt')
+            xx = np.linspace(-0.06, 0.12, grid_num)
+        else:
+            hub_file = os.path.join(real_path, 'hub_lower_GV.txt')
+            shroud_files = os.path.join(real_path, 'shroud_upper_GV.txt')
+            xx = np.linspace(-0.06, 0.12, grid_num)
 
     xx = np.tile(xx, [grid_num, 1])
 
