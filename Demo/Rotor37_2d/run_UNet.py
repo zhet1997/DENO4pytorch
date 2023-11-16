@@ -12,15 +12,13 @@ import numpy as np
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import torch
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-import torch.nn as nn
 from torch.utils.data import DataLoader
 
 # from torchinfo import summary
 from fno.FNOs import FNO2d
 from cnn.ConvNets import UNet2d
-from Utilizes.visual_data import MatplotlibVision
 from Utilizes.process_data import DataNormer
-
+from run_MLP import get_grid, get_origin
 import matplotlib.pyplot as plt
 import time
 from run_MLP import get_grid, get_origin

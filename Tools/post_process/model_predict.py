@@ -4,7 +4,7 @@ import numpy as np
 from Tools.post_process.post_data import Post_2d
 from Tools.post_process.load_model import loaddata, build_model_yml
 from Tools.train_model.train_task_construct import WorkPrj
-from run_FNO import feature_transform
+# from run_FNO import feature_transform
 from Demo.Rotor37_2d.utilizes_rotor37 import get_grid
 from Utilizes.process_data import DataNormer
 from TestData.post_CFD import cfdPost_2d
@@ -56,7 +56,8 @@ class DLModelPost(object):
                  name=None,
                  in_norm=None,
                  out_norm=None,
-                 grid_size=128,
+                 grid_size_r=64,
+                 grid_size_z=128,
                  ):
         self.netmodel = netmodel
         self.Device = Device
@@ -64,7 +65,8 @@ class DLModelPost(object):
 
         self.in_norm = in_norm
         self.out_norm = out_norm
-        self.grid_size = grid_size
+        self.grid_size_r = grid_size_r
+        self.grid_size_z = grid_size_z
 
     def predicter_2d(self, input, input_norm=False):
         """
@@ -81,18 +83,24 @@ class DLModelPost(object):
         self.netmodel.eval()
 
         if self.name in ("FNO", "UNet", "Transformer"):
-            input = torch.tensor(np.tile(input[:, None, None, :], (1, self.grid_size, self.grid_size, 1)), dtype=torch.float)
+            input = torch.tensor(np.tile(input[:, None, None, :], (1, self.grid_size_r, self.grid_size_z, 1)), dtype=torch.float)
             input = input.to(self.Device)
             grid = feature_transform(input)
+            pred = self.netmodel(input, grid)
+        elif self.name in ("TNO"):
+            from Utilizes.geometrics import gen_uniform_grid
+            input = input.to(self.Device)
+            grid = gen_uniform_grid(torch.tensor(np.zeros([1, self.grid_size_r, self.grid_size_z, 1]))).to(self.Device)
             pred = self.netmodel(input, grid)
         else:
             input = input.to(self.Device)
             pred = self.netmodel(input)
 
-        pred = pred.reshape([pred.shape[0], self.grid_size, self.grid_size, -1])
+        pred = pred.reshape([pred.shape[0], self.grid_size_r, self.grid_size_z, -1])
         pred = self.out_norm.back(pred)
 
         return pred.detach().cpu().numpy()
+
 
     def predicter_loader(self, input_all, input_norm=False,):
         """
@@ -102,6 +110,7 @@ class DLModelPost(object):
         先转换数据，分批计算
         """
         # torch.utils.data.TensorDataset(input_data)
+
         if len(input_all.shape) == 1:
             input_all = input_all[np.newaxis, :]
         if not input_norm:  # 如果没有归一化，需要将输入归一化
@@ -115,10 +124,11 @@ class DLModelPost(object):
         pred = []
 
 
+
         for input in loader:
             if self.name in ("FNO", "UNet", "Transformer"):
                 with torch.no_grad():
-                    input = torch.tensor(np.tile(input[:, None, None, :], (1,self.grid_size, self.grid_size, 1)),dtype=torch.float32)
+                    input = torch.tensor(np.tile(input[:, None, None, :], (1,self.grid_size_r, self.grid_size_z, 1)),dtype=torch.float32)
                     input = input.to(self.Device)
                     grid = feature_transform(input)
                     temp = self.netmodel(input, grid)
@@ -132,10 +142,11 @@ class DLModelPost(object):
                     temp = None
 
         pred = torch.cat(pred, dim=0)
-        pred = pred.reshape([pred.shape[0], self.grid_size, self.grid_size, -1])
+        pred = pred.reshape([pred.shape[0], self.grid_size_r, self.grid_size_z, -1])
         pred = self.out_norm.back(pred)
 
         return pred.detach().cpu().numpy()
+
 
     def predictor_value(self, input,
                         input_para=None, parameterList=None,
@@ -198,6 +209,7 @@ class DLModelPost(object):
 
         return np.concatenate(Rst, axis=1)
 
+
     def predictor_cfd_value(self, input,
                         input_para=None, parameterList=None,
                         input_norm=False, setOpt=True,
@@ -229,7 +241,7 @@ class DLModelPost(object):
         if soft_constraint is None:
             soft_constraint = []
 
-        grid = get_grid(real_path='D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\TestData', GV_RB=True)
+        grid = get_grid(real_path='E:\WQN\CODE\DENO4pytorch\Demo\GV_RB\TestData', GV_RB=True)
         post_pred = cfdPost_2d(pred_2d, grid, inputDict=input_para)
         # post_pred = Post_2d(pred_2d, grid,
         #                     inputDict=input_para,

@@ -17,10 +17,14 @@ from torch.utils.data import DataLoader
 from fno.FNOs import FNO2d
 from cnn.ConvNets import UNet2d
 from Utilizes.visual_data import MatplotlibVision
+from Utilizes.visual_data import MatplotlibVision, TextLogger
 from Utilizes.process_data import DataNormer
 import matplotlib.pyplot as plt
 import time
+import sys
 from run_MLP import get_grid, get_origin
+from Tools.post_process.post_data import Post_2d
+
 
 
 def feature_transform(x):
@@ -110,12 +114,8 @@ if __name__ == "__main__":
     ################################################################
     # configs
     ################################################################
-    grid = get_grid()
-
-
-
     name = 'FNO_' + str(0)
-    work_path = os.path.join('../Rotor37_2d/work', name)
+    work_path = os.path.join('work', name)
     isCreated = os.path.exists(work_path)
     if not isCreated:
         os.makedirs(work_path)
@@ -130,18 +130,13 @@ if __name__ == "__main__":
         Device = torch.device('cpu')
 
     # design, fields = get_origin()
-    design, fields = get_origin(quanlityList=["Static Pressure", "Static Temperature",
-                                              "DensityFlow",
-                                              'Relative Total Pressure', 'Relative Total Temperature'
-                                              ])  # 获取原始数据
+    design, fields, grids = get_origin(type='struct')  # 获取原始数据取原始数据
 
+    in_dim = 100
+    out_dim = 8
+    ntrain = 5000
+    nvalid = 900
 
-    in_dim = 28
-    out_dim = 5
-    ntrain = 2700
-    nvalid = 200
-
-    # modes = (10, 10)
     modes = (4, 4)
     width = 128
     depth = 4
@@ -158,26 +153,26 @@ if __name__ == "__main__":
     print(epochs, learning_rate, scheduler_step, scheduler_gamma)
 
     r1 = 1
-    r2 = 1
-    s1 = int(((64 - 1) / r1) + 1)
-    s2 = int(((64 - 1) / r2) + 1)
 
     ################################################################
     # load data
     ################################################################
 
-    input = np.tile(design[:, None, None, :], (1, 64, 64, 1))
+    input = np.tile(design[:, None, None, :], (1, 64, 128, 1))
     input = torch.tensor(input, dtype=torch.float)
 
     # output = fields[:, 0, :, :, :].transpose((0, 2, 3, 1))
     output = fields
     output = torch.tensor(output, dtype=torch.float)
+
     print(input.shape, output.shape)
 
-    train_x = input[:ntrain, ::r1, ::r2][:, :s1, :s2]
-    train_y = output[:ntrain, ::r1, ::r2][:, :s1, :s2]
-    valid_x = input[ntrain:ntrain + nvalid, ::r1, ::r2][:, :s1, :s2]
-    valid_y = output[ntrain:ntrain + nvalid, ::r1, ::r2][:, :s1, :s2]
+    train_x = input[:ntrain]
+    train_y = output[:ntrain]
+    # train_g = grids[:ntrain, ::r1]
+    valid_x = input[-nvalid:]
+    valid_y = output[-nvalid:]
+    # valid_g = grids[-nvalid:, ::r1]
 
     x_normalizer = DataNormer(train_x.numpy(), method='mean-std')
     train_x = x_normalizer.norm(train_x)
@@ -196,6 +191,8 @@ if __name__ == "__main__":
     # Neural Networks
     ################################################################
 
+    # 建立网络
+
     Net_model = FNO2d(in_dim=in_dim, out_dim=out_dim, modes=modes, width=width, depth=depth, steps=steps,
                       padding=padding, activation='gelu').to(Device)
 
@@ -213,7 +210,11 @@ if __name__ == "__main__":
     # 下降策略
     Scheduler = torch.optim.lr_scheduler.StepLR(Optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
     # 可视化
-    Visual = MatplotlibVision(work_path, input_name=('x', 'y'), field_name=('p', 't', 'rho', 'alf', 'v'))
+    # quanlityList = ["Static Pressure", "Static Temperature", "Density",
+    #                 "Vx", "Vy", "Vz",
+    #                 'Relative Total Temperature',
+    #                 'Absolute Total Temperature']
+    Visual = MatplotlibVision(work_path, input_name=('x', 'y'), field_name=('ps', 'ts', 'rho', 'vx', 'vy', 'vz', 'tt1', 'tt2'))
 
     star_time = time.time()
     log_loss = [[], []]
@@ -246,9 +247,7 @@ if __name__ == "__main__":
         # Visualization
         ################################################################
 
-        if epoch > 0 and epoch % 100 == 0:
-            # print('epoch: {:6d}, lr: {:.3e}, eqs_loss: {:.3e}, bcs_loss: {:.3e}, cost: {:.2f}'.
-            #       format(epoch, learning_rate, log_loss[-1][0], log_loss[-1][1], time.time()-star_time))
+        if epoch % 100 == 0:
             train_coord, train_grid, train_true, train_pred = inference(train_loader, Net_model, Device)
             valid_coord, valid_grid, valid_true, valid_pred = inference(valid_loader, Net_model, Device)
 
@@ -257,13 +256,13 @@ if __name__ == "__main__":
 
             for fig_id in range(5):
                 fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20), num=2)
-                Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], grid)
+                Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], grids)
                 fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
                 plt.close(fig)
 
             for fig_id in range(5):
                 fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20), num=3)
-                Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], grid)
+                Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], grids)
                 fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
                 plt.close(fig)
 
