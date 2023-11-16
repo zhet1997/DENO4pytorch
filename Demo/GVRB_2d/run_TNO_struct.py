@@ -19,6 +19,7 @@ from fno.FNOs import FNO2d
 from transformer.Transformers import FourierTransformer, SimpleTransformer
 from Utilizes.geometrics import gen_uniform_grid
 from Utilizes.visual_data import MatplotlibVision, TextLogger
+from utilizes_GVRB import GVRBWeightLoss
 
 import matplotlib.pyplot as plt
 import time
@@ -218,72 +219,79 @@ if __name__ == "__main__":
     MLP_model = FcnSingle(planes=(in_dim, 64, 64, config['n_targets']), last_activation=True).to(Device)
     Net_model = predictor(trunc=Tra_model, branch=MLP_model, field_dim=out_dim).to(Device)
 
-    model_statistics = summary(Net_model, input_size=(batch_size, train_x.shape[1]), device=Device)
-    Logger.write(str(model_statistics))
+    isExist = os.path.exists(work.pth)
+    if isExist:
+        checkpoint = torch.load(work.pth, map_location=Device)
+        Net_model.load_state_dict(checkpoint['net_model'])
+        # Net_model.eval()
+
+
+    # model_statistics = summary(Net_model, input_size=(batch_size, train_x.shape[1]), device=str(Device))
+    # Logger.write(str(model_statistics))
     #
     # # 损失函数
-    Loss_func = nn.MSELoss()
-    # # Loss_func = Rotor37WeightLoss()
+    # Loss_func = nn.MSELoss()
+    Loss_func = GVRBWeightLoss(4, 10, 71)
     # # Loss_func = nn.SmoothL1Loss()
     # # 优化算法
     Optimizer = torch.optim.Adam(Net_model.parameters(), lr=learning_rate, betas=(0.7, 0.9), weight_decay=1e-7)
     # # 下降策略
-    # Scheduler = torch.optim.lr_scheduler.StepLR(Optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
+    Scheduler = torch.optim.lr_scheduler.StepLR(Optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
     # # 可视化
-    # Visual = MatplotlibVision(work_path, input_name=('x', 'y'), field_name=('ps', 'ts', 'rho', 'vx', 'vy', 'vz', 'tt1', 'tt2'))
-    #
-    #
-    # star_time = time.time()
-    # log_loss = [[], []]
-    #
-    # ################################################################
-    # # train process
-    # ################################################################
-    # # grid = get_grid()
-    # # grid_real = get_grid()
-    # # grid = gen_uniform_grid(train_y[:1]).to(Device)
-    # for epoch in range(epochs):
-    #
-    #     Net_model.train()
-    #     log_loss[0].append(train(train_loader, Net_model, Device, Loss_func, Optimizer, Scheduler))
-    #
-    #     Net_model.eval()
-    #     log_loss[1].append(valid(valid_loader, Net_model, Device, Loss_func))
-    #     print('epoch: {:6d}, lr: {:.3e}, train_step_loss: {:.3e}, valid_step_loss: {:.3e}, cost: {:.2f}'.
-    #           format(epoch, learning_rate, log_loss[0][-1], log_loss[1][-1], time.time() - star_time))
-    #
-    #     star_time = time.time()
-    #
-    #     if epoch > 0 and epoch % 10 == 0:
-    #         fig, axs = plt.subplots(1, 1, figsize=(15, 8), num=1)
-    #         Visual.plot_loss(fig, axs, np.arange(len(log_loss[0])), np.array(log_loss)[0, :], 'train_step')
-    #         Visual.plot_loss(fig, axs, np.arange(len(log_loss[0])), np.array(log_loss)[1, :], 'valid_step')
-    #         fig.suptitle('training loss')
-    #         fig.savefig(os.path.join(train_path, 'log_loss.svg'))
-    #         plt.close(fig)
-    #
-    #     ################################################################
-    #     # Visualization
-    #     ################################################################
-    #     if epoch % 100 == 0:
-    #         train_source, train_true, train_pred = inference(train_loader, Net_model, Device)
-    #         valid_source, valid_true, valid_pred = inference(valid_loader, Net_model, Device)
-    #
-    #         torch.save(
-    #             {'log_loss': log_loss, 'net_model': Net_model.state_dict(), 'optimizer': Optimizer.state_dict()},
-    #             os.path.join(work_path, 'latest_model.pth'))
-    #
-    #         for fig_id in range(5):
-    #             fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20), num=2)
-    #             Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], grids)
-    #             fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
-    #             plt.close(fig)
-    #
-    #         for fig_id in range(5):
-    #             fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20), num=3)
-    #             Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], grids)
-    #             fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
-    #             plt.close(fig)
+    Visual = MatplotlibVision(work_path, input_name=('x', 'y'), field_name=('ps', 'ts', 'rho', 'vx', 'vy', 'vz', 'tt1', 'tt2'))
+
+
+    star_time = time.time()
+    log_loss = [[], []]
+
+    ################################################################
+    # train process
+    ################################################################
+    # grid = get_grid()
+    # grid_real = get_grid()
+    # grid = gen_uniform_grid(train_y[:1]).to(Device)
+    for epoch in range(epochs):
+
+        Net_model.train()
+        log_loss[0].append(train(train_loader, Net_model, Device, Loss_func, Optimizer, Scheduler))
+
+        Net_model.eval()
+        log_loss[1].append(valid(valid_loader, Net_model, Device, Loss_func))
+        print('epoch: {:6d}, lr: {:.3e}, train_step_loss: {:.3e}, valid_step_loss: {:.3e}, cost: {:.2f}'.
+              format(epoch, learning_rate, log_loss[0][-1], log_loss[1][-1], time.time() - star_time))
+
+        star_time = time.time()
+
+        if epoch > 0 and epoch % 10 == 0:
+            fig, axs = plt.subplots(1, 1, figsize=(15, 8), num=1)
+            Visual.plot_loss(fig, axs, np.arange(len(log_loss[0])), np.array(log_loss)[0, :], 'train_step')
+            Visual.plot_loss(fig, axs, np.arange(len(log_loss[0])), np.array(log_loss)[1, :], 'valid_step')
+            fig.suptitle('training loss')
+            fig.savefig(os.path.join(train_path, 'log_loss.svg'))
+            plt.close(fig)
+
+        ################################################################
+        # Visualization
+        ################################################################
+        if epoch % 100 == 0:
+            train_source, train_true, train_pred = inference(train_loader, Net_model, Device)
+            valid_source, valid_true, valid_pred = inference(valid_loader, Net_model, Device)
+
+            torch.save(
+                {'log_loss': log_loss, 'net_model': Net_model.state_dict(), 'optimizer': Optimizer.state_dict()},
+                os.path.join(work_path, 'latest_model.pth'))
+
+            for fig_id in range(5):
+                fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20), num=2)
+                Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], grids)
+                fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
+                plt.close(fig)
+
+            for fig_id in range(5):
+                fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20), num=3)
+                Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], grids)
+                fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
+                plt.close(fig)
 
 
 
