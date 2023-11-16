@@ -7,7 +7,7 @@ from Tools.train_model.train_task_construct import WorkPrj
 # from run_FNO import feature_transform
 from Demo.Rotor37_2d.utilizes_rotor37 import get_grid
 from Utilizes.process_data import DataNormer
-from TestData.post_CFD import cfdPost_2d
+from Demo.GVRB_2d.TestData.post_CFD import cfdPost_2d
 
 def predictor_establish(name, work_load_path, predictor=True):
 

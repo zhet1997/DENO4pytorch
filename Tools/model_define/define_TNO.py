@@ -38,20 +38,15 @@ class TransBasedNeuralOperator(nn.Module):
 
         # 建立网络
         Tra_model = FourierTransformer(**config)
-        # MLP_model = FcnSingle(planes=(in_dim, 128, 128, 128, config['n_targets']), last_activation=True)
-        MLP_model = FcnSingle(planes=(in_dim, 64, 64, config['n_targets']), last_activation=True)
-
-        self.branch_net = MLP_model
-        self.trunc_net = Tra_model
-        self.field_net = nn.Linear(self.branch_net.planes[-1], out_dim)
         hidden_b = [int(n_hidden_b)] * int(num_layers_b)
         MLP_model = FcnSingle(planes=(in_dim, *hidden_b, config['n_targets']), last_activation=True)
-
         if num_layers_s>0:
             hidden_s = [int(n_hidden_s)] * int(num_layers_s)
             Share_model = FcnSingle(planes=(config['n_targets'], *hidden_s, out_dim), last_activation=True)
         else:
-            Share_model = nn.Linear(self.branch_net.planes[-1], out_dim)
+            Share_model = nn.Linear(MLP_model.planes[-1], out_dim)
+
+
 
         self.branch_net = MLP_model
         self.trunc_net = Tra_model
