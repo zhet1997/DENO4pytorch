@@ -1,8 +1,8 @@
 import numpy as np
 import yaml
 import torch
-from Utilizes.process_data import MatLoader
-from Tools.post_process.post_data import Post_2d
+from Utilizes.process_data import DataNormer, MatLoader
+from post_process.post_data import Post_2d
 import os
 import torch
 
@@ -18,14 +18,9 @@ def get_grid(real_path=None, GV_RB=False, grid_num=128):
         xx = np.linspace(-0.127, 0.126, grid_num)
 
     if GV_RB:
-        if real_path is None:
-            hub_file = os.path.join('hub_lower_GV.txt')
-            shroud_files = os.path.join('shroud_upper_GV.txt')
-            xx = np.linspace(-0.06, 0.12, grid_num)
-        else:
-            hub_file = os.path.join(real_path, 'hub_lower_GV.txt')
-            shroud_files = os.path.join(real_path, 'shroud_upper_GV.txt')
-            xx = np.linspace(-0.06, 0.12, grid_num)
+        hub_file = os.path.join('hub_lower_GV.txt')
+        shroud_files = os.path.join('shroud_upper_GV.txt')
+        xx = np.linspace(-0.06, 0.12, grid_num)
 
     xx = np.tile(xx, [grid_num, 1])
 
@@ -213,7 +208,7 @@ def get_origin_GVRB(quanlityList=None,
                 realpath=None,
                 existcheck=True,
                 shuffled=True,
-                getridbad=True):
+                getridbad=False):
 
 
     if quanlityList is None:
@@ -235,26 +230,26 @@ def get_origin_GVRB(quanlityList=None,
         sample_files = sample_files_exists
 
 
-    design, fields, invalid_idx = get_quanlity_from_GVRBmat(sample_files, quanlityList, invalid_idx=True)
+    design, fields = get_quanlity_from_GVRBmat(sample_files, quanlityList)
     # design = get_GVRBdata_from_mat(realpath=realpath, existcheck=existcheck) # read the gemo data from here
+
 
     if getridbad:
         if realpath is None:
-            file_path = os.path.join("../Rotor37_2d/data", "sus_bad_data.yml")
+            file_path = os.path.join("data", "sus_bad_data.yml")
         else:
             file_path = os.path.join(realpath, "sus_bad_data.yml")
-
+        with open(file_path, 'r') as f:
+            sus_bad_dict = yaml.load(f, Loader=yaml.FullLoader)
         sus_bad_idx = []
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                sus_bad_dict = yaml.load(f, Loader=yaml.FullLoader)
-            for key in sus_bad_dict.keys():
-                sus_bad_idx.extend(sus_bad_dict[key])
-            sus_bad_idx = np.array(sus_bad_idx)
-        sus_bad_idx = np.unique(np.concatenate((sus_bad_idx, np.array(invalid_idx)), axis=0))
+        for key in sus_bad_dict.keys():
+            sus_bad_idx.extend(sus_bad_dict[key])
+        sus_bad_idx = np.array(sus_bad_idx)
+        sus_bad_idx = np.unique(sus_bad_idx)
 
-        design = np.delete(design, sus_bad_idx.astype('int64'), axis=0)
-        fields = np.delete(fields, sus_bad_idx.astype('int64'), axis=0)
+
+        design = np.delete(design, sus_bad_idx, axis=0)
+        fields = np.delete(fields, sus_bad_idx, axis=0)
 
 
     if shuffled:
@@ -296,24 +291,15 @@ def get_quanlity_from_mat(sample_files, quanlityList):
 
     return design, fields
 
-
-def get_quanlity_from_GVRBmat(sample_files, quanlityList, invalid_idx=False):
+def get_quanlity_from_GVRBmat(sample_files, quanlityList):
     design = []
     fields = []
-    invalid_idx_list = []
-    data_sum=0
-
     if not isinstance(sample_files, list):
         sample_files = [sample_files]
     for ii, file in enumerate(sample_files):
         reader = MatLoader(file, to_torch=False)
         design.append(reader.read_field('design'))
         output = np.zeros([design[ii].shape[0], 128, 128, len(quanlityList)])
-
-        if invalid_idx:
-            idx = reader.read_field('invalid_idx')
-            idx = [int(x+data_sum) for x in idx.squeeze()]
-            invalid_idx_list.extend(idx)
         for jj, quanlity in enumerate(quanlityList):
              if quanlity == "Static Pressure":  # 设置一个需要计算获得的数据
                  output[:, :, :, jj] = (reader.read_field("Static Pressure")).copy()
@@ -341,12 +327,7 @@ def get_quanlity_from_GVRBmat(sample_files, quanlityList, invalid_idx=False):
     design = np.concatenate(design, axis=0)
     fields = np.concatenate(fields, axis=0)
 
-
-
-    if invalid_idx:
-        return design, fields, invalid_idx_list
-    else:
-        return design, fields
+    return design, fields
 
 def get_GVRBdata_from_mat(realpath=None,existcheck=None):
 

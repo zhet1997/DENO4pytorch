@@ -46,9 +46,12 @@ class TransBasedNeuralOperator(nn.Module):
         else:
             Share_model = nn.Linear(MLP_model.planes[-1], out_dim)
 
+
+
         self.branch_net = MLP_model
         self.trunc_net = Tra_model
         self.field_net = Share_model
+
 
         
     def forward(self, design, coords):
@@ -85,6 +88,7 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
         optimizer: optimizer
         scheduler: scheduler
     """
+
     _, bb = next(iter(dataloader))
     grid = gen_uniform_grid(torch.tensor(np.zeros([1, bb.shape[1], bb.shape[2], bb.shape[3]])))
     train_loss = 0
@@ -95,6 +99,7 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
 
         pred = netmodel(xx, coords)
         loss = lossfunc(pred, yy)
+
 
         optimizer.zero_grad()
         loss.backward()
@@ -113,6 +118,7 @@ def valid(dataloader, netmodel, device, lossfunc):
         model: Network
         lossfunc: Loss function
     """
+
     _, bb = next(iter(dataloader))
     grid = gen_uniform_grid(torch.tensor(np.zeros([1, bb.shape[1], bb.shape[2], bb.shape[3]])))
     valid_loss = 0
@@ -136,6 +142,7 @@ def inference(dataloader, netmodel, device):
     Returns:
         out_pred: predicted fields
     """
+
     _, bb = next(iter(dataloader))
     grid = gen_uniform_grid(torch.tensor(np.zeros([1, bb.shape[1], bb.shape[2], bb.shape[3]])))
     with torch.no_grad():

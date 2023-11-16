@@ -15,28 +15,15 @@ from torch.utils.data import DataLoader
 # from torchinfo import summary
 # from torchsummary import summary
 from fno.FNOs import FNO2d
-from cnn.ConvNets import UNet2d
-from Utilizes.visual_data import MatplotlibVision
+from Utilizes.visual_data import MatplotlibVision, TextLogger
 from Utilizes.process_data import DataNormer
 import matplotlib.pyplot as plt
 import time
-from run_MLP import get_grid, get_origin
+import sys
+from utilizes_GVRB import get_origin
 
 
-def feature_transform(x):
-    """
-    Args:
-        x: input coordinates
-    Returns:
-        res: input transform
-    """
-    shape = x.shape
-    batchsize, size_x, size_y = shape[0], shape[1], shape[2]
-    gridx = torch.linspace(0, 1, size_x, dtype=torch.float32)
-    gridx = gridx.reshape(1, size_x, 1, 1).repeat([batchsize, 1, size_y, 1])
-    gridy = torch.linspace(0, 1, size_y, dtype=torch.float32)
-    gridy = gridy.reshape(1, 1, size_y, 1).repeat([batchsize, size_x, 1, 1])
-    return torch.cat((gridx, gridy), dim=-1).to(x.device)
+
 
 
 def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
@@ -49,10 +36,11 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
         scheduler: scheduler
     """
     train_loss = 0
-    for batch, (xx, yy) in enumerate(dataloader):
+    for batch, (xx, yy, gd) in enumerate(dataloader):
         xx = xx.to(device)
         yy = yy.to(device)
-        gd = feature_transform(xx)
+        gd = gd.to(device)
+        # gd = feature_transform(xx)
 
         pred = netmodel(xx, gd)
         loss = lossfunc(pred, yy)
@@ -76,10 +64,11 @@ def valid(dataloader, netmodel, device, lossfunc):
     """
     valid_loss = 0
     with torch.no_grad():
-        for batch, (xx, yy) in enumerate(dataloader):
+        for batch, (xx, yy, gd) in enumerate(dataloader):
             xx = xx.to(device)
             yy = yy.to(device)
-            gd = feature_transform(xx)
+            gd = gd.to(device)
+            # gd = feature_transform(xx)
 
             pred = netmodel(xx, gd)
             loss = lossfunc(pred, yy)
@@ -97,9 +86,10 @@ def inference(dataloader, netmodel, device): # 这个是？？
     """
 
     with torch.no_grad():
-        xx, yy = next(iter(dataloader))
+        xx, yy, gd = next(iter(dataloader))
         xx = xx.to(device)
-        gd = feature_transform(xx)
+        gd = gd.to(device)
+        # gd = feature_transform(xx)
         pred = netmodel(xx, gd)
 
     # equation = model.equation(u_var, y_var, out_pred)
@@ -110,12 +100,8 @@ if __name__ == "__main__":
     ################################################################
     # configs
     ################################################################
-    grid = get_grid()
-
-
-
     name = 'FNO_' + str(0)
-    work_path = os.path.join('../Rotor37_2d/work', name)
+    work_path = os.path.join('work', name)
     isCreated = os.path.exists(work_path)
     if not isCreated:
         os.makedirs(work_path)
@@ -130,18 +116,13 @@ if __name__ == "__main__":
         Device = torch.device('cpu')
 
     # design, fields = get_origin()
-    design, fields = get_origin(quanlityList=["Static Pressure", "Static Temperature",
-                                              "DensityFlow",
-                                              'Relative Total Pressure', 'Relative Total Temperature'
-                                              ])  # 获取原始数据
+    design, fields, grids = get_origin(type='struct')  # 获取原始数据
 
+    in_dim = 100
+    out_dim = 8
+    ntrain = 5000
+    nvalid = 900
 
-    in_dim = 28
-    out_dim = 5
-    ntrain = 2700
-    nvalid = 200
-
-    # modes = (10, 10)
     modes = (4, 4)
     width = 128
     depth = 4
@@ -155,29 +136,28 @@ if __name__ == "__main__":
     scheduler_step = 800
     scheduler_gamma = 0.1
 
-    print(epochs, learning_rate, scheduler_step, scheduler_gamma)
-
     r1 = 1
-    r2 = 1
-    s1 = int(((64 - 1) / r1) + 1)
-    s2 = int(((64 - 1) / r2) + 1)
 
+    print(epochs, learning_rate, scheduler_step, scheduler_gamma)
     ################################################################
     # load data
     ################################################################
 
-    input = np.tile(design[:, None, None, :], (1, 64, 64, 1))
+    input = np.tile(design[:, None, None :], (1, 64, 128, 1))
     input = torch.tensor(input, dtype=torch.float)
 
     # output = fields[:, 0, :, :, :].transpose((0, 2, 3, 1))
     output = fields
     output = torch.tensor(output, dtype=torch.float)
+
     print(input.shape, output.shape)
 
-    train_x = input[:ntrain, ::r1, ::r2][:, :s1, :s2]
-    train_y = output[:ntrain, ::r1, ::r2][:, :s1, :s2]
-    valid_x = input[ntrain:ntrain + nvalid, ::r1, ::r2][:, :s1, :s2]
-    valid_y = output[ntrain:ntrain + nvalid, ::r1, ::r2][:, :s1, :s2]
+    train_x = input[:ntrain, ::r1]
+    train_y = output[:ntrain, ::r1]
+    # train_g = grids[:ntrain, ::r1]
+    valid_x = input[-nvalid:, ::r1]
+    valid_y = output[-nvalid:, ::r1]
+    # valid_g = grids[-nvalid:, ::r1]
 
     x_normalizer = DataNormer(train_x.numpy(), method='mean-std')
     train_x = x_normalizer.norm(train_x)
@@ -187,27 +167,26 @@ if __name__ == "__main__":
     train_y = y_normalizer.norm(train_y)
     valid_y = y_normalizer.norm(valid_y)
 
-    train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_y),
+    # g_normalizer = DataNormer(train_g.numpy(), method='mean-std')
+    # train_g = g_normalizer.norm(train_g)
+    # valid_g = g_normalizer.norm(valid_g)
+
+    train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_y, train_g),
                                                batch_size=batch_size, shuffle=True, drop_last=True)
-    valid_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(valid_x, valid_y),
+    valid_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(valid_x, valid_y, valid_g),
                                                batch_size=batch_size, shuffle=False, drop_last=True)
 
     ################################################################
     # Neural Networks
     ################################################################
 
+    # 建立网络
+
     Net_model = FNO2d(in_dim=in_dim, out_dim=out_dim, modes=modes, width=width, depth=depth, steps=steps,
                       padding=padding, activation='gelu').to(Device)
 
-
-    input1 = torch.randn(batch_size, train_x.shape[1], train_x.shape[2], train_x.shape[3]).to(Device)
-    input2 = torch.randn(batch_size, train_x.shape[1], train_x.shape[2], 2).to(Device)
-
     # 损失函数
     Loss_func = nn.MSELoss()
-    # Loss_func = nn.SmoothL1Loss()
-    # Loss_func = FieldsLpLoss(size_average=False)
-    # L1loss = nn.SmoothL1Loss()
     # 优化算法
     Optimizer = torch.optim.Adam(Net_model.parameters(), lr=learning_rate, betas=(0.7, 0.9), weight_decay=1e-4)
     # 下降策略
@@ -255,15 +234,15 @@ if __name__ == "__main__":
             torch.save({'log_loss': log_loss, 'net_model': Net_model.state_dict(), 'optimizer': Optimizer.state_dict()},
                        os.path.join(work_path, 'latest_model.pth'))
 
-            for fig_id in range(5):
-                fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20), num=2)
-                Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], grid)
-                fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
-                plt.close(fig)
-
-            for fig_id in range(5):
-                fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20), num=3)
-                Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], grid)
-                fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
-                plt.close(fig)
+            # for fig_id in range(5):
+            #     fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20), num=2)
+            #     Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], grid)
+            #     fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
+            #     plt.close(fig)
+            #
+            # for fig_id in range(5):
+            #     fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20), num=3)
+            #     Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], grid)
+            #     fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
+            #     plt.close(fig)
 
