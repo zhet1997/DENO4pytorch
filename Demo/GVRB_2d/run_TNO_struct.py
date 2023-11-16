@@ -131,7 +131,7 @@ if __name__ == "__main__":
 
 
     name = 'TNO'
-    work_path = os.path.join('work', name+'_'+str(3))
+    work_path = os.path.join('work', name+'_'+str(4))
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     if not isCreated:
@@ -219,11 +219,11 @@ if __name__ == "__main__":
     MLP_model = FcnSingle(planes=(in_dim, 64, 64, config['n_targets']), last_activation=True).to(Device)
     Net_model = predictor(trunc=Tra_model, branch=MLP_model, field_dim=out_dim).to(Device)
 
-    isExist = os.path.exists(work.pth)
-    if isExist:
-        checkpoint = torch.load(work.pth, map_location=Device)
-        Net_model.load_state_dict(checkpoint['net_model'])
-        # Net_model.eval()
+    # isExist = os.path.exists(work.pth)
+    # if isExist:
+    #     checkpoint = torch.load(work.pth, map_location=Device)
+    #     Net_model.load_state_dict(checkpoint['net_model'])
+    #     # Net_model.eval()
 
 
     # model_statistics = summary(Net_model, input_size=(batch_size, train_x.shape[1]), device=str(Device))

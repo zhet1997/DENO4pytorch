@@ -86,7 +86,7 @@ if __name__ == '__main__':
                                                    'Relative Total Temperature',
                                                    'Absolute Total Temperature'])
 
-    pathNpz = os.path.join('E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\save_valid.npz')
+    pathNpz = os.path.join('E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\work\TNO_3\save_valid.npz')
     data = np.load(pathNpz)
     data_true = data['true']
     data_pred = data['pred']
@@ -119,24 +119,24 @@ if __name__ == '__main__':
     #         plot_spanwise_distribution(rst_true, rst_pred, num, variable_name, save_name, save_path)
 
     #比较性能预测结果
-    # variable_name_list = ['Total_total_efficiency', 'Total_static_efficiency']
-    # for variable_name in variable_name_list:
-    #     rst_true = post_true.get_performance('{}'.format(variable_name), type='averaged')
-    #     print(rst_true.shape)
-    #
-    #     rst_pred = post_pred.get_performance('{}'.format(variable_name), type='averaged')
-    #     print(rst_pred.shape)
-    #
-    #     save_path = "E://WQN//CODE//DENO4pytorch//Demo//GVRB_2d//work//TNO_2//result_averaged"
-    #     save_name = '{}'.format(variable_name)
-    #     plot_performance_compare(rst_true, rst_pred, variable_name, save_name, save_path)
+    variable_name_list = ['Total_total_efficiency', 'Total_static_efficiency']
+    for variable_name in variable_name_list:
+        rst_true = post_true.get_performance('{}'.format(variable_name), type='averaged')
+        print(rst_true.shape)
+
+        rst_pred = post_pred.get_performance('{}'.format(variable_name), type='averaged')
+        print(rst_pred.shape)
+
+        save_path = "E://WQN//CODE//DENO4pytorch//Demo//GVRB_2d//work//TNO_3//result_averaged"
+        save_name = '{}'.format(variable_name)
+        plot_performance_compare(rst_true, rst_pred, variable_name, save_name, save_path)
 
     #比较子午流面流场云图预测结果
-    Visual = MatplotlibVision(work_load_path, input_name=('x', 'y'), field_name=(
-        'Absolute Total Pressure', 'Absolute Mach Number','Static Enthalpy'))
-    for fig_id in range(5):
-        fig, axs = plt.subplots(8, 3, figsize=(30, 40), num=2)
-        Visual.plot_fields_ms(fig, axs, true[fig_id], pred[fig_id], grid)
-        fig.savefig(os.path.join(work_load_path, 'solution_' + type + "_" + str(fig_id) + '.jpg'))
-        plt.close(fig)
+    # Visual = MatplotlibVision(work_load_path, input_name=('x', 'y'), field_name=(
+    #     'Absolute Total Pressure', 'Absolute Mach Number','Static Enthalpy'))
+    # for fig_id in range(5):
+    #     fig, axs = plt.subplots(8, 3, figsize=(30, 40), num=2)
+    #     Visual.plot_fields_ms(fig, axs, true[fig_id], pred[fig_id], grid)
+    #     fig.savefig(os.path.join(work_load_path, 'solution_' + type + "_" + str(fig_id) + '.jpg'))
+    #     plt.close(fig)
 
