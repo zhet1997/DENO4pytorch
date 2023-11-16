@@ -6,6 +6,7 @@ print(torch.cuda.is_available())
 import numpy as np
 import torch.nn as nn
 import time
+from utilizes_GVRB import Rotor37WeightLoss
 from matplotlib import pyplot as plt
 from Utilizes.visual_data import MatplotlibVision
 from Tools.post_process.model_predict import predictor_establish
@@ -52,7 +53,7 @@ if __name__ == "__main__":
     # train process
     ################################################################
     # grid = get_grid()
-    grid = get_grid(GV_RB=True, grid_num=128)
+    # grid = get_grid(GV_RB=True, grid_num=128)
     for epoch in range(epochs):
 
         Net_model.train()
