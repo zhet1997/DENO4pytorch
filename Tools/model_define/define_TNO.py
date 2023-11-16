@@ -51,7 +51,7 @@ class TransBasedNeuralOperator(nn.Module):
             hidden_s = [int(n_hidden_s)] * int(num_layers_s)
             Share_model = FcnSingle(planes=(config['n_targets'], *hidden_s, out_dim), last_activation=True)
         else:
-            nn.Linear(self.branch_net.planes[-1], out_dim)
+            Share_model = nn.Linear(self.branch_net.planes[-1], out_dim)
 
         self.branch_net = MLP_model
         self.trunc_net = Tra_model

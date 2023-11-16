@@ -26,7 +26,8 @@ if __name__ == "__main__":
     # evaluater = lambda x: predictor.predictor_cfd_value(x, input_norm=False)[..., 1]
     problem = {
         'num_vars': var_dim,  # 参数数量
-        'names': [f'x{i+15}' for i in range(var_dim)],  # 参数名称
+        'names': [f'x{i+48+15}' for i in range(var_dim)],  # 参数名称
+        # 'names': ['x96',''],
         'bounds': [[0, 1]] * var_dim,  # 参数范围
     }
 
@@ -50,12 +51,12 @@ if __name__ == "__main__":
     print(rst)
     mean = SA.moment_calculate(rst, type=1)
     var = np.sqrt(SA.moment_calculate(rst, type=2))
-    var_rel = var/np.mean(var)
+    var_rel = var
 
     plt.scatter(grid[..., 0].reshape([-1]), grid[..., 1].reshape([-1]), c=var_rel.reshape([-1]), cmap='jet',
-                        marker='o' ,vmin=0, vmax=np.mean(var_rel)*10)
+                        marker='o' )#,vmin=0, vmax=np.mean(var_rel)*10)
     plt.show()
 
     #
-    plt.hist(rst, bins=30, density=True, alpha=0.6, color='b', label='Monte Carlo Samples')
-    plt.show()
+    # plt.hist(rst, bins=30, density=True, alpha=0.6, color='b', label='Monte Carlo Samples')
+    # plt.show()
