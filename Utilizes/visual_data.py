@@ -747,6 +747,86 @@ class MatplotlibVision(object):
                 axs[i][j].spines['right'].set_linewidth(self.box_line_width)  # 设置右边坐标轴的粗细
                 axs[i][j].spines['top'].set_linewidth(self.box_line_width)  # 设置右边坐标轴的粗细
 
+    def plot_fields_ms_2col(self, fig, axs, real, pred, coord, cmin_max=None, fmin_max=None, show_channel=None,
+                       cmaps=None, titles=None):
+
+        if len(axs.shape) == 1:
+            axs = axs[None, :]
+
+        if show_channel is None:
+            show_channel = np.arange(len(self.field_name))
+        fmin = np.zeros([2,real.shape[-1]])
+        fmax = np.zeros([2,real.shape[-1]])
+        if fmin_max == None:
+            fmin[0,:], fmax[0,:] = real.min(axis=(0, 1)), real.max(axis=(0, 1))
+            fmin[1,:], fmax[1,:] = pred.min(axis=(0, 1)), pred.max(axis=(0, 1))
+        else:
+            fmin, fmax = fmin_max[0], fmin_max[1]
+
+        if coord is None:
+            x = np.linspace(0, 1, real.shape[1])
+            y = np.linspace(0, 1, real.shape[0])
+            coord = np.stack(np.meshgrid(x, y), axis=-1)
+
+        if cmin_max == None:
+            cmin, cmax = coord.min(axis=(0, 1)), coord.max(axis=(0, 1))
+        else:
+            cmin, cmax = cmin_max[0], cmin_max[1]
+
+        if titles is None:
+            titles = ['mean', 'std']
+
+        if cmaps is None:
+            cmaps = ['RdYlBu_r', 'coolwarm']
+
+        x_pos = coord[:, :, 0]
+        y_pos = coord[:, :, 1]
+        size_channel = len(show_channel)
+        name_channel = [self.field_name[i] for i in show_channel]
+
+        for i in range(size_channel):
+
+            fi = show_channel[i]
+            ff = [real[..., fi], pred[..., fi], real[..., fi] - pred[..., fi]]
+            #
+            for j in range(2):
+
+                axs[i][j].cla()
+                f_true = axs[i][j].pcolormesh(x_pos, y_pos, ff[j], cmap=cmaps[j], shading='gouraud',
+                                              antialiased=True, snap=True)
+                f_true.set_zorder(10)
+                axs[i][j].axis([cmin[0], cmax[0], cmin[1], cmax[1]])
+                # axs[i][j].axis('equal')
+                # ax[i][j].grid(zorder=0, which='both', color='grey', linewidth=1)
+                # axs[i][j].set_title(titles[j], fontdict=self.font_EN)
+                if i == 0:
+                    axs[i][j].set_title(titles[j], fontdict=self.font_CHN)
+
+                cb = fig.colorbar(f_true, ax=axs[i][j], shrink=0.75)
+                cb.ax.tick_params(labelsize=self.font['size'])
+                for l in cb.ax.yaxis.get_ticklabels():
+                    l.set_family('Times New Roman')
+                tick_locator = ticker.MaxNLocator(nbins=6)  # colorbar上的刻度值个数
+                cb.locator = tick_locator
+                cb.update_ticks()
+
+                if j < 2:
+                    f_true.set_clim(fmin[j][i], fmax[j][i])
+                    cb.ax.set_title(name_channel[i], fontdict=self.font_EN, loc='center')
+                    # cb.ax.set_title('$\mathrm{\Delta}$' + name_channel[i], fontdict=self.font_EN, loc='center')
+                # 设置刻度间隔
+                axs[i][j].set_xticklabels([])
+                axs[i][j].set_yticklabels([])
+                axs[i][j].tick_params(axis='both', which='both', length=0, labelsize=0)
+                # axs[i][j].set_aspect(1)
+                # axs[i][j].set_xlabel(r'$x$/m', fontdict=self.font_EN)
+                # axs[i][j].set_ylabel(r'$y$/m', fontdict=self.font_EN)
+                self.box_line_width = 0
+                axs[i][j].spines['bottom'].set_linewidth(self.box_line_width)  # 设置底部坐标轴的粗细
+                axs[i][j].spines['left'].set_linewidth(self.box_line_width)  # 设置左边坐标轴的粗细
+                axs[i][j].spines['right'].set_linewidth(self.box_line_width)  # 设置右边坐标轴的粗细
+                axs[i][j].spines['top'].set_linewidth(self.box_line_width)  # 设置右边坐标轴的粗细
+
     def plot_fields_ms_col(self, fig, axs, real, pred, coord, cmin_max=None, fmin_max=None, show_channel=None,
                        cmaps=None, titles=None, limit=None):
         # if len(axs.shape) == 1:
