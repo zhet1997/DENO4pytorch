@@ -4,7 +4,7 @@ import numpy as np
 from Tools.post_process.post_data import Post_2d
 from Tools.post_process.load_model import loaddata, build_model_yml
 from Tools.train_model.train_task_construct import WorkPrj
-from run_FNO import feature_transform
+# from run_FNO import feature_transform
 from Demo.Rotor37_2d.utilizes_rotor37 import get_grid
 from Utilizes.process_data import DataNormer
 from TestData.post_CFD import cfdPost_2d
@@ -86,6 +86,11 @@ class DLModelPost(object):
             input = torch.tensor(np.tile(input[:, None, None, :], (1, self.grid_size_r, self.grid_size_z, 1)), dtype=torch.float)
             input = input.to(self.Device)
             grid = feature_transform(input)
+            pred = self.netmodel(input, grid)
+        elif self.name in ("TNO"):
+            from Utilizes.geometrics import gen_uniform_grid
+            input = input.to(self.Device)
+            grid = gen_uniform_grid(torch.tensor(np.zeros([1, self.grid_size_r, self.grid_size_z, 1]))).to(self.Device)
             pred = self.netmodel(input, grid)
         else:
             input = input.to(self.Device)

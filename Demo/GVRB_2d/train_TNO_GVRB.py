@@ -15,7 +15,7 @@ from utilizes_rotor37 import get_grid, get_origin_GVRB
 from Tools.model_define.define_TNO import train, valid, inference
 
 if __name__ == "__main__":
-    name = 'TNO_0'
+    name = 'TNO_3'
     input_dim = 96
     output_dim = 8
     ## load the model

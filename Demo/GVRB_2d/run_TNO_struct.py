@@ -12,7 +12,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-# from torchsummary import summary
+from torchsummary import summary
 from Utilizes.process_data import DataNormer
 from basic.basic_layers import FcnSingle
 from fno.FNOs import FNO2d
@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 import time
 import yaml
 from Demo.GVRB_2d.utilizes_GVRB import get_grid, get_origin
-from train_model.model_whole_life import WorkPrj
+from train_model_GVRB.model_whole_life import WorkPrj
 
 class predictor(nn.Module):
 
@@ -150,18 +150,18 @@ if __name__ == "__main__":
 
     design, fields, grids = get_origin(type='struct')  # 获取原始数据取原始数据
 
-    # in_dim = 100
-    # out_dim = 8
-    # ntrain = 5000
-    # nvalid = 900
-    #
-    # batch_size = 32
-    # epochs = 1001
-    # learning_rate = 0.001
-    # scheduler_step = 800
-    # scheduler_gamma = 0.1
-    # r1 = 1
-    # print(epochs, learning_rate, scheduler_step, scheduler_gamma)
+    in_dim = 100
+    out_dim = 8
+    ntrain = 5000
+    nvalid = 900
+
+    batch_size = 32
+    epochs = 1001
+    learning_rate = 0.001
+    scheduler_step = 800
+    scheduler_gamma = 0.1
+    r1 = 1
+    print(epochs, learning_rate, scheduler_step, scheduler_gamma)
     # #这部分应该是重采样
     # #不进行稀疏采样
     #
@@ -169,64 +169,64 @@ if __name__ == "__main__":
     # ################################################################
     # # load data
     # ################################################################
-    # work = WorkPrj(work_path)
-    # input = design
-    # input = torch.tensor(input, dtype=torch.float)
+    work = WorkPrj(work_path)
+    input = design
+    input = torch.tensor(input, dtype=torch.float)
+
+    # output = fields[:, 0, :, :, :].transpose((0, 2, 3, 1))
+    output = fields
+    output = torch.tensor(output, dtype=torch.float)
+
+    print(input.shape, output.shape)
     #
-    # # output = fields[:, 0, :, :, :].transpose((0, 2, 3, 1))
-    # output = fields
-    # output = torch.tensor(output, dtype=torch.float)
+    train_x = input[:ntrain]
+    train_y = output[:ntrain]
+    # train_g = grids[:ntrain, ::r1]
+    valid_x = input[-nvalid:]
+    valid_y = output[-nvalid:]
+    # valid_g = grids[-nvalid:, ::r1]
     #
-    # print(input.shape, output.shape)
+    x_normalizer = DataNormer(train_x.numpy(), method='mean-std')
+    train_x = x_normalizer.norm(train_x)
+    valid_x = x_normalizer.norm(valid_x)
+
+    y_normalizer = DataNormer(train_y.numpy(), method='mean-std')
+    train_y = y_normalizer.norm(train_y)
+    valid_y = y_normalizer.norm(valid_y)
     #
-    # train_x = input[:ntrain]
-    # train_y = output[:ntrain]
-    # # train_g = grids[:ntrain, ::r1]
-    # valid_x = input[-nvalid:]
-    # valid_y = output[-nvalid:]
-    # # valid_g = grids[-nvalid:, ::r1]
+    x_normalizer.save(os.path.join(work_path, 'x_norm.pkl'))  # 将normalizer保存下来
+    y_normalizer.save(os.path.join(work_path, 'y_norm.pkl'))
     #
-    # x_normalizer = DataNormer(train_x.numpy(), method='mean-std')
-    # train_x = x_normalizer.norm(train_x)
-    # valid_x = x_normalizer.norm(valid_x)
-    #
-    # y_normalizer = DataNormer(train_y.numpy(), method='mean-std')
-    # train_y = y_normalizer.norm(train_y)
-    # valid_y = y_normalizer.norm(valid_y)
-    #
-    # x_normalizer.save(os.path.join(work_path, 'x_norm.pkl'))  # 将normalizer保存下来
-    # y_normalizer.save(os.path.join(work_path, 'y_norm.pkl'))
-    #
-    # train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_y),
-    #                                            batch_size=batch_size, shuffle=True, drop_last=True)
-    # valid_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(valid_x, valid_y),
-    #                                            batch_size=batch_size, shuffle=False, drop_last=True)
+    train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_y),
+                                               batch_size=batch_size, shuffle=True, drop_last=True)
+    valid_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(valid_x, valid_y),
+                                               batch_size=batch_size, shuffle=False, drop_last=True)
     #
     #
     # ################################################################
     # #  Neural Networks
     # ################################################################
-    # with open(os.path.join('transformer_config_gvrb.yml')) as f:
-    #     config = yaml.full_load(f)
-    #     config = config['GVRB_2d']
+    with open(os.path.join('transformer_config_gvrb.yml')) as f:
+        config = yaml.full_load(f)
+        config = config['GVRB_2d']
     #
     # # 建立网络
-    # Tra_model = FourierTransformer(**config).to(Device)
-    # # Tra_model = SimpleTransformer(**config).to(Device)
-    # # FNO_model = FNO2d(in_dim=2, out_dim=config['n_targets'], modes=(16, 16), width=64, depth=4,
-    # #                   padding=9, activation='gelu').to(Device)
-    # MLP_model = FcnSingle(planes=(in_dim, 64, 64, config['n_targets']), last_activation=True).to(Device)
-    # Net_model = predictor(trunc=Tra_model, branch=MLP_model, field_dim=out_dim).to(Device)
-    #
-    # # model_statistics = summary(Net_model, input_size=(batch_size, train_x.shape[1]), device=Device)
-    # # Logger.write(str(model_statistics))
+    Tra_model = FourierTransformer(**config).to(Device)
+    # Tra_model = SimpleTransformer(**config).to(Device)
+    # FNO_model = FNO2d(in_dim=2, out_dim=config['n_targets'], modes=(16, 16), width=64, depth=4,
+    #                   padding=9, activation='gelu').to(Device)
+    MLP_model = FcnSingle(planes=(in_dim, 64, 64, config['n_targets']), last_activation=True).to(Device)
+    Net_model = predictor(trunc=Tra_model, branch=MLP_model, field_dim=out_dim).to(Device)
+
+    model_statistics = summary(Net_model, input_size=(batch_size, train_x.shape[1]), device=Device)
+    Logger.write(str(model_statistics))
     #
     # # 损失函数
-    # Loss_func = nn.MSELoss()
+    Loss_func = nn.MSELoss()
     # # Loss_func = Rotor37WeightLoss()
     # # Loss_func = nn.SmoothL1Loss()
     # # 优化算法
-    # Optimizer = torch.optim.Adam(Net_model.parameters(), lr=learning_rate, betas=(0.7, 0.9), weight_decay=1e-7)
+    Optimizer = torch.optim.Adam(Net_model.parameters(), lr=learning_rate, betas=(0.7, 0.9), weight_decay=1e-7)
     # # 下降策略
     # Scheduler = torch.optim.lr_scheduler.StepLR(Optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
     # # 可视化
