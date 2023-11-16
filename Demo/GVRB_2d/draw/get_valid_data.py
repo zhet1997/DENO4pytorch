@@ -12,7 +12,7 @@ from Tools.post_process.post_data import Post_2d
 from utilizes_rotor37 import get_grid, get_origin_GVRB
 
 if __name__ == "__main__":
-    name = 'TNO_2'
+    name = 'TNO_3'
     input_dim = 100
     output_dim = 8
     ## load the model

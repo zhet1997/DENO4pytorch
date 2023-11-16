@@ -713,14 +713,14 @@ class MatplotlibVision(object):
                                               antialiased=True, snap=True)
                 f_true.set_zorder(10)
                 axs[i][j].axis([cmin[0], cmax[0], cmin[1], cmax[1]])
-                # axs[i][j].axis('equal')
-                # ax[i][j].grid(zorder=0, which='both', color='grey', linewidth=1)
-                # axs[i][j].set_title(titles[j], fontdict=self.font_EN)
-                # if i == 0:
-                #     ax[i][j].set_title(titles[j], fontdict=self.font_CHN)
+                axs[i][j].axis('equal')
+                # axs[i][j].grid(zorder=0, which='both', color='grey', linewidth=1)
+                axs[i][j].set_title(titles[j], fontdict=self.font_EN)
+                if i == 0:
+                    axs[i][j].set_title(titles[j], fontdict=self.font_CHN)
 
                 cb = fig.colorbar(f_true, ax=axs[i][j], shrink=0.75)
-                cb.ax.tick_params(labelsize=self.font['size'])
+                cb.ax.tick_params(labelsize=20)
                 for l in cb.ax.yaxis.get_ticklabels():
                     l.set_family('Times New Roman')
                 tick_locator = ticker.MaxNLocator(nbins=6)  # colorbar上的刻度值个数
