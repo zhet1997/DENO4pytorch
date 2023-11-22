@@ -114,7 +114,7 @@ class Turbo_UQLab(object):
     # ===============================================================================#
     def moment_calculate(self, data,
                          type='mean',# 'mean':1, 'var':2, 'skew':3, 'kurt':4
-                         channel=False,
+                         squeeze=True,
                          ):
         if type=='mean' or type==1:
             rst =  mean(data, axis=0, keepdims=True)
@@ -126,7 +126,11 @@ class Turbo_UQLab(object):
             rst = kurtosis(data, axis=0, keepdims=True)
         else:
             assert False
+
+        if squeeze:
+            return rst.squeeze(axis=0)
         return rst
+
     def moment_convergence(self,
                            number_ini=1000,
                            number_iter=100,

@@ -14,12 +14,12 @@ from run_FNO import feature_transform
 
 if __name__ == "__main__":
     # 数据读入
-    work_path = os.path.join("../../Demo/Rotor37_2d", "data", "data_collect")
+    work_path = os.path.join("../../../Demo/Rotor37_2d", "data", "data_collect")
     isCreated = os.path.exists(work_path)
     if not isCreated: os.mkdir(work_path)
 
-    grid = get_grid(real_path=os.path.join("../../Demo/Rotor37_2d", "data"))
-    design, field = get_origin(realpath=os.path.join("../../Demo/Rotor37_2d", "data"), getridbad=False)
+    grid = get_grid(real_path=os.path.join("../../../Demo/Rotor37_2d", "data"))
+    design, field = get_origin(realpath=os.path.join("../../../Demo/Rotor37_2d", "data"), getridbad=False)
                                # quanlityList=["Static Pressure", "Static Temperature",
                                #               'Absolute Total Temperature',  # 'Absolute Total Pressure',
                                #               'Relative Total Temperature',  # 'Relative Total Pressure',

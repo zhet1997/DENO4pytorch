@@ -1,11 +1,18 @@
 from draw_sensitive import *
 from Utilizes.visual_data import MatplotlibVision
+from scipy.interpolate import splrep, splev
 
+
+def interp_1d(x,y,x_new):
+    spl = splrep(x, y)
+    y_new = splev(x_new, spl)
+
+    return y_new
 if __name__ == "__main__":
     name = 'FNO_1'
     input_dim = 28
     output_dim = 5
-    work_load_path = os.path.join("..", "work_train_FNO2")
+    work_load_path = os.path.join("../..", "work_train_FNO2")
     work_path = os.path.join(work_load_path, name)
     work = WorkPrj(work_path)
 
@@ -66,8 +73,8 @@ if __name__ == "__main__":
                 [20, 21, 22, 23, 24],
                 [25, 26, 27],
                 ]
-
-    #按流向位置分组
+    #
+    # #按流向位置分组
     # var_group = [
     #     [0, 5, 10, 15, 20],
     #     [1, 6, 11, 16, 21],
@@ -83,8 +90,8 @@ if __name__ == "__main__":
     dict_axs = {}
     dict_data = {}
     for ii, parameter in enumerate(parameterList):
-        fig, axs = plt.subplots(1, 1, figsize=(5, 5), num=ii)
-        data = np.zeros([len(var_group)])
+        fig, axs = plt.subplots(1, 1, figsize=(8, 8), num=ii)
+        data = np.zeros([len(var_group), 200])
         dict_fig.update({parameter: fig})
         dict_axs.update({parameter: axs})
         dict_data.update({parameter: data})
@@ -107,7 +114,7 @@ if __name__ == "__main__":
             "W2": 3,
             "DensityFlow": 4,
         }
-        grid = get_grid(real_path=os.path.join("..", "data"))
+        grid = get_grid(real_path=os.path.join("../..", "data"))
         post_pred = Post_2d(pred.detach().cpu().numpy(), grid,
                             inputDict=input_para,
                             )
@@ -121,14 +128,14 @@ if __name__ == "__main__":
             # normalizer = DataNormer(value_span, method='mean-std', axis=0)  # 这里对网格上的具体数据进行平均
 
             #计算流向曲线
-            # value_flow = post_pred.field_density_average(parameter, location="whole")
-            # normalizer = DataNormer(value_flow, method='mean-std', axis=(0,))
+            value_flow = post_pred.field_density_average(parameter, location="whole")
+            normalizer = DataNormer(value_flow, method='mean-std', axis=(0,))
 
-            #计算0维数据
-            value_span = getattr(post_pred, parameter)
-            value_span = np.mean(value_span[:, :, 15:17], axis=2)
-            value_span = post_pred.span_density_average(value_span)
-            normalizer = DataNormer(value_span, method='mean-std', axis=0)
+            # # spine
+            interp_num = 200
+            x = np.linspace(0, 1, 64)
+            x_new = np.linspace(0, 1, interp_num)
+            normalizer.std = interp_1d(x, normalizer.std, x_new)
 
             dict_data[parameter][idx] = normalizer.std # 将数据加入
 
@@ -136,7 +143,7 @@ if __name__ == "__main__":
 
 
     # save_path = os.path.join(work_path, "sensitive_test")
-    save_path = os.path.join("..", "data", "final_fig")
+    save_path = os.path.join("../..", "data", "final_fig")
     Visual = MatplotlibVision(work_path, input_name=('Z', 'R'), field_name=('unset'))  # 不在此处设置名称
 
     for parameter in parameterList:
@@ -144,15 +151,12 @@ if __name__ == "__main__":
         axs = dict_axs[parameter]
         data = dict_data[parameter]
 
-        data = data/np.sum(data)
-
         plt.figure(fig.number)
-        plt.subplots_adjust(hspace=0.05, wspace=0.05)
+        plt.subplots_adjust(hspace=0.1, wspace=0.1)
 
-        Visual.plot_pie(fig, axs, data, title=None)
+        Visual.plot_cumulate(fig, axs, data, data_neg=None, stdaxis=1, title=None)
 
-        jpg_path = os.path.join(save_path, parameter + "_pie_upper" + '.jpg')
-        fig.tight_layout()
+        jpg_path = os.path.join(save_path, parameter + "_curves_" + "acumulate_axis" + '.jpg')
         fig.savefig(jpg_path)
         plt.close(fig)
 

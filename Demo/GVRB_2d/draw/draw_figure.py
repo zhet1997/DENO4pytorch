@@ -3,7 +3,7 @@ import yaml
 from transformer.Transformers import FourierTransformer
 from run_TransGV import inference
 from model_whole_life import WorkPrj
-from TestData.post_CFD import cfdPost_2d
+from Tools.post_process.post_CFD import cfdPost_2d
 from utilizes_rotor37 import get_grid, get_origin_GVRB
 
 

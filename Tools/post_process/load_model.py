@@ -35,6 +35,12 @@ def loaddata_Sql(name,
                                                      'Relative Total Temperature',
                                                      'Absolute Total Temperature']
                                        )
+    nameReal = name.split("_")[0]
+    id = None
+    if len(name.split("_")) == 2:
+        id = int(name.split("_")[1])
+
+    name = nameReal
     if name in ("FNO", "FNM", "UNet", "Transformer"):
         # input = np.tile(design[:, None, None, :], (1, 128, 128, 1))
         # r1 = 10

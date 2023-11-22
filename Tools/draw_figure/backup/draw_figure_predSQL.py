@@ -12,7 +12,7 @@ from train_model.model_whole_life import WorkPrj
 from run_FNO import feature_transform
 from SALib.sample import latin
 
-
+# test add sth new.
 
 def predicter(netmodel, input, Device, name=None):
     """
@@ -77,18 +77,27 @@ def MkdirCheck(file_path):
 
 
 if __name__ == "__main__":
-    name = 'FNO_1'
-    input_dim = 28
+    name = 'Transformer'
+    input_dim = 363
     output_dim = 5
-    work_load_path = os.path.join("../../Demo/Rotor37_2d", "work_train_FNO2")
-    work_path = os.path.join(work_load_path, name)
-    work = WorkPrj(work_path)
+    work_load_path = os.path.join("../../../Demo/Rotor37_2d", "work_trainsql_Trans1")
+    # work_path = os.path.join(work_load_path, name)
+    # work = WorkPrj(work_path)
+    #
+    #
+    # nameReal = name.split("_")[0]
+    # id = None
+    # if len(name.split("_")) == 2:
+    #     id = int(name.split("_")[1])
+    workList = os.listdir(work_load_path)
+    for name in workList:
+        work_path = os.path.join(work_load_path, name)
+        work = WorkPrj(work_path)
 
-
-    nameReal = name.split("_")[0]
-    id = None
-    if len(name.split("_")) == 2:
-        id = int(name.split("_")[1])
+        nameReal = name.split("_")[0]
+        id = None
+        if len(name.split("_")) == 2:
+            id = int(name.split("_")[1])
 
     if torch.cuda.is_available():
         Device = torch.device('cuda')
@@ -99,8 +108,8 @@ if __name__ == "__main__":
         norm_save_x = work.x_norm
         norm_save_y = work.y_norm
     else:
-        norm_save_x = os.path.join("../../Demo/Rotor37_2d", "data", "x_norm_1250.pkl")
-        norm_save_y = os.path.join("../../Demo/Rotor37_2d", "data", "y_norm_1250.pkl")
+        norm_save_x = os.path.join("../../../Demo/Rotor37_2d", "data", "x_norm_1250.pkl")
+        norm_save_y = os.path.join("../../../Demo/Rotor37_2d", "data", "y_norm_1250.pkl")
 
     x_normlizer = DataNormer([1, 1], method="mean-std", axis=0)
     x_normlizer.load(norm_save_x)
@@ -200,7 +209,7 @@ if __name__ == "__main__":
             "W2": 3,
             "DensityFlow": 4,
         }
-        grid = get_grid(real_path=os.path.join("../../Demo/Rotor37_2d", "data"))
+        grid = get_grid(real_path=os.path.join("../../../Demo/Rotor37_2d", "data"))
         post_pred = Post_2d(pred.detach().cpu().numpy(), grid,
                             inputDict=input_para,
                             )
@@ -210,7 +219,7 @@ if __name__ == "__main__":
 
 
         # save_path = os.path.join(work_path,"sensitive_test")
-        save_path = os.path.join("../../Demo/Rotor37_2d", "data", "final_fig")
+        save_path = os.path.join("../../../Demo/Rotor37_2d", "data", "final_fig")
 
         MkdirCheck(save_path)
 

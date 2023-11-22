@@ -2,12 +2,12 @@ import torch
 import os
 import numpy as np
 from Tools.post_process.post_data import Post_2d
-from Tools.post_process.load_model import loaddata, build_model_yml
+from Tools.post_process.load_model import build_model_yml
 from Tools.train_model.train_task_construct import WorkPrj
 # from run_FNO import feature_transform
 from Demo.Rotor37_2d.utilizes_rotor37 import get_grid
 from Utilizes.process_data import DataNormer
-from Demo.GVRB_2d.TestData.post_CFD import cfdPost_2d
+from Tools.post_process.post_CFD import cfdPost_2d
 
 def predictor_establish(name, work_load_path, predictor=True):
 
@@ -16,8 +16,8 @@ def predictor_establish(name, work_load_path, predictor=True):
     if len(name.split("_")) == 2:
         id = int(name.split("_")[1])
 
-    work_path = os.path.join(work_load_path, name)
-    work = WorkPrj(work_path)
+    # work_path = os.path.join(work_load_path, name)
+    work = WorkPrj(work_load_path)
     print(work.device)
 
     if os.path.exists(work.x_norm):
@@ -134,6 +134,14 @@ class DLModelPost(object):
                     temp = self.netmodel(input, grid)
                     pred.append(temp.clone())
                     temp = None
+            elif self.name in ("TNO"):
+                    from Utilizes.geometrics import gen_uniform_grid
+                    input = input.to(self.Device)
+                    grid = gen_uniform_grid(torch.tensor(np.zeros([1, self.grid_size_r, self.grid_size_z, 1]))).to(
+                        self.Device)
+                    temp = self.netmodel(input, grid)
+                    pred.append(temp.clone())
+                    temp = None
             else:
                 with torch.no_grad():
                     input = input.to(self.Device)
@@ -211,9 +219,11 @@ class DLModelPost(object):
 
 
     def predictor_cfd_value(self, input,
-                        input_para=None, parameterList=None,
-                        input_norm=False, setOpt=True,
-                        soft_constraint=None,
+                        input_para=None,
+                        parameterList=None,
+                        input_norm=False,
+                        grid = None,
+                        space = None, # 0,1,2
                         ):
         if parameterList is None:
             parameterList = [
@@ -238,31 +248,22 @@ class DLModelPost(object):
                          'Relative Total Temperature': 6,
                          'Absolute Total Temperature': 7,
                          }
-        if soft_constraint is None:
-            soft_constraint = []
-
-        grid = get_grid(real_path='E:\WQN\CODE\DENO4pytorch\Demo\GV_RB\TestData', GV_RB=True)
-        post_pred = cfdPost_2d(pred_2d, grid, inputDict=input_para)
-        # post_pred = Post_2d(pred_2d, grid,
-        #                     inputDict=input_para,
-        #                     )
-
+        if grid is None:
+            grid = get_grid(real_path='E:\WQN\CODE\DENO4pytorch\Demo\GV_RB\TestData', GV_RB=True)
+        post_pred = cfdPost_2d(pred_2d, grid, inputdict=input_para)
         Rst = []
         for parameter_Name in parameterList:
-            value = post_pred.get_performance(parameter_Name, type='averaged')
-
-
-            # if setOpt and parameter_Name not in soft_constraint: #如果默认输出最优值 #如果是约束项就不用修改了
-            #     value = value * self.MaxOrMIn(parameter_Name)
-            #
-            # if parameter_Name in soft_constraint:
-            #     value = np.power((self.Constraint(parameter_Name) - value), 2)#将软约束作为一个目标r
-            #     print(parameter_Name)
-            #     print(value)
+            if space==0:
+                value = post_pred.get_performance(parameter_Name, type='averaged')
+            elif space==1:
+                value = post_pred.get_field_performance(parameter_Name)
+            elif space==2:
+                value = post_pred.get_field(parameter_Name)
+            else:
+                assert False
 
             Rst.append(value[...,np.newaxis].copy())
             value = []
-
         return np.concatenate(Rst, axis=-1)
 
     def predictor_hardConstraint(self, input, hardconstrList):

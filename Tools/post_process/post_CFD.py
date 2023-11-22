@@ -2,22 +2,24 @@ import numpy as np
 import math
 
 class cfdPost_2d(object):
-    def __init__(self,data_2d,grid,inputDict=None): #默认输入格式为64*64*5
+    def __init__(self,data_2d,grid,inputdict=None): #默认输入格式为64*64*5
         self.grid = grid
         self.data_2d = data_2d
 
-        if inputDict is None:
-            self.inputDict = {
-                # "PressureStatic": 0,
-                # "TemperatureStatic": 1,
-                "V2": 0,
-                "W2": 1,
-                "DensityFlow": 2,
-            }
+        if inputdict is None:
+            self.inputDict = {'Static Pressure': 0,
+                 'Static Temperature': 1,
+                 'Density': 2,
+                 'Vx': 3,
+                 'Vy': 4,
+                 'Vz': 5,
+                 'Relative Total Temperature': 6,
+                 'Absolute Total Temperature': 7,
+                 }
         else:
-            self.inputDict = inputDict
+            self.inputDict = inputdict
 
-        assert len(inputDict.keys())==data_2d.shape[-1], \
+        assert len(self.inputDict.keys())==data_2d.shape[-1], \
             "the physic field name in inputDict is not match with the data_2d"
 
         self.set_basic_const()
@@ -34,7 +36,7 @@ class cfdPost_2d(object):
                         kappa = 1.400,
                         Cp = 1004,
                         sigma = 1.6,
-                        rotateSpeed = -17188, # rpm
+                        rotateSpeed = 8279, # rpm
                         Rg = 287,
                         RSInterface = 0.042
                         ):
@@ -80,14 +82,17 @@ class cfdPost_2d(object):
                              'Relative Total Temperature',
                              'Absolute Total Temperature',
                              'Rotary Total Temperature',
-                             'Vx', 'Vy', 'Vz','|V|','|V|^2','atan(Vx/Vz)'
-                             'Wx', 'Wy', 'Wz','|W|','|W|^2','atan(Wx/Wz)'
+                             'Vx', 'Vy', 'Vz','|V|','|V|^2','atan(Vx/Vz)',
+                             'Wx', 'Wy', 'Wz','|W|','|W|^2','atan(Wx/Wz)',
                              '|U|',
                              'Speed Of Sound',
-                             'Relative Mach number',
-                             'Absolute Mach number',
+                             '|Speed Of Sound|^2',
+                             'Relative Mach Number',
+                             'Absolute Mach Number',
+                             'Static Enthalpy',
                              'Density',
                              'Entropy',
+                             'Static Energy',
                              ]
         self.fieldSaveDict = {}
         self.fieldSaveDict.update({'Gird Node Z': np.tile(self.grid[None, :, :, 0], [self.num, 1, 1])})
@@ -132,24 +137,27 @@ class cfdPost_2d(object):
         self.fieldCalculateDict['Absolute Total Pressure'] = lambda x1, x2, x3: x1 * np.power(x2 / x3, self.kappa / (self.kappa - 1))# Attention to nonlinear term
         self.fieldParaDict['Absolute Total Pressure'] = ('Static Pressure', 'Absolute Total Temperature', 'Static Temperature')
         self.fieldCalculateDict['Relative Total Pressure'] = lambda x1, x2, x3: x1 * np.power(x2 / x3, self.kappa / (self.kappa - 1))
-        self.fieldParaDict['Relative Total Pressure'] = ('Static Pressure', 'Pressure Total Temperature', 'Static Temperature')
+        self.fieldParaDict['Relative Total Pressure'] = ('Static Pressure', 'Relative Total Temperature', 'Static Temperature')
         self.fieldCalculateDict['Rotary Total Pressure'] = lambda x1, x2, x3: x1 * np.power(x2 / x3, self.kappa / (self.kappa - 1))
         self.fieldParaDict['Rotary Total Pressure'] = ('Static Pressure', 'Rotary Total Temperature', 'Static Temperature')
 
         self.fieldCalculateDict['Speed Of Sound'] = lambda x1, x2: np.sqrt(self.kappa * x1 / x2)
         self.fieldParaDict['Speed Of Sound'] = ('Static Pressure', 'Density')
 
-        self.fieldCalculateDict['|Speed Of Sound|^2'] = lambda x1: (x1) * 2
-        self.fieldParaDict['|Speed Of Sound|^2'] = ('Speed Of Sound')
+        self.fieldCalculateDict['|Speed Of Sound|^2'] = lambda x1: (x1) ** 2
+        self.fieldParaDict['|Speed Of Sound|^2'] = ('Speed Of Sound',)
 
-        self.fieldCalculateDict['Absolute Mach Number'] = lambda x1, x2: np.sqrt(x1 / x2)
+        self.fieldCalculateDict['Absolute Mach Number'] = lambda x1, x2: np.sqrt(np.abs(x1) / np.abs(x2))
         self.fieldParaDict['Absolute Mach Number'] = ('|V|^2', '|Speed Of Sound|^2')
 
-        self.fieldCalculateDict['Relative Mach Number'] = lambda x1, x2: np.sqrt(x1 / x2)
+        self.fieldCalculateDict['Relative Mach Number'] = lambda x1, x2: np.sqrt(np.abs(x1) / np.abs(x2))
         self.fieldParaDict['Relative Mach Number'] = ('|W|^2', '|Speed Of Sound|^2')
 
         self.fieldCalculateDict['Static Enthalpy'] = lambda x1:self.Cp* x1
-        self.fieldParaDict['Static Enthalpy'] = ('Static Temperature')
+        self.fieldParaDict['Static Enthalpy'] = ('Static Temperature',)
+
+        # self.fieldCalculateDict['Entropy'] = lambda x1, x2, x3: self.Cp*np.log(x1)
+        # self.fieldParaDict['Entropy'] = ('Static Temperature', 'Static Pressure', 'Density')
 
         self.fieldCalculateDict['Absolute Total Enthalpy'] = lambda x1,x2:  x1 + 0.5 * x2
         self.fieldParaDict['Absolute Total Enthalpy'] = ('Static Enthalpy','|V|^2')
@@ -230,9 +238,11 @@ class cfdPost_2d(object):
                                  'Enthalpy',
                                  'Degree_reaction',
                                  'Polytropic_efficiency',
+                                 'Isentropic_efficiency',
                                  'Axial_thrust',
                                  'Torque',
                                  'Power',
+                                 'Static_Enthalpy',
                                  ]
         self.performanceSaveDict = {}
         for performance in self.performanceList:
@@ -258,13 +268,16 @@ class cfdPost_2d(object):
         self.performanceCalculateDict['Absolute_total_temperature_ratio'] = lambda x1, x2: x1 / x2
         self.performanceParaDict['Absolute_total_temperature_ratio'] = [('Absolute Total Temperature',) for _ in range(2)]
 
+        self.performanceCalculateDict['Static_Enthalpy'] = lambda x1, x2:self.Cp* x1 - self.Cp* x2
+        self.performanceParaDict['Static_Enthalpy'] = [('Static Temperature',) for _ in range(2)]
+
         # self.performanceCalculateDict['Power'] = lambda x1, x2: x1 / x2
         # self.performanceParaDict['Absolute_total_temperature_ratio'] = [('Absolute Total Pressure Temperature',) for _ in range(2)]
 
-        # self.performanceCalculateDict['Isentropic_efficiency'] = self._get_Isentropic_efficiency
-        #     # lambda t1, p1, t2, p2: (1-(t2 / t1)) / (1-np.power(p2 / p1,  (self.kappa - 1) / self.kappa ))
-        # self.performanceParaDict['Isentropic_efficiency'] = \
-        #     [('Absolute Total Temperature','Absolute Total Pressure') for _ in range(2)]
+        self.performanceCalculateDict['Isentropic_efficiency'] = self._get_Isentropic_efficiency
+            # lambda t1, p1, t2, p2: (1-(t2 / t1)) / (1-np.power(p2 / p1,  (self.kappa - 1) / self.kappa ))
+        self.performanceParaDict['Isentropic_efficiency'] = \
+            [('Absolute Total Temperature','Absolute Total Pressure') for _ in range(2)]
 
         self.performanceCalculateDict['Total_total_efficiency'] = self._get_Total_total_efficiency
         self.performanceParaDict['Total_total_efficiency'] = \
@@ -283,7 +296,7 @@ class cfdPost_2d(object):
             [('Absolute Total Temperature','Absolute Total Pressure')for _ in range(2)]
 
     def get_performance(self,performance,
-                        type='averaged',
+                        type='averaged', computing_station=2,
                         z1=None, z2=None):
         # check the up and down stream index
         if z1 is None:
@@ -292,11 +305,14 @@ class cfdPost_2d(object):
             z2 = self.n_2d - 1
         assert z1 < z2
 
+        if performance=='Degree_reaction':
+            computing_station = 3
+
         #select the performance type
         if type=='averaged':
             rst = self.calculate_performance_averaged(performance, z1=z1, z2=z2)
         elif type=='spanwised':
-            rst = self.calculate_performance_spanwised(performance, z1=z1, z2=z2)
+            rst = self.calculate_performance_spanwised(performance, computing_station=computing_station, z1=z1, z2=z2)
         elif type=='axiswised':
             rst = self.calculate_performance_averaged(performance, z1=slice([0]*self.n_2d), z2=slice(range(self.n_2d)))
         else:
@@ -327,48 +343,94 @@ class cfdPost_2d(object):
         paraValue = paraValueUp + paraValueDown
         return func(*paraValue)
 
-    def calculate_performance_spanwised(self, performance,
-                              z1=None, z2=None):
+    def calculate_performance_spanwised(self, performance, computing_station,
+                              z1=None, z2=None, z_middle=71):
         func = self.performanceCalculateDict[performance]
         para = self.performanceParaDict[performance]# it's a tuple contain 2 tuples
-        paraValueUp = []
-        paraValueDown = []
-        for ii in range(len(para)):
-            for name in para[ii]:
-                # get all needed values in the whole axis wise
-                if name in self.fieldSaveDict.keys():
-                    values = self.get_field(name) # with 3 dim
-                elif name in self.performanceSaveDict.keys():
-                    values = self.get_performance(name, type='spanwised')
-                else:
-                    assert False, "the input name is illegal"
+        if computing_station == 2:
+            paraValueUp = []
+            paraValueDown = []
+            for ii in range(2):
+                for name in para[ii]:
+                    # get all needed values in the whole axis wise
+                    if name in self.fieldSaveDict.keys():
+                        values = self.get_field(name) # with 3 dim
+                    elif name in self.performanceSaveDict.keys():
+                        values = self.get_performance(name, type='spanwised')
+                    else:
+                        assert False, "the input name is illegal"
 
-                if ii==0:
-                    paraValueUp.append(self.get_bar_value(values,z1))# get the upstream and downstream point value
-                else:
-                    paraValueDown.append(self.get_bar_value(values,z2))
-        paraValue = paraValueUp + paraValueDown
-        return func(*paraValue)
+                    if ii==0:
+                        paraValueUp.append(self.get_bar_value(values,z1))# get the upstream and downstream point value
+                    else:
+                        paraValueDown.append(self.get_bar_value(values,z2))
+            paraValue = paraValueUp + paraValueDown
+            return func(*paraValue)
 
+        elif computing_station == 3:
+            paraValueUp = []
+            paraValueMiddle = []
+            paraValueDown = []
+            for ii in range(3):
+                for name in para[ii]:
+                    # get all needed values in the whole axis wise
+                    if name in self.fieldSaveDict.keys():
+                        values = self.get_field(name)  # with 3 dim
+                    elif name in self.performanceSaveDict.keys():
+                        values = self.get_performance(name, type='spanwised')
+                    else:
+                        assert False, "the input name is illegal"
 
-    def get_bar_value(self, values, z, bar=5):
+                    if ii == 0:
+                        paraValueUp.append(
+                            self.get_bar_value(values, z1))  # get the upstream and downstream point value
+                    elif ii == 1:
+                        paraValueMiddle.append(
+                            self.get_bar_value(values, 71, bar=2))
+                    else:
+                        paraValueDown.append(self.get_bar_value(values, z2))
+            paraValue = paraValueUp + paraValueMiddle + paraValueDown
+            return func(*paraValue)
+
+    def get_bar_value(self, values, z, bar=4):
         if bar>0:
             return np.mean(values[...,max(z-bar,0):min(z+bar,self.n_2d)], axis=-1)
         else:
             return values[...,z]
 
+    # ===============================================================================#
+    # ===========================interface functions=================================#
+    # ===============================================================================#
+
+    def get_field_performance(self, name):
+        if name in self.fieldSaveDict.keys():
+            values = self.get_field(name)  # with 3 dim
+        elif name in self.performanceSaveDict.keys():
+            values = self.get_performance(name, type='spanwised')
+        else:
+            assert False
+        return values
+
+
+    def get_fields(self, quanlityList):
+        if not isinstance(quanlityList,list):
+            quanlityList = [quanlityList]
+        rst = np.zeros([self.num, self.n_1d, self.n_2d, len(quanlityList)])
+        for ii, quanlity in enumerate(quanlityList):
+            rst[..., ii] = self.get_field(quanlity)
+        return rst
 
 
     @staticmethod
     def _get_Mach_number():
         print(0)
 
-    # def _get_Isentropic_efficiency(self, t1, p1, t2, p2):
-    #     rst1 = (1 - (t2 / t1)) / (1 - np.power(p2 / p1, (self.kappa - 1) / self.kappa))# turbins
-    #     rst2 = ((np.power(p2 / p1, (self.kappa - 1) / self.kappa) )- 1) / (1 - (t2 / t1))# compressors
-    #     idx = np.array([1 if x in np.where(p2 < p1)[0].tolist() else 0 for x in range(self.num)])
-    #     # return rst1 * idx + rst2 * (1-idx)
-    #     return rst1
+    def _get_Isentropic_efficiency(self, t1, p1, t2, p2):
+        rst1 = (1 - (t2 / t1)) / (1 - np.power(p2 / p1, (self.kappa - 1) / self.kappa))# turbins
+        # rst2 = ((np.power(p2 / p1, (self.kappa - 1) / self.kappa) )- 1) / (1 - (t2 / t1))# compressors
+        # idx = np.array([1 if x in np.where(p2 < p1)[0].tolist() else 0 for x in range(self.num)])
+        # return rst1 * idx + rst2 * (1-idx)
+        return rst1
     def _get_Total_total_efficiency(self, t1, p1, t2, p2):
         rst1 = (1 - (t2 / t1)) / (1 - np.power(p2 / p1, (self.kappa - 1) / self.kappa))# turbins
         rst2 = ((np.power(p2 / p1, (self.kappa - 1) / self.kappa) )- 1) / (1 - (t2 / t1))# compressors

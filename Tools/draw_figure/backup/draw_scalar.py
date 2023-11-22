@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 if __name__ == "__main__":
     AlgoNameList = ["FNO", "ploynomial", "ANN", "SVR", "XGB", "GPR"]
     n_trainList = [500, 1000, 1500, 2000, 2500]
-    npz_path = os.path.join("../../Demo/Rotor37_2d", "data", "surrogate_data", "scalar_value.npz")
+    npz_path = os.path.join("../../../Demo/Rotor37_2d", "data", "surrogate_data", "scalar_value.npz")
     data_true = np.load(npz_path)
 
     parameterList = [
@@ -25,7 +25,7 @@ if __name__ == "__main__":
         # "Mach", "Load",
         "MF"]
 
-    work_path = os.path.join("../../Demo/Rotor37_2d", "data", "surrogate_pic")
+    work_path = os.path.join("../../../Demo/Rotor37_2d", "data", "surrogate_pic")
     isExist = os.path.exists(work_path)
     if not isExist:
         os.mkdir(work_path)
@@ -37,7 +37,7 @@ if __name__ == "__main__":
         for parameter in parameterList:
             Err_all = []
             for AlgoName in AlgoNameList:
-                npz_path = os.path.join("../../Demo/Rotor37_2d", "data", "surrogate_data", AlgoName + "_num.npz")
+                npz_path = os.path.join("../../../Demo/Rotor37_2d", "data", "surrogate_data", AlgoName + "_num.npz")
                 data_pred = np.load(npz_path)
 
                 value_true = data_true[parameter]

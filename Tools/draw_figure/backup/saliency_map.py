@@ -58,7 +58,7 @@ if __name__ == "__main__":
     name = 'FNO'
     input_dim = 28
     output_dim = 5
-    work_load_path = os.path.join("../../Demo/Rotor37_2d", "work")
+    work_load_path = os.path.join("../../../Demo/Rotor37_2d", "work")
     work_path = os.path.join(work_load_path, name)
 
     if torch.cuda.is_available():
@@ -67,10 +67,10 @@ if __name__ == "__main__":
         Device = torch.device('cpu')
 
     x_normlizer = DataNormer([1, 1], method="mean-std", axis=0)
-    norm_save_x = os.path.join("../../Demo/Rotor37_2d", "data", "x_norm_1250.pkl")
+    norm_save_x = os.path.join("../../../Demo/Rotor37_2d", "data", "x_norm_1250.pkl")
     x_normlizer.load(norm_save_x)
     y_normlizer = DataNormer([1, 1], method="mean-std", axis=0)
-    norm_save_y = os.path.join("../../Demo/Rotor37_2d", "data", "y_norm_1250.pkl")
+    norm_save_y = os.path.join("../../../Demo/Rotor37_2d", "data", "y_norm_1250.pkl")
     y_normlizer.load(norm_save_y)
 
     Net_model, inference = rebuild_model(work_path, Device, name=name)

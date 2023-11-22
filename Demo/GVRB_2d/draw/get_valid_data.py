@@ -12,7 +12,7 @@ from Tools.post_process.post_data import Post_2d
 from utilizes_rotor37 import get_grid, get_origin_GVRB
 
 if __name__ == "__main__":
-    name = 'TNO_3'
+    name = 'TNO_9'
     input_dim = 100
     output_dim = 8
     ## load the model
@@ -23,7 +23,7 @@ if __name__ == "__main__":
         predictor_establish(name, work_load_path, predictor=False)
     ## predict the valid samples
     name = 'TNO'
-    train_loader, valid_loader, _, _ = loaddata_Sql(name, 4000, 1000, shuffled=True,
+    train_loader, valid_loader, _, _ = loaddata_Sql(name, 5000, 900, shuffled=True,
                                                     norm_x=x_normalizer, norm_y=y_normalizer)
     true, pred = get_true_pred(valid_loader, Net_model, inference, Device,
                                name=name, iters=0, alldata=True)

@@ -1,13 +1,13 @@
 # 将优化预测结果与CFD验证结果对比
 from CFD_verify import load_CFD_mat, load_CFD_mat_train
-from Tools.draw_figure.draw_sensitive import predicter_loader
+from Tools.draw_figure.backup.draw_sensitive import predicter_loader
 # from draw_figure.utilizes_draw import plot_span_curve_marker
 # from train_model.model_whole_life import WorkPrj
 # from Utilizes.process_data import DataNormer
 # from post_process.load_model import build_model_yml
 # from Demo.Rotor37_2d.utilizes_rotor37 import get_grid, get_origin
 # from post_process.post_data import Post_2d
-from Tools.draw_figure.utilizes_draw import *
+from Tools.draw_figure.backup.utilizes_draw import *
 
 def get_predict(work_path, input, name, Device, parameterList):
     parameter_dict = {}

@@ -41,7 +41,7 @@ def plot_loss():
         # name = 'FNO_1'
         input_dim = 28
         output_dim = 5
-        work_path = os.path.join("../../Demo/Rotor37_2d", path)
+        work_path = os.path.join("../../../Demo/Rotor37_2d", path)
 
         # work_load_path = os.path.join("..", "work_train_FNO2")
         # work_path = os.path.join(work_load_path, name)
@@ -79,7 +79,7 @@ def plot_loss():
     axs.set_xlim(0, 900)
     axs.set_ylim(1e-5, 0.5)
     axs.legend(loc="best", framealpha=1, prop=Visual.font)
-    save_path = os.path.join("../../Demo/Rotor37_2d", "data", "final_fig")
+    save_path = os.path.join("../../../Demo/Rotor37_2d", "data", "final_fig")
     fig.savefig(os.path.join(save_path, 'log_loss_std.jpg'))
     # plt.show()
     plt.close(fig)
@@ -110,7 +110,7 @@ def plot_1d_curves():
     colors = plt.cm.get_cmap('tab10').colors[:5]
 
     # 获取真实样本
-    grid = get_grid(real_path=os.path.join("../../Demo/Rotor37_2d", "data"))
+    grid = get_grid(real_path=os.path.join("../../../Demo/Rotor37_2d", "data"))
     # design, field = get_origin(realpath=os.path.join("..", "data"), getridbad=True, shuffled=True)
     # true = field[sample_number:sample_number+1, :, :, :]  # 只取一个样本
 
@@ -121,7 +121,7 @@ def plot_1d_curves():
 
         input_dim = 28
         output_dim = 5
-        work_path = os.path.join("../../Demo/Rotor37_2d", path)
+        work_path = os.path.join("../../../Demo/Rotor37_2d", path)
 
         # work_load_path = os.path.join("..", "work_train_FNO2")
         # work_path = os.path.join(work_load_path, name)
@@ -240,7 +240,7 @@ def plot_1d_curves():
                                       xlim=xlimList[tt])
 
             # axs.legend(loc="best", framealpha=0, prop=Visual.font)
-            save_path = os.path.join("../../Demo/Rotor37_2d", "data", "final_fig")
+            save_path = os.path.join("../../../Demo/Rotor37_2d", "data", "final_fig")
             plt.figure(dpi=1500)
             plt.tight_layout()
             fig.savefig(os.path.join(save_path, str(sample_number) + "_" + parameter_Name + 'curves.png'))
@@ -275,7 +275,7 @@ def plot_error():
     colors = plt.cm.get_cmap('tab10').colors[:5]
 
     # 获取真实样本
-    grid = get_grid(real_path=os.path.join("../../Demo/Rotor37_2d", "data"))
+    grid = get_grid(real_path=os.path.join("../../../Demo/Rotor37_2d", "data"))
     # design, field = get_origin(realpath=os.path.join("..", "data"), getridbad=True, shuffled=True)
     # true = field[sample_number:sample_number+1, :, :, :]  # 只取一个样本
 
@@ -286,7 +286,7 @@ def plot_error():
 
         input_dim = 28
         output_dim = 5
-        work_path = os.path.join("../../Demo/Rotor37_2d", path)
+        work_path = os.path.join("../../../Demo/Rotor37_2d", path)
 
         # work_load_path = os.path.join("..", "work_train_FNO2")
         # work_path = os.path.join(work_load_path, name)
@@ -376,7 +376,7 @@ def plot_error():
         "MassFlow"
     ]
     for parameter in parameterList:
-        save_path = os.path.join("../../Demo/Rotor37_2d", "data", "final_fig")
+        save_path = os.path.join("../../../Demo/Rotor37_2d", "data", "final_fig")
 
         plot_error_new(post_true, post_pred_list, parameter,
                        save_path=None, fig_id=0,

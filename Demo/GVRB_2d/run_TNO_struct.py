@@ -20,6 +20,7 @@ from transformer.Transformers import FourierTransformer, SimpleTransformer
 from Utilizes.geometrics import gen_uniform_grid
 from Utilizes.visual_data import MatplotlibVision, TextLogger
 from utilizes_GVRB import GVRBWeightLoss
+from collections import OrderedDict
 
 import matplotlib.pyplot as plt
 import time
@@ -29,13 +30,14 @@ from train_model_GVRB.model_whole_life import WorkPrj
 
 class predictor(nn.Module):
 
-    def __init__(self, branch, trunc, field_dim):
+    def __init__(self, branch, trunc, share, field_dim):
 
         super(predictor, self).__init__()
 
         self.branch_net = branch
         self.trunc_net = trunc
-        self.field_net = nn.Linear(branch.planes[-1], field_dim)
+        self.field_net = share
+        # self.field_net = nn.Linear(branch.planes[-1], field_dim)
 
 
     def forward(self, design, coords):
@@ -131,7 +133,7 @@ if __name__ == "__main__":
 
 
     name = 'TNO'
-    work_path = os.path.join('work', name+'_'+str(4))
+    work_path = os.path.join('work', name+'_'+str(10))
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     if not isCreated:
@@ -146,6 +148,7 @@ if __name__ == "__main__":
     else:
         Device = torch.device('cpu')
 
+    # Device = torch.device('cpu')
     # design, fields = get_origin_old()
     # fields = fields[:, 0].transpose(0, 2, 3, 1)
 
@@ -159,7 +162,7 @@ if __name__ == "__main__":
     batch_size = 32
     epochs = 1001
     learning_rate = 0.001
-    scheduler_step = 800
+    scheduler_step = 700
     scheduler_gamma = 0.1
     r1 = 1
     print(epochs, learning_rate, scheduler_step, scheduler_gamma)
@@ -216,14 +219,16 @@ if __name__ == "__main__":
     # Tra_model = SimpleTransformer(**config).to(Device)
     # FNO_model = FNO2d(in_dim=2, out_dim=config['n_targets'], modes=(16, 16), width=64, depth=4,
     #                   padding=9, activation='gelu').to(Device)
-    MLP_model = FcnSingle(planes=(in_dim, 64, 64, config['n_targets']), last_activation=True).to(Device)
-    Net_model = predictor(trunc=Tra_model, branch=MLP_model, field_dim=out_dim).to(Device)
+    MLP_model = FcnSingle(planes=(in_dim, 64, 64, 64, config['n_targets']), last_activation=True).to(Device)
+    # Net_model = predictor(trunc=Tra_model, branch=MLP_model, field_dim=out_dim).to(Device)
+    Share_model = FcnSingle(planes=(config['n_targets'], 64, 64, out_dim), last_activation=False).to(Device)
+    Net_model = predictor(trunc=Tra_model, branch=MLP_model, share=Share_model, field_dim=out_dim).to(Device)
 
-    # isExist = os.path.exists(work.pth)
-    # if isExist:
-    #     checkpoint = torch.load(work.pth, map_location=Device)
-    #     Net_model.load_state_dict(checkpoint['net_model'])
-    #     # Net_model.eval()
+    isExist = os.path.exists(work.pth)
+    if isExist:
+        checkpoint = torch.load(work.pth, map_location=Device)
+        Net_model.load_state_dict(checkpoint['net_model'])
+        # Net_model.eval()
 
 
     # model_statistics = summary(Net_model, input_size=(batch_size, train_x.shape[1]), device=str(Device))

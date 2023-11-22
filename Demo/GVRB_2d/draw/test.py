@@ -4,11 +4,9 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import torch
 torch.cuda.is_available()
 import matplotlib.pyplot as plt
-from TestData.post_CFD import cfdPost_2d
-from scipy.interpolate import interp1d
-from utilizes_rotor37 import get_grid, get_origin, get_origin_GVRB
-from Tools.post_process.load_model import loaddata_Sql, get_true_pred
-from Tools.post_process.model_predict import predictor_establish
+from Tools.post_process.post_CFD import cfdPost_2d
+from utilizes_rotor37 import get_grid, get_origin_GVRB
+
 
 def plot_spanwise_distribution(rst_true, rst_pred, num, save_name, save_path):
     font0 = {'family': 'Times New Roman', 'style': 'italic', 'weight': 'normal', 'size': 18}
