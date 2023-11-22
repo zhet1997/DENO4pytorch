@@ -5,6 +5,7 @@ from Utilizes.process_data import DataNormer, MatLoader
 from Tools.post_process.post_data import Post_2d
 import os
 import torch
+from scipy.interpolate import interp1d
 
 def get_grid(real_path=None):
     xx = np.linspace(-0.127, 0.126, 64)
@@ -29,6 +30,37 @@ def get_grid(real_path=None):
     xx = xx.reshape(64, 64)
 
     return np.concatenate([xx[:,:,np.newaxis],yy[:,:,np.newaxis]],axis=2)
+
+def get_grid_interp(grid_num_s=128,
+                    grid_num_z=128,
+                    z_inlet=-0.059,
+                    z_outlet=0.119,
+                    hub_adjust=0.00015,
+                    shroud_adjust=0.0001,
+                    ):
+    shroud_file = os.path.join('..','data',"shroud.dat")
+    hub_file = os.path.join('..','data',"hub.dat")
+    hub = np.loadtxt(hub_file)/1000
+    shroud = np.loadtxt(shroud_file)/1000
+
+    x = np.linspace(z_inlet, z_outlet, grid_num_z)
+    xx = np.tile(x, [grid_num_s, 1])
+
+    f_hub = interp1d(hub[:, 0], hub[:, 1], kind='linear')
+    y_hub = f_hub(x)
+    f_shroud = interp1d(shroud[:, 0], shroud[:, 1], kind='linear')
+    y_shroud = f_shroud(x)
+
+    yy = []
+    for i in range(grid_num_z):
+        yy.append(np.linspace(y_hub[i]+hub_adjust,y_shroud[i]-shroud_adjust,grid_num_s)) # check
+
+    yy = np.concatenate(yy, axis=0)
+    yy = yy.reshape(grid_num_z, grid_num_s).T
+    xx = xx.reshape(grid_num_s, grid_num_z)
+
+    return np.concatenate([xx[:,:,np.newaxis],yy[:,:,np.newaxis]],axis=2)
+
 
 def get_origin(quanlityList=None,
                 type='struct',

@@ -1,6 +1,7 @@
 import os
 import torch
 import yaml
+import numpy as np
 
 def work_construct(para_list_dict):
     work_list = []
@@ -90,12 +91,18 @@ class WorkPrj(object):
 
         if not isExist:
             os.mkdir(self.root)
+        name = os.path.basename(self.root)
+        name = name.split("_")[0]
+        self.name = name
         self.pth = os.path.join(self.root, 'latest_model.pth')
         self.pdparams = os.path.join(self.root, 'latest_model.pdparams')
         self.svg = os.path.join(self.root, 'log_loss.svg')
         self.yml= os.path.join(self.root, 'config.yml')
         self.x_norm = os.path.join(self.root, 'x_norm.pkl')
         self.y_norm = os.path.join(self.root, 'y_norm.pkl')
+        self.train = os.path.join(self.root, 'train.npz')
+        self.valid = os.path.join(self.root, 'valid.npz')
+        self.grid = os.path.join(self.root, 'grid.npz')
 
         if torch.cuda.is_available():
             device = torch.device('cuda:0')
@@ -111,3 +118,36 @@ class WorkPrj(object):
             return config_all[name + "_config"]
         else:
             return None
+
+    def get_dict(self, npz_path=None):
+        if os.path.exists(npz_path):
+            dict = np.load(npz_path)
+            return dict
+        else:
+            print('the file {} is not exist!'.format(npz_path))
+            return False
+
+    def save_pred(self):
+        from Tools.post_process.model_predict import predictor_establish
+        from Tools.post_process.load_model import loaddata_Sql, get_true_pred
+        Net_model, inference, Device, x_normalizer, y_normalizer = \
+            predictor_establish(self.name, self.root, predictor=False)
+        train_loader, valid_loader, _, _ = loaddata_Sql(self.name, 5000, 900, shuffled=True,
+                                                        norm_x=x_normalizer, norm_y=y_normalizer)
+        for data in ['train', 'valid']:
+            if data=='train':
+                loader = train_loader
+                path_save = self.train
+            else:
+                loader = valid_loader
+                path_save = self.valid
+
+            true, pred = get_true_pred(loader, Net_model, inference, Device,
+                                       self.name, iters=0, alldata=True)
+            true = y_normalizer.back(true)
+            pred = y_normalizer.back(pred)
+
+            save_dict = {}
+            save_dict.update({'true': true})
+            save_dict.update({'pred': pred})
+            np.savez(path_save, **save_dict)

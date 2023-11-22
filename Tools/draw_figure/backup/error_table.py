@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
         input_dim = 28
         output_dim = 5
-        work_path = os.path.join("..", path)
+        work_path = os.path.join("../..", path)
 
         # work_load_path = os.path.join("..", "work_train_FNO2")
         # work_path = os.path.join(work_load_path, name)
@@ -81,5 +81,5 @@ if __name__ == "__main__":
             ErrBox[ii, :5] = ErrL2r.copy()
             ErrBox[ii,5] = np.mean(ErrL2r, axis=0)
 
-    save_path = os.path.join("..", "data", "final_fig",'data.csv')
+    save_path = os.path.join("../..", "data", "final_fig", 'data.csv')
     np.savetxt(save_path, ErrBox, delimiter=',')

@@ -62,7 +62,7 @@ if __name__ == "__main__":
                 "DensityFlow": 2,
             }
 
-            grid = get_grid(real_path=os.path.join("..", "data"))
+            grid = get_grid(real_path=os.path.join("../..", "data"))
             # plot_error_box(true, pred, save_path=None, type=type, work_path=work_path)
 
             post_true = Post_2d(true, grid,
@@ -137,7 +137,7 @@ if __name__ == "__main__":
                                       grid, show_channel=None, cmaps=['Spectral_r', 'Spectral_r', 'coolwarm'],
                                       limitList=limitList)
 
-                save_path = os.path.join("..", "data", "final_fig")
+                save_path = os.path.join("../..", "data", "final_fig")
                 fig.patch.set_alpha(0.)
                 fig.savefig(os.path.join(save_path, 'derive' + str(0) + '_field_' + str(ii) + '.png'),transparent=True)
                 plt.close(fig)

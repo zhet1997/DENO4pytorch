@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from TestData.post_CFD import cfdPost_2d
+from Tools.post_process.post_CFD import cfdPost_2d
 from scipy.interpolate import interp1d
 from utilizes_rotor37 import get_grid
 import matplotlib.pyplot as plt

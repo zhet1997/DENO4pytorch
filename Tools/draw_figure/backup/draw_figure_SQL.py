@@ -6,7 +6,7 @@ if __name__ == "__main__":
     name = 'Transformer_0'
     input_dim = 363
     output_dim = 5
-    work_load_path = os.path.join("..", "work_trainsql_Trans1")
+    work_load_path = os.path.join("../..", "work_trainsql_Trans1")
     workList = os.listdir(work_load_path)
     for name in workList:
         work_path = os.path.join(work_load_path, name)
@@ -61,7 +61,7 @@ if __name__ == "__main__":
                 "DensityFlow": 4,
             }
 
-            grid = get_grid(real_path=os.path.join("..", "data"))
+            grid = get_grid(real_path=os.path.join("../..", "data"))
             # plot_error_box(true, pred, save_path=None, type=type, work_path=work_path)
 
             post_true = Post_2d(true, grid,

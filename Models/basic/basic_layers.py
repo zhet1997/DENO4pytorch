@@ -22,7 +22,7 @@ from Models.configs import *
 from typing import Any, List, Tuple, Union
 
 class FcnSingle(nn.Module):
-    def __init__(self, planes: list or tuple, activation="gelu", last_activation=False):
+    def __init__(self, planes: list or tuple, activation="gelu", is_BatchNorm=False, last_activation=False):
         # =============================================================================
         #     Inspired by M. Raissi a, P. Perdikaris b,∗, G.E. Karniadakis.
         #     "Physics-informed neural networks: A deep learning framework for solving forward and inverse problems
@@ -36,6 +36,8 @@ class FcnSingle(nn.Module):
         self.layers = nn.ModuleList()
         for i in range(len(self.planes) - 2):
             self.layers.append(nn.Linear(self.planes[i], self.planes[i + 1]))
+            if is_BatchNorm is True:
+                self.layers.append(nn.BatchNorm2d(self.planes[i + 1]))
             self.layers.append(self.active)
         self.layers.append(nn.Linear(self.planes[-2], self.planes[-1]))
 
@@ -213,13 +215,13 @@ class Empircal(object):
 
 
 if __name__ == '__main__':
-    x = torch.ones([10, 64, 64, 3])
+    x = torch.ones([10, 64, 128, 3])
     layer = FcnSingle([3, 64, 64, 10])
     y = layer(x)
     print(y.shape)
 
-    x = torch.ones([10, 64, 64, 3])
-    layer = FcnMulti([3, 64, 64, 10])
-    y = layer(x)
-    print(y.shape)
+    # x = torch.ones([10, 64, 64, 3])
+    # layer = FcnMulti([3, 64, 64, 10])
+    # y = layer(x)
+    # print(y.shape)
 

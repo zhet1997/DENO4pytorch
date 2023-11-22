@@ -208,14 +208,14 @@ class MatplotlibVision(object):
             else:
                 axs.plot(x[ii], y[ii], label=labelList[ii], color=color, linewidth=2)
         # axs.grid(True)  # 添加网格
-        # axs.legend(loc="best", prop=self.font,framealpha=1)
+        axs.legend(loc="best", prop=self.font, framealpha=1)
         axs.set_xlabel(xylabels[0], fontdict=self.font)
         axs.set_ylabel(xylabels[1], fontdict=self.font)
         axs.tick_params('both', labelsize=self.font["size"], )
         # axs.set_title(title, fontdict=self.font)
 
-        # axs.set_xlim(xlim)
-        # axs.set_ylim([0,1])
+        axs.set_xlim(xlim)
+        axs.set_ylim([0,1])
 
 
 
@@ -238,24 +238,26 @@ class MatplotlibVision(object):
         axs.tick_params('both', labelsize=self.font["size"], )
         axs.set_title(title, fontdict=self.font)
 
-    def plot_value_std_clean(self, fig, axs, x, y, label,
-                             std = None, stdaxis=0, title=None,xlim=None,
+    def plot_value_std_clean(self, fig, axs, x, y, label=None,
+                             std = None, stdaxis=0, title=None,
+                             xlim=[0,1], ylim=[0,1],
                              xylabels=('x', 'y'), rangeIndex=1e2, color=None):
         """
         stdaxis 表示std所在的坐标维度 x-0, y-1
         """
         num_rows, num_cols = axs.get_subplotspec().get_gridspec().get_geometry()
         print(f"Axes position: Row {num_rows}, Column {num_cols}")
-        # axs.plot(x, y, label=label, color=color)
-        axs.semilogy(x, y, label=label, color=color)
+        axs.plot(x, y, label=label, color=color)
+        # axs.semilogy(x, y, label=label, color=color)
+
         std = std * rangeIndex
         if stdaxis==0:
             axs.fill_betweenx(y, x - std / 2, x + std / 2, alpha=0.4, label='', color=color)
         elif stdaxis==1:
             axs.fill_between(x, y - std / 2, y + std/2, alpha=0.4, label='', color=color)
         axs.grid(True)  # 添加网格
-        axs.set_ylim(xlim)
-        axs.set_xlim([0,1])
+        axs.set_ylim(ylim)
+        axs.set_xlim(xlim)
         axs.tick_params(axis='both', which='both', labelsize=0)
         axs.legend(loc="best", prop=self.font)
         axs.set_xlabel(xylabels[0], fontdict=self.font)
@@ -428,7 +430,7 @@ class MatplotlibVision(object):
         split_value = np.linspace(min_value, max_value, 11)
 
         split_dict = {}
-        split_label = np.zeros(len(true), np.int)
+        split_label = np.zeros(len(true))
         for i in range(len(split_value)):
             split_dict[i] = str(split_value[i])
             index = true >= split_value[i]
@@ -440,13 +442,13 @@ class MatplotlibVision(object):
 
         axs.plot([min_value, max_value], [min_value, max_value], 'k--', linewidth=2.0)
         # 在两个曲线之间填充颜色
-        # axs.fill_between([min_value, max_value], [0.995 * min_value, 0.995 * max_value],
-        #                  [1.005 * min_value, 1.005 * max_value],
-        #                  alpha=0.2, color='b')
+        axs.fill_between([0.995 * min_value, 1.005 * max_value], [0.995**2 * min_value, 0.995*1.005 * max_value],
+                         [1.005*0.995 * min_value, 1.005**2 * max_value],
+                         alpha=0.2, color='darkcyan')
 
         # plt.ylim((min_value, max_value))
-        axs.set_xlim((min_value, max_value))
-        axs.set_ylim((min_value, max_value))
+        axs.set_xlim((0.995 * min_value, 1.005 * max_value))
+        axs.set_ylim((0.995 * min_value, 1.005 * max_value))
         axs.tick_params(axis='both', which='both', labelsize=0)
         axs.grid(True)  # 添加网格
         axs.legend(loc="upper left", prop=self.font)
@@ -552,6 +554,27 @@ class MatplotlibVision(object):
         ax.set_xlabel(xlabel)
         set_axis_style(ax, xticks, x_pos)
 
+    def plot_histogram(self, fig, axs, data, bins=10, range=None, color='blue', alpha=1.0):
+        """
+        Plot histogram on specified figure and axes.
+
+        Parameters:
+        - data: 1D array-like, input data for histogram.
+        - bins: int or array_like, number of bins or bin edges.
+        - range: tuple, optional, the lower and upper range of the bins.
+        - color: str, optional, color of the bars.
+        - alpha: float, optional, transparency of the bars.
+        - fig: matplotlib.figure.Figure, optional, figure to use for plotting.
+        - axs: matplotlib.axes._axes.Axes, optional, axes to use for plotting.
+        """
+        # Plot histogram
+        axs.hist(data, bins=bins, range=range, color=color, alpha=alpha)
+
+        # Set labels and title
+        axs.set_xlabel('Value')
+        axs.set_ylabel('Frequency')
+        axs.set_title('Histogram')
+
     def plot_fields1d(self, fig, axs, real, pred, coord=None,
                       title=None, xylabels=('x coordinate', 'field'), legends=None,
                       show_channel=None):
@@ -636,7 +659,7 @@ class MatplotlibVision(object):
                 # if i == 0:
                 #     ax[i][j].set_title(titles[j], fontdict=self.font_CHN)
                 cb = fig.colorbar(f_true, ax=axs[i][j])
-                cb.ax.tick_params(labelsize=15)
+                cb.ax.tick_params(labelsize=20)
                 for l in cb.ax.yaxis.get_ticklabels():
                     l.set_family('Times New Roman')
                 tick_locator = ticker.MaxNLocator(nbins=6)  # colorbar上的刻度值个数
@@ -671,7 +694,7 @@ class MatplotlibVision(object):
         if show_channel is None:
             show_channel = np.arange(len(self.field_name))
 
-        if fmin_max == None:
+        if fmin_max is None:
             fmin, fmax = real.min(axis=(0, 1)), real.max(axis=(0, 1))
         else:
             fmin, fmax = fmin_max[0], fmin_max[1]
@@ -681,7 +704,7 @@ class MatplotlibVision(object):
             y = np.linspace(0, 1, real.shape[0])
             coord = np.stack(np.meshgrid(x, y), axis=-1)
 
-        if cmin_max == None:
+        if cmin_max is None:
             cmin, cmax = coord.min(axis=(0, 1)), coord.max(axis=(0, 1))
         else:
             cmin, cmax = cmin_max[0], cmin_max[1]
@@ -715,12 +738,12 @@ class MatplotlibVision(object):
                 axs[i][j].axis([cmin[0], cmax[0], cmin[1], cmax[1]])
                 axs[i][j].axis('equal')
                 # axs[i][j].grid(zorder=0, which='both', color='grey', linewidth=1)
-                axs[i][j].set_title(titles[j], fontdict=self.font_EN)
+                # axs[i][j].set_title(titles[j], fontdict=self.font_EN)
                 if i == 0:
                     axs[i][j].set_title(titles[j], fontdict=self.font_CHN)
 
                 cb = fig.colorbar(f_true, ax=axs[i][j], shrink=0.75)
-                cb.ax.tick_params(labelsize=20)
+                cb.ax.tick_params(labelsize=10)
                 for l in cb.ax.yaxis.get_ticklabels():
                     l.set_family('Times New Roman')
                 tick_locator = ticker.MaxNLocator(nbins=6)  # colorbar上的刻度值个数
@@ -730,10 +753,10 @@ class MatplotlibVision(object):
 
                 if j < 2:
                     f_true.set_clim(fmin[i], fmax[i])
-                    # cb.ax.set_title(name_channel[i], fontdict=self.font_EN, loc='center')
+                    cb.ax.set_title(name_channel[i], fontdict=self.font_EN, loc='center')
                 else:
                     f_true.set_clim(-limit, limit)
-                    # cb.ax.set_title('$\mathrm{\Delta}$' + name_channel[i], fontdict=self.font_EN, loc='center')
+                    cb.ax.set_title('$\mathrm{\Delta}$' + name_channel[i], fontdict=self.font_EN, loc='center')
                 # 设置刻度间隔
                 axs[i][j].set_xticklabels([])
                 axs[i][j].set_yticklabels([])
@@ -777,7 +800,7 @@ class MatplotlibVision(object):
             titles = ['mean', 'std']
 
         if cmaps is None:
-            cmaps = ['RdYlBu_r', 'coolwarm']
+            cmaps = ['RdYlBu_r', 'jet']
 
         x_pos = coord[:, :, 0]
         y_pos = coord[:, :, 1]

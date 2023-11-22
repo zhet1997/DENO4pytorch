@@ -382,12 +382,12 @@ def plot_saliency_map():
 
 
 def a_case():
-    work_path = os.path.join("../../Demo/Rotor37_2d", "data_collect")
+    work_path = os.path.join("../../../Demo/Rotor37_2d", "data_collect")
     isCreated = os.path.exists(work_path)
     if not isCreated: os.mkdir(work_path)
 
-    grid = get_grid(real_path=os.path.join("../../Demo/Rotor37_2d", "data"))
-    design, field = get_origin(realpath=os.path.join("../../Demo/Rotor37_2d", "data"),
+    grid = get_grid(real_path=os.path.join("../../../Demo/Rotor37_2d", "data"))
+    design, field = get_origin(realpath=os.path.join("../../../Demo/Rotor37_2d", "data"),
                                quanlityList=["Static Pressure", "Static Temperature", "Density",
                                              'Relative Total Pressure', 'Relative Total Temperature',
                                              "Vxyz_X", "Vxyz_Y",

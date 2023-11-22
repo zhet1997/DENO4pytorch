@@ -4,9 +4,9 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import torch
 torch.cuda.is_available()
 import matplotlib.pyplot as plt
-from TestData.post_CFD import cfdPost_2d
+from Tools.post_process.post_CFD import cfdPost_2d
 # from scipy.interpolate import interp1d
-from Demo.GVRB_2d.utilizes_GVRB import get_grid, get_origin
+from Demo.GVRB_2d.utilizes_GVRB import get_origin
 # from Tools.post_process.load_model import loaddata_Sql, get_true_pred
 # from Tools.post_process.model_predict import predictor_establish
 
