@@ -2,32 +2,76 @@ import numpy as np
 import math
 
 class cfdPost_2d(object):
-    def __init__(self,data_2d,grid,inputdict=None): #默认输入格式为64*64*5
-        self.grid = grid
-        self.data_2d = data_2d
+    def __init__(self, **kwargs): #默认输入格式为64*64*5
+        self.par_init = False
+        self.sim_init = False
 
-        if inputdict is None:
-            self.inputDict = {'Static Pressure': 0,
-                 'Static Temperature': 1,
-                 'Density': 2,
-                 'Vx': 3,
-                 'Vy': 4,
-                 'Vz': 5,
-                 'Relative Total Temperature': 6,
-                 'Absolute Total Temperature': 7,
-                 }
-        else:
-            self.inputDict = inputdict
+        self.field_data_readin(**kwargs)
 
-        assert len(self.inputDict.keys())==data_2d.shape[-1], \
-            "the physic field name in inputDict is not match with the data_2d"
-
-        self.set_basic_const()
-        self.struct_input_check()
+    def paramter_calculate_init(self):
+        self.par_init = True
         self.get_field_save_dict()
         self.get_performance_save_dict()
         self.get_field_calculate_dict()
         self.get_performance_calculate_dict()
+
+    def similarity_calculate_init(self):
+        self.sim_init = True
+        self.get_dimensional_save_dict()
+
+    #===============================================================================#
+    #==========================input and output part================================#
+    #===============================================================================#
+
+    def field_data_readin(self,data=None,grid=None,
+                          inputdict=None,
+                          boundarydict=None,
+                          boundarycondtion=None,
+                          similarity=False):
+        if grid is not None:
+            self.grid = grid
+        if data is not None:
+            self.data_raw = data
+        if boundarycondtion is not None:
+            self.bouCondtion_raw = boundarycondtion
+        if inputdict is None:
+            self.inputDict = {'Static Pressure': 0,
+                              'Static Temperature': 1,
+                              'Density': 2,
+                              'Vx': 3,
+                              'Vy': 4,
+                              'Vz': 5,
+                              'Relative Total Temperature': 6,
+                              'Absolute Total Temperature': 7,
+                              }
+        else:
+            self.inputDict = inputdict
+
+        if boundarydict is None:
+            self.boundaryDict = {'Flow Angle': 0,
+                              'Absolute Total Pressure': 1,
+                              'Absolute Total Temperature': 2,
+                              'Rotational_speed': 3,
+                              }
+        else:
+            self.boundaryDict = boundarydict
+
+        assert len(self.inputDict.keys()) == data.shape[-1], \
+            "the physic field name in inputDict is not match with the data_2d"
+
+        self.set_basic_const()
+        self.struct_input_check()
+
+        if not similarity:
+            self.data_2d = self.data_raw
+            self.bouCondtion_1d = self.bouCondtion_raw
+
+    def loader_readin(self):
+        pass
+
+    def loader_export(self):
+        pass
+
 
     #===============================================================================#
     #==========================parameter setting part===============================#
@@ -51,27 +95,31 @@ class cfdPost_2d(object):
         self.hub = self.grid[0,:]
         self.shroud = self.grid[-1, :]
 
+    def set_change_rotateSpeed(self):
+        rotateSpeed = self.bouCondtion_1d[:, self.boundaryDict['Rotational Speed']]
+        self.fieldSaveDict.update({'Rotational Speed': np.tile(rotateSpeed[:, None, None, :], [1, self.n_1d, self.n_2d])})
 
     def struct_input_check(self):
         gridshape = self.grid.shape
-        datashape = self.data_2d.shape
+        datashape = self.data_raw.shape
 
         if len(gridshape) != 3 or gridshape[2] != 2:
             print("invalid grid input!")
         if len(gridshape) != 3 and len(gridshape):
             print("invalid data input!")
         if len(datashape) == 3:
-            self.data_2d = self.data_2d[None, :, :, :]
-            datashape = self.data_2d.shape
+            self.data_raw = self.data_raw[None, :, :, :]
+            datashape = self.data_raw.shape
+            self.num_raw = 1
             print("one sample input!")
         if len(datashape) == 4:
-            self.num = datashape[0]
-            print(str(self.num) + " samples input!")
+            self.num_raw = datashape[0]
+            print(str(self.num_raw) + " samples input!")
         if gridshape[:2] != datashape[1:3]:
             print("dismatch data & grid input!")
 
-        self.n_1d = self.data_2d.shape[1]
-        self.n_2d = self.data_2d.shape[2]
+        self.n_1d = self.data_raw.shape[1]
+        self.n_2d = self.data_raw.shape[2]
 
     # def stage_define(self):
 
@@ -100,11 +148,13 @@ class cfdPost_2d(object):
                              'Density Flow',
                              'Entropy',
                              'Static Energy',
+                             'Rotational Speed',
                              ]
         self.fieldSaveDict = {}
         self.fieldSaveDict.update({'Gird Node Z': np.tile(self.grid[None, :, :, 0], [self.num, 1, 1])})
         self.fieldSaveDict.update({'Gird Node R': np.tile(self.grid[None, :, :, 1], [self.num, 1, 1])})
         self.fieldSaveDict.update({'R/S Interface': np.where(self.grid[None, :, :, 0]<self.RSInterface, 0, 1)})
+        self.fieldSaveDict.update({'Rotational Speed': np.tile(self.rotateSpeed[None, None, None, :], [self.num, self.n_1d, self.n_2d])})
         for quanlity in self.quanlityList:
             self.fieldSaveDict.update({quanlity: None})  # initiaize of all fields
 
@@ -115,8 +165,8 @@ class cfdPost_2d(object):
             self.fieldCalculateDict.update({quanlity: None})
             self.fieldParaDict.update({quanlity: None})
 
-        self.fieldCalculateDict['|U|'] = lambda x1, x2: x1 * x2 * self.rotateSpeed * 2 * np.pi / 60
-        self.fieldParaDict['|U|'] = ('Gird Node R','R/S Interface')  # |U| is spectail
+        self.fieldCalculateDict['|U|'] = lambda x1, x2, x3: x1 * x2 * x3 * 2 * np.pi / 60
+        self.fieldParaDict['|U|'] = ('Gird Node R','R/S Interface', 'Rotational Speed')  # |U| is spectail
         self.fieldCalculateDict['|V|^2'] = lambda x1, x2: (x2 - x1) * 2 * self.Cp
         self.fieldParaDict['|V|^2'] = ('Static Temperature','Absolute Total Temperature')  # |U| is spectail
         self.fieldCalculateDict['|W|^2'] = lambda x1, x2: (x2 - x1) * 2 * self.Cp
@@ -481,6 +531,78 @@ class cfdPost_2d(object):
     def _get_Degree_reaction(self, tp1, sp1, tp2, sp2, tp3, sp3):
         rst1 = (sp2 - sp3) / (tp1 - sp3)
         return rst1
+
+    # ===============================================================================#
+    # ==========================similarity set part==================================#
+    # ===============================================================================#
+    def get_free_similarity(self, dof=1, scale=[-1,1], expand=1):
+        free_coef = np.random.random([self.num_raw * expand, dof])
+        free_coef = free_coef*(scale[1] - scale[0]) + scale[0]
+
+        return free_coef
+
+    def get_dimensional_save_dict(self):
+        # M(mass) L(length) t(time) T(temprature)
+        basicDimensionalDict={
+            'P': np.array([1, -1, -2, 0]),
+            'T': np.array([0, 0, 0, 1]),
+            'V': np.array([0, 1, -1, 0]),
+            'E': np.array([1, 2, -2, 0]),
+            '0': np.array([0, 0, 0, 0]),
+            'Rg': np.array([0, 2, -2, -1]),
+            'mu': np.array([1, -1, -1, 0]),
+            }
+        self.basicDimensionalDict = basicDimensionalDict
+        self.dimensionalSaveDict = {
+                            'Static Pressure': basicDimensionalDict['P'],
+                            'Relative Total Pressure': basicDimensionalDict['P'],
+                            'Absolute Total Pressure': basicDimensionalDict['P'],
+                            'Rotary Total Pressure': basicDimensionalDict['P'],
+                            'Static Temperature': basicDimensionalDict['T'],
+                            'Relative Total Temperature': basicDimensionalDict['T'],
+                            'Absolute Total Temperature': basicDimensionalDict['T'],
+                            'Rotary Total Temperature': basicDimensionalDict['T'],
+                            'Vx': basicDimensionalDict['V'],
+                            'Vy': basicDimensionalDict['V'],
+                            'Vz': basicDimensionalDict['V'],
+                            '|V|': basicDimensionalDict['V'],
+                            '|V|^2': basicDimensionalDict['V']*2,
+                            'atan(Vx/Vz)': basicDimensionalDict['0'],
+                            'Flow Angle': basicDimensionalDict['0'],
+                            'Rotational_speed': np.array([0, 0, -1, 0]),
+                              }
+
+    def get_dimensional_similarity(self, dof=1, scale=[-1, 1], expand=1):
+        free_coef = self.get_free_similarity(dof=dof, scale=scale, expand=expand)
+        free_idx = slice([0, 2])
+        fixd_idx = slice([1]) # the length scale is fixed in this project
+        solve_idx = slice([3])
+
+        solve_coef = 0 - self.basicDimensionalDict['Rg'][free_idx] * free_coef
+
+        dimensional_coef = np.zeros([self.num_raw * expand, 4])
+        dimensional_coef[free_idx] = free_coef
+        # dimensional_coef[fixd_idx] = np.zeros([self.num*expand, 1])
+        dimensional_coef[solve_idx] = solve_coef
+
+        return dimensional_coef
+
+    def get_data_after_similarity(self, expand=1):
+        dimensional_coef = self.get_dimensional_similarity(expand=expand)
+        # for the output field
+        field_dimensional_matrix = np.zeros(self.num_raw * expand, len(self.inputDict))
+        for key in self.inputDict.keys():
+            dim = np.tile(self.dimensionalSaveDict[key], [self.num_raw * expand, 1]) * dimensional_coef
+            dim = np.sum(dim, axis=1)
+            field_dimensional_matrix[int(self.inputDict[key])] = np.power(10, dim)
+        self.data_2d = np.tile(self.data_raw, [expand]) * np.tile(field_dimensional_matrix[:, None, None, :], [1, self.n_1d, self.n_2d, 1])
+        # for the input boundary condition
+        boudary_dimensional_matrix = np.zeros(self.num_raw * expand, len(self.inputDict))
+        for key in self.boundaryDict.keys():
+            dim = np.tile(self.dimensionalSaveDict[key], [self.num_raw * expand, 1]) * dimensional_coef
+            dim = np.sum(dim, axis=1)
+            boudary_dimensional_matrix[int(self.inputDict[key])] = np.power(10, dim)
+        self.bouCondtion_1d = np.tile(self.bouCondtion_raw, [expand]) * field_dimensional_matrix
 
 if __name__ == "__main__":
 
