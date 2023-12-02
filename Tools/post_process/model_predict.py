@@ -256,7 +256,7 @@ class DLModelPost(object):
             if space==0:
                 value = post_pred.get_performance(parameter_Name, type='averaged')
             elif space==1:
-                value = post_pred.get_field_performance(parameter_Name)
+                value = post_pred.get_field_performance(parameter_Name, type='spanwised')
             elif space==2:
                 value = post_pred.get_field(parameter_Name)
             else:

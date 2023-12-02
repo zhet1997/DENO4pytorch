@@ -9,8 +9,28 @@ from Tools.train_model.train_task_construct import WorkPrj
 from Tools.post_process.post_CFD import cfdPost_2d
 from Demo.GVRB_2d.utilizes_GVRB import get_grid_interp
 
+
+def stage_define(name=None):
+    stage_dict={
+        'S1': [0,78],
+        'R1': [75,127],
+        'stage': [0,127]
+    }
+    if name is not None:
+        idx = stage_dict[name]
+        rst = {
+            'z1': idx[0],
+            'z2': idx[1],
+        }
+        return rst
+    else:
+        return {}
+
+
 def draw_span_curve(Visual, rst, label=None, xlim=None, fig=None, axs=None):
-    colorList = ['steelblue', 'darkslateblue']
+    # colorList = ['steelblue', 'darkslateblue']
+    # colorList = ['brown', 'chocolate']
+    colorList = ['g', 'lawngreen']
     markerList = ['^', '-']
     shape = rst.shape
     Visual.plot_curve_scatter(fig, axs, rst,
@@ -20,7 +40,7 @@ def draw_span_curve(Visual, rst, label=None, xlim=None, fig=None, axs=None):
 
 def draw_range_dict(key):
     range_dict = {
-                'Static_pressure_ratio': [0.3, 0.5],
+                'Static_pressure_ratio': [0.45,0.65],#[0.3, 0.5],
                 'Total_total_efficiency': [0.6, 1],
                 'Total_static_efficiency': [0.6, 1],
                 'Isentropic_efficiency': [0.6, 1],
@@ -29,6 +49,12 @@ def draw_range_dict(key):
                 'Absolute Total Pressure': [160000, 360000],
                 'Absolute Mach Number': [0, 1],
                 'Static Enthalpy': [570000, 720000],
+                'atan(Vx/Vz)': [-85, -60],#[-10, 25],
+                'atan(Wx/Wz)': [-60, -20],#[55, 75],
+                'Absolute_nozzle_pressure_ratio': [1.5, 2.5],
+                'Relative_nozzle_pressure_ratio': [1.1, 1.7],
+                'Absolute_Enthalpy': [4000, 20000],
+                'Relative_Enthalpy': [-5000, 30000],
                 }
     if isinstance(key, list):
         rst = [range_dict[x] for x in key]
@@ -53,6 +79,7 @@ def draw_name_dict(key):
                 'Vy': 'Vy[m/s]',
                 'Vz': 'Vz[m/s]',
                 'atan(Vx/Vz)': 'atan[deg]',
+                'Density': r'$\mathrm{\rho[kg/m^{3}]}$'
                 }
     if isinstance(key, list):
         rst = [range_dict[x] for x in key]
@@ -61,57 +88,51 @@ def draw_name_dict(key):
     return rst
 
 
-def draw_span_all(post_true, post_pred, work=None):
+def draw_span_all(post_true, post_pred, work=None, save_path=None):
     ## draw the figure
-    save_path = os.path.join(work.root, 'save_figure')
-    if not os.path.exists(save_path):
-        os.mkdir(save_path)
     Visual = MatplotlibVision(os.path.join(work.root, 'save_figure'), input_name=('x', 'y'), field_name=('none'))
     Visual.font_EN = {'family': 'Times New Roman', 'weight': 'normal', 'size': 10}
     Visual.font_CHN = {'family': 'SimSun', 'weight': 'normal', 'size': 10}
     for j in range(len(parameterList)):
-        rst_true = post_true.get_performance(parameterList[j], type='spanwised')
-        rst_pred = post_pred.get_performance(parameterList[j], type='spanwised')
-        for i in range(100, 102):
-            fig, axs = plt.subplots(1, 1, figsize=(4, 9))
+        rst_true = post_true.get_field_performance(parameterList[j], type='spanwised', **stage_define(name=stage_name))
+        rst_pred = post_pred.get_field_performance(parameterList[j], type='spanwised', **stage_define(name=stage_name))
+        for i in range(114, 115):
+            fig, axs = plt.subplots(1, 1, figsize=(7, 9))
             plt.cla()
             rst = np.concatenate((rst_true[i:i+1], rst_pred[i:i+1]), axis=0)
-            draw_span_curve(Visual, rst, label=['true', 'pred'], xlim=draw_range_dict(parameterList[j]), fig=fig, axs=axs)
-            fig.savefig(os.path.join(save_path, parameterList[j] + '_' + str(i) +'.jpg'))
-def draw_diagnal(post_true, post_pred, work=None):
+            # draw_span_curve(Visual, rst, label=['true', 'pred'], xlim=draw_range_dict(parameterList[j]), fig=fig, axs=axs)
+            draw_span_curve(Visual, rst, label=['true', 'pred'], fig=fig, axs=axs)
+            fig.savefig(os.path.join(save_path, parameterList[j].replace('/','') + '_' + str(i) +'.jpg'))
+def draw_diagnal(post_true, post_pred, work=None, save_path=None):
     ## draw the figure
-    save_path = os.path.join(work.root, 'save_figure')
-    if not os.path.exists(save_path):
-        os.mkdir(save_path)
     Visual = MatplotlibVision(os.path.join(work.root, 'save_figure'), input_name=('x', 'y'), field_name=('none'))
     # Visual.font_EN = {'family': 'Times New Roman', 'weight': 'normal', 'size': 10}
     # Visual.font_CHN = {'family': 'SimSun', 'weight': 'normal', 'size': 10}
     for j in range(len(parameterList)):
-        rst_true = post_true.get_performance(parameterList[j], type='averaged')
-        rst_pred = post_pred.get_performance(parameterList[j], type='averaged')
+        rst_true = post_true.get_performance(parameterList[j], type='averaged', **stage_define(name=stage_name))
+        rst_pred = post_pred.get_performance(parameterList[j], type='averaged', **stage_define(name=stage_name))
 
         fig, axs = plt.subplots(1, 1, figsize=(10, 10))
         Visual.plot_regression_dot(fig, axs, rst_true.squeeze(), rst_pred.squeeze(),
                                    title=parameterList[j], color='tomato', label='TNO')
         fig.savefig(os.path.join(save_path, 'diagnal_' + parameterList[j] + '_valid' + '.jpg'))
-def draw_meridian(post_true, post_pred, work=None):
+def draw_meridian(post_true, post_pred, work=None, save_path=None):
     ## draw the figure
-    save_path = os.path.join(work.root, 'save_figure')
-    if not os.path.exists(save_path):
-        os.mkdir(save_path)
     Visual = MatplotlibVision(os.path.join(work.root, 'save_figure'), input_name=('x', 'y'), field_name=('none'))
     # Visual.font_EN = {'family': 'Times New Roman', 'weight': 'normal', 'size': 10}
     # Visual.font_CHN = {'family': 'SimSun', 'weight': 'normal', 'size': 10}
     rst_true = post_true.get_fields(parameterList)
     rst_pred = post_pred.get_fields(parameterList)
-    rangeList = draw_range_dict(parameterList)
+    # rangeList = draw_range_dict(parameterList)
     field_name = draw_name_dict(parameterList)
     for i in range(50, 55):
-        fig, axs = plt.subplots(len(parameterList), 3, figsize=(18, 10))
+        fig, axs = plt.subplots(len(parameterList), 3, figsize=(18, 14))
         Visual.field_name = field_name
         Visual.plot_fields_ms(fig, axs, rst_true[i], rst_pred[i], grid,
                               show_channel=None, cmaps=['Spectral_r', 'Spectral_r', 'coolwarm'],
-                              fmin_max=np.array(rangeList).T)
+                              fmin_max=None)
+        fig.patch.set_alpha(0.)
+                              # fmin_max=np.array(rangeList).T)
         fig.savefig(os.path.join(save_path, 'meridian_' + str(i) + '_valid' + '.jpg'))
 
 # draw figures include true and pred
@@ -121,34 +142,49 @@ if __name__ == '__main__':
     input_dim = 100
     output_dim = 8
     type = 'valid'
+    stage_name = 'S1'
+    parameterList = [
+         'Absolute_nozzle_pressure_ratio',
+         'Relative_nozzle_pressure_ratio',
+         'Absolute_Enthalpy',
+         'Relative_Enthalpy',
+    ]
     # parameterList = ['Static_pressure_ratio',
     #                  'Total_total_efficiency',
     #                  'Total_static_efficiency',
-    #                  'Isentropic_efficiency',
-    #                  # 'Degree_reaction',
+    #                  'Degree_reaction',
+    #                  'atan(Vx/Vz)',
+    #                  'atan(Wx/Wz)',
+    # 'Mass_flow',
     #                  ]
-    parameterList = [
-                     # 'Static Pressure',
-                     'Relative Total Pressure',
-                     'Absolute Total Pressure',
-                     # 'Rotary Total Pressure',
-                     # 'Static Temperature',
-                     # 'Relative Total Temperature',
-                     # 'Absolute Total Temperature',
-                     # 'Rotary Total Temperature',
-                     # 'Vx', 'Vy', 'Vz','|V|','|V|^2','atan(Vx/Vz)',
-                     # '|V|^2',
-                     # 'Wx', 'Wy', 'Wz','|W|','|W|^2','atan(Wx/Wz)',
-                     # '|U|',
-                     # 'Speed Of Sound',
-                     # '|Speed Of Sound|^2',
-                     # 'Relative Mach Number',
-                     'Absolute Mach Number',
-                     'Static Enthalpy',
-                     # 'Density',
-                     # 'Entropy',
-                     # 'Static Energy',
-                     ]
+    # parameterList = [
+    #     "Static Pressure",
+    #     "Vx", "Vy", "Vz",
+    #     'Absolute Total Temperature',
+    #     "Density",
+    # ]
+    # parameterList = [
+    #                  # 'Static Pressure',
+    #                  'Relative Total Pressure',
+    #                  'Absolute Total Pressure',
+    #                  # 'Rotary Total Pressure',
+    #                  # 'Static Temperature',
+    #                  # 'Relative Total Temperature',
+    #                  # 'Absolute Total Temperature',
+    #                  # 'Rotary Total Temperature',
+    #                  # 'Vx', 'Vy', 'Vz','|V|','|V|^2','atan(Vx/Vz)',
+    #                  # '|V|^2',
+    #                  # 'Wx', 'Wy', 'Wz','|W|','|W|^2','atan(Wx/Wz)',
+    #                  # '|U|',
+    #                  # 'Speed Of Sound',
+    #                  # '|Speed Of Sound|^2',
+    #                  # 'Relative Mach Number',
+    #                  'Absolute Mach Number',
+    #                  'Static Enthalpy',
+    #                  # 'Density',
+    #                  # 'Entropy',
+    #                  # 'Static Energy',
+    #                  ]
 
     ## get the train or valid data
     print(os.getcwd())
@@ -168,9 +204,13 @@ if __name__ == '__main__':
     post_true = cfdPost_2d(data_true, grid)
     post_pred = cfdPost_2d(data_pred, grid)
 
-    draw_span_all(post_true, post_pred, work=work)
-    draw_diagnal(post_true, post_pred, work=work)
-    draw_meridian(post_true, post_pred, work=work)
+    save_path = os.path.join(work.root, 'save_figure_S1')
+    if not os.path.exists(save_path):
+        os.mkdir(save_path)
+
+    draw_span_all(post_true, post_pred, work=work, save_path=save_path)
+    # draw_diagnal(post_true, post_pred, work=work, save_path=save_path)
+    # draw_meridian(post_true, post_pred, work=work, save_path=save_path)
 
 
 

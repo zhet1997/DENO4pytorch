@@ -47,6 +47,10 @@ class cfdPost_2d(object):
         self.Rg = float(Rg)
         self.RSInterface = float(RSInterface)
 
+    def get_hub_shroud(self):
+        self.hub = self.grid[0,:]
+        self.shroud = self.grid[-1, :]
+
 
     def struct_input_check(self):
         gridshape = self.grid.shape
@@ -68,6 +72,8 @@ class cfdPost_2d(object):
 
         self.n_1d = self.data_2d.shape[1]
         self.n_2d = self.data_2d.shape[2]
+
+    # def stage_define(self):
 
     # ===============================================================================#
     # ========================physical field calculation=============================#
@@ -91,6 +97,7 @@ class cfdPost_2d(object):
                              'Absolute Mach Number',
                              'Static Enthalpy',
                              'Density',
+                             'Density Flow',
                              'Entropy',
                              'Static Energy',
                              ]
@@ -117,9 +124,9 @@ class cfdPost_2d(object):
 
         self.fieldCalculateDict['Wx'] = lambda x1, x2: x1 + x2
         self.fieldParaDict['Wx'] = ('Vx','|U|')  # |U| is spectail
-        self.fieldCalculateDict['Wx'] = lambda x1: x1
+        self.fieldCalculateDict['Wy'] = lambda x1: x1
         self.fieldParaDict['Wy'] = ('Vy',)  # |U| is spectail
-        self.fieldCalculateDict['Wx'] = lambda x1: x1
+        self.fieldCalculateDict['Wz'] = lambda x1: x1
         self.fieldParaDict['Wz'] = ('Vz',)  # |U| is spectail
 
         self.fieldCalculateDict['atan(Vx/Vz)'] = lambda x1, x2: np.arctan(x1/x2) / np.pi * 180
@@ -165,6 +172,9 @@ class cfdPost_2d(object):
         self.fieldCalculateDict['Relative Total Enthalpy'] = lambda x1,x2:  x1 + 0.5 * x2
         self.fieldParaDict['Relative Total Enthalpy'] = ('Static Enthalpy','|W|^2')
 
+        self.fieldCalculateDict['Density Flow'] = lambda x1, x2: x1 * x2
+        self.fieldParaDict['Density Flow'] = ('Density', 'Vz')
+
     def get_field(self,quanlity):
         if self.fieldSaveDict[quanlity] is None: # check whether the field has already calculated
             if quanlity in self.inputDict.keys():# input the field directly
@@ -182,47 +192,55 @@ class cfdPost_2d(object):
         return func(*para)
 
     def get_mass_weight_radial_averaged_field(self, quanlity, squeeze=True):
-        if quanlity not in ('Static Pressure'):
+        if quanlity in ('Static Pressure', 'Density Flow'):
+            rst = self.get_field(quanlity)
+        elif quanlity in ('Gird Node R',):
+            rst = self.get_field(quanlity)
+            rst = np.power(rst[:, -1, None, :], 2) - np.power(rst[:, 0, None, :], 2)  # keep the dim for mean
+        else:
             DensityFlow = self.get_field('Density') * self.get_field('Vz')
             rst = DensityFlow * self.get_field(quanlity) / np.mean(DensityFlow, axis=1, keepdims=True)
-        else:
-            rst = self.get_field(quanlity)
-        rst = np.mean(rst, axis=1, keepdims=True) # keep the spanwise dim exist
+
+        rst = np.mean(rst, axis=1, keepdims=True)  # keep the spanwise dim exist
 
         if squeeze:
             return rst.squeeze(axis=1)
         else:
             return rst
 
-    def mass_weight_radial_average(self, quanlity, zList=None, nodeList=None):
-        if quanlity not in ('Static Pressure'):
-            DensityFlow = self.get_field('Density') * self.get_field('Vz')
-            rst = DensityFlow * self.get_field(quanlity) / np.mean(DensityFlow, axis=1, keepdims=True)
-        else:
-            rst = self.get_field(quanlity)
-        rst = np.mean(rst, axis=1, keepdims=True) # keep the spanwise dim exist
-
-        if nodeList is not None:
-            assert np.max(nodeList) < self.n_1d
-            return rst[..., nodeList]
-        else:
-            if zList is not None:
-                idxList = []
-                weightList = np.zeros([len(zList)])
-                if not isinstance(zList, list):
-                    zList = [zList]
-                for ii, z in enumerate(zList):
-                    tmp = (self.grid[:,:,0] < z).astype(int)
-                    idxList[ii] = np.where(tmp==0)[0]
-                    weightList[ii] = (z - self.grid[idxList[ii],0,0]) / (self.grid[idxList[ii+1],0,0] - self.grid[idxList[ii],0,0])
-
-                rst_1 = rst[:, idxList, :, :]
-                rst_2 = rst[:, [x+1 for x in idxList], :, :]
-
-                return weightList*rst_1 + (1-weightList)*rst_2
-
-            else:
-                assert False
+    # def mass_weight_radial_average(self, quanlity, zList=None, nodeList=None): # ,
+    #     if quanlity in ('Static Pressure','Density Flow'):
+    #         rst = self.get_field(quanlity)
+    #     elif quanlity in ('Gird Node R',):
+    #         rst = self.get_field(quanlity)
+    #         rst = np.power(rst[:,-1, None, :],2) - np.power(rst[:,0, None, :],2) # keep the dim for mean
+    #     else:
+    #         DensityFlow = self.get_field('Density') * self.get_field('Vz')
+    #         rst = DensityFlow * self.get_field(quanlity) / np.mean(DensityFlow, axis=1, keepdims=True)
+    #
+    #     rst = np.mean(rst, axis=1, keepdims=True) # keep the spanwise dim exist
+    #
+    #     if nodeList is not None:
+    #         assert np.max(nodeList) < self.n_1d
+    #         return rst[..., nodeList]
+    #     else:
+    #         if zList is not None:
+    #             idxList = []
+    #             weightList = np.zeros([len(zList)])
+    #             if not isinstance(zList, list):
+    #                 zList = [zList]
+    #             for ii, z in enumerate(zList):
+    #                 tmp = (self.grid[:,:,0] < z).astype(int)
+    #                 idxList[ii] = np.where(tmp==0)[0]
+    #                 weightList[ii] = (z - self.grid[idxList[ii],0,0]) / (self.grid[idxList[ii+1],0,0] - self.grid[idxList[ii],0,0])
+    #
+    #             rst_1 = rst[:, idxList, :, :]
+    #             rst_2 = rst[:, [x+1 for x in idxList], :, :]
+    #
+    #             return weightList*rst_1 + (1-weightList)*rst_2
+    #
+    #         else:
+    #             assert False
 
     # ===============================================================================#
     # =========================performance calculation===============================#
@@ -231,6 +249,8 @@ class cfdPost_2d(object):
         # all physical field name in dict is same with the Numeca .mf file.
         self.performanceList =  ['Static_pressure_ratio',
                                  'Absolute_total_pressure_ratio',
+                                 'Absolute_nozzle_pressure_ratio',
+                                 'Relative_nozzle_pressure_ratio',
                                  'Static_temperature_ratio',
                                  'Absolute_total_temperature_ratio',
                                  'Total_total_efficiency',
@@ -243,6 +263,9 @@ class cfdPost_2d(object):
                                  'Torque',
                                  'Power',
                                  'Static_Enthalpy',
+                                 'Absolute_Enthalpy',
+                                 'Relative_Enthalpy',
+                                 'Mass_flow',
                                  ]
         self.performanceSaveDict = {}
         for performance in self.performanceList:
@@ -256,11 +279,19 @@ class cfdPost_2d(object):
             self.performanceCalculateDict.update({performance: None})
             self.performanceParaDict.update({performance: None})
 
-        self.performanceCalculateDict['Static_pressure_ratio'] = lambda x1, x2: x2 / x1
+        self.performanceCalculateDict['Static_pressure_ratio'] = lambda x1, x2: x1 / x2
         self.performanceParaDict['Static_pressure_ratio'] = [('Static Pressure',) for _ in range(2)]
 
         self.performanceCalculateDict['Absolute_total_pressure_ratio'] = lambda x1, x2: x1 / x2
         self.performanceParaDict['Absolute_total_pressure_ratio'] = [('Absolute Total Pressure',) for _ in range(2)]
+
+        self.performanceCalculateDict['Absolute_nozzle_pressure_ratio'] = lambda x1, x2: x1 / x2
+        self.performanceParaDict['Absolute_nozzle_pressure_ratio'] = [('Absolute Total Pressure',),
+                                                                         ('Static Pressure',)]
+
+        self.performanceCalculateDict['Relative_nozzle_pressure_ratio'] = lambda x1, x2: x1 / x2
+        self.performanceParaDict['Relative_nozzle_pressure_ratio'] = [('Relative Total Pressure',),
+                                                                         ('Static Pressure',)]
 
         self.performanceCalculateDict['Static_temperature_ratio'] = lambda x1, x2: x1 / x2
         self.performanceParaDict['Static_temperature_ratio'] = [('Static Temperature',) for _ in range(2)]
@@ -271,11 +302,16 @@ class cfdPost_2d(object):
         self.performanceCalculateDict['Static_Enthalpy'] = lambda x1, x2:self.Cp* x1 - self.Cp* x2
         self.performanceParaDict['Static_Enthalpy'] = [('Static Temperature',) for _ in range(2)]
 
+        self.performanceCalculateDict['Absolute_Enthalpy'] = lambda x1, x2: self.Cp * x1 - self.Cp * x2
+        self.performanceParaDict['Absolute_Enthalpy'] = [('Absolute Total Temperature',) for _ in range(2)]
+
+        self.performanceCalculateDict['Relative_Enthalpy'] = lambda x1, x2: self.Cp * x1 - self.Cp * x2
+        self.performanceParaDict['Relative_Enthalpy'] = [('Relative Total Temperature',) for _ in range(2)]
+
         # self.performanceCalculateDict['Power'] = lambda x1, x2: x1 / x2
         # self.performanceParaDict['Absolute_total_temperature_ratio'] = [('Absolute Total Pressure Temperature',) for _ in range(2)]
 
         self.performanceCalculateDict['Isentropic_efficiency'] = self._get_Isentropic_efficiency
-            # lambda t1, p1, t2, p2: (1-(t2 / t1)) / (1-np.power(p2 / p1,  (self.kappa - 1) / self.kappa ))
         self.performanceParaDict['Isentropic_efficiency'] = \
             [('Absolute Total Temperature','Absolute Total Pressure') for _ in range(2)]
 
@@ -295,8 +331,12 @@ class cfdPost_2d(object):
         self.performanceParaDict['Polytropic_efficiency'] = \
             [('Absolute Total Temperature','Absolute Total Pressure')for _ in range(2)]
 
+        self.performanceCalculateDict['Mass_flow'] =  lambda x1, x2, x3, x4: (x1 * x2 + x3 * x4) * np.pi / 2
+        self.performanceParaDict['Mass_flow'] = \
+            [('Density Flow','Gird Node R') for _ in range(2)]
+
     def get_performance(self,performance,
-                        type='averaged', computing_station=2,
+                        type='averaged',
                         z1=None, z2=None):
         # check the up and down stream index
         if z1 is None:
@@ -305,14 +345,11 @@ class cfdPost_2d(object):
             z2 = self.n_2d - 1
         assert z1 < z2
 
-        if performance=='Degree_reaction':
-            computing_station = 3
-
         #select the performance type
         if type=='averaged':
             rst = self.calculate_performance_averaged(performance, z1=z1, z2=z2)
         elif type=='spanwised':
-            rst = self.calculate_performance_spanwised(performance, computing_station=computing_station, z1=z1, z2=z2)
+            rst = self.calculate_performance_spanwised(performance, z1=z1, z2=z2)
         elif type=='axiswised':
             rst = self.calculate_performance_averaged(performance, z1=slice([0]*self.n_2d), z2=slice(range(self.n_2d)))
         else:
@@ -321,12 +358,18 @@ class cfdPost_2d(object):
         return rst
 
     def calculate_performance_averaged(self, performance,
-                              z1=None, z2=None):
+                              z1=None, z2=None, z_middle=71):
         func = self.performanceCalculateDict[performance]
         para = self.performanceParaDict[performance]# it's a tuple contain 2 tuples
-        paraValueUp = []
-        paraValueDown = []
-        for ii in range(2):
+        paraValue = []
+        computing_station = len(para)
+        paraValue = []
+        if computing_station == 3:
+            zlist = [z1, z_middle, z2]
+        else:
+            zlist = [z1, z2]
+
+        for ii in range(computing_station):
             for name in para[ii]:
                 # get all needed values in the whole axis wise
                 if name in self.fieldSaveDict.keys():
@@ -335,64 +378,34 @@ class cfdPost_2d(object):
                     values = self.get_performance(name, type='averaged', z1=z1, z2=z1)
                 else:
                     assert False, "the input name is illegal"
-
-                if ii==0:
-                    paraValueUp.append(values[:,z1])# get the upstream and downstream point value
-                else:
-                    paraValueDown.append(values[:,z2])
-        paraValue = paraValueUp + paraValueDown
+                paraValue.append(values[:,zlist[ii]])# get the upstream and downstream point value
         return func(*paraValue)
 
-    def calculate_performance_spanwised(self, performance, computing_station,
+    def calculate_performance_spanwised(self, performance,
                               z1=None, z2=None, z_middle=71):
         func = self.performanceCalculateDict[performance]
         para = self.performanceParaDict[performance]# it's a tuple contain 2 tuples
-        if computing_station == 2:
-            paraValueUp = []
-            paraValueDown = []
-            for ii in range(2):
-                for name in para[ii]:
-                    # get all needed values in the whole axis wise
-                    if name in self.fieldSaveDict.keys():
-                        values = self.get_field(name) # with 3 dim
-                    elif name in self.performanceSaveDict.keys():
-                        values = self.get_performance(name, type='spanwised')
-                    else:
-                        assert False, "the input name is illegal"
+        computing_station = len(para)
+        paraValue = []
+        if computing_station == 3:
+            zlist = [z1, z_middle, z2]
+        else:
+            zlist = [z1, z2]
 
-                    if ii==0:
-                        paraValueUp.append(self.get_bar_value(values,z1))# get the upstream and downstream point value
-                    else:
-                        paraValueDown.append(self.get_bar_value(values,z2))
-            paraValue = paraValueUp + paraValueDown
-            return func(*paraValue)
+        for ii in range(computing_station):
+            for name in para[ii]:
+                # get all needed values in the whole axis wise
+                if name in self.fieldSaveDict.keys():
+                    values = self.get_field(name)  # with 3 dim
+                elif name in self.performanceSaveDict.keys():
+                    values = self.get_performance(name, type='spanwised')
+                else:
+                    assert False, "the input name is illegal"
+                paraValue.append(self.get_bar_value(values, zlist[ii]))  # get the upstream and downstream point value
 
-        elif computing_station == 3:
-            paraValueUp = []
-            paraValueMiddle = []
-            paraValueDown = []
-            for ii in range(3):
-                for name in para[ii]:
-                    # get all needed values in the whole axis wise
-                    if name in self.fieldSaveDict.keys():
-                        values = self.get_field(name)  # with 3 dim
-                    elif name in self.performanceSaveDict.keys():
-                        values = self.get_performance(name, type='spanwised')
-                    else:
-                        assert False, "the input name is illegal"
+        return func(*paraValue)
 
-                    if ii == 0:
-                        paraValueUp.append(
-                            self.get_bar_value(values, z1))  # get the upstream and downstream point value
-                    elif ii == 1:
-                        paraValueMiddle.append(
-                            self.get_bar_value(values, 71, bar=2))
-                    else:
-                        paraValueDown.append(self.get_bar_value(values, z2))
-            paraValue = paraValueUp + paraValueMiddle + paraValueDown
-            return func(*paraValue)
-
-    def get_bar_value(self, values, z, bar=4):
+    def get_bar_value(self, values, z, bar=2):
         if bar>0:
             return np.mean(values[...,max(z-bar,0):min(z+bar,self.n_2d)], axis=-1)
         else:
@@ -402,15 +415,26 @@ class cfdPost_2d(object):
     # ===========================interface functions=================================#
     # ===============================================================================#
 
-    def get_field_performance(self, name):
+    def get_field_performance(self, name,
+                              type='averaged',
+                              z1=None, z2=None):
+        if z1 is None:
+            z1 = 0
+        if z2 is None:
+            z2 = self.n_2d - 1
+        assert z1 < z2
+
         if name in self.fieldSaveDict.keys():
-            values = self.get_field(name)  # with 3 dim
+            if type=='averaged':
+                values = self.get_mass_weight_radial_averaged_field(name)
+            elif type=='spanwised':
+                values = self.get_field(name)  # with 3 dim
+                values = self.get_bar_value(values, z2)
         elif name in self.performanceSaveDict.keys():
-            values = self.get_performance(name, type='spanwised')
+            values = self.get_performance(name, type=type, z1=z1, z2=z2)
         else:
             assert False
         return values
-
 
     def get_fields(self, quanlityList):
         if not isinstance(quanlityList,list):

@@ -257,7 +257,7 @@ class MatplotlibVision(object):
             axs.fill_between(x, y - std / 2, y + std/2, alpha=0.4, label='', color=color)
         axs.grid(True)  # 添加网格
         axs.set_ylim(ylim)
-        axs.set_xlim(xlim)
+        # axs.set_xlim(xlim)
         axs.tick_params(axis='both', which='both', labelsize=0)
         axs.legend(loc="best", prop=self.font)
         axs.set_xlabel(xylabels[0], fontdict=self.font)
@@ -739,8 +739,8 @@ class MatplotlibVision(object):
                 axs[i][j].axis('equal')
                 # axs[i][j].grid(zorder=0, which='both', color='grey', linewidth=1)
                 # axs[i][j].set_title(titles[j], fontdict=self.font_EN)
-                if i == 0:
-                    axs[i][j].set_title(titles[j], fontdict=self.font_CHN)
+                # if i == 0:
+                #     axs[i][j].set_title(titles[j], fontdict=self.font_CHN)
 
                 cb = fig.colorbar(f_true, ax=axs[i][j], shrink=0.75)
                 cb.ax.tick_params(labelsize=10)
