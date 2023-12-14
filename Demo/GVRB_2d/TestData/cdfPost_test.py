@@ -4,6 +4,7 @@ from Tools.post_process.post_CFD import cfdPost_2d
 from scipy.interpolate import interp1d
 from utilizes_rotor37 import get_grid
 import matplotlib.pyplot as plt
+# from Demo.GVRB_2d.utilizes_GVRB import get_grid, get_origin
 
 def get_grid_interp(grid_num_s=128,
                     grid_num_z=128,
@@ -38,6 +39,8 @@ def get_grid_interp(grid_num_s=128,
 if __name__ == "__main__":
     pathNpz = os.path.join('sampleRstZip.npz')
     data = np.load(pathNpz)
+    # design, fields, grids = get_origin(type='struct')
+
     inputdict = {'Static Pressure':0,
                  'Absolute Total Pressure':1,
                  'Static Temperature':2,
@@ -47,6 +50,7 @@ if __name__ == "__main__":
                  'Vz':6,
                  'Density':7,
                  }
+
     data_2d = np.zeros([10,128,128,8])
     for key in inputdict.keys():
         for ii in range(10):
@@ -55,7 +59,7 @@ if __name__ == "__main__":
 
     # grid = get_grid_interp()
     grid=get_grid(GV_RB=True, grid_num=128)
-    post = cfdPost_2d(data_2d, grid, inputDict=inputdict)
+    post = cfdPost_2d(data=data_2d, grid=grid, inputdict=inputdict)
     # rst = post.get_performance('Static_pressure_ratio', z1=0, z2=127, type='spanwised')
     rst = post.get_performance('Isentropic_efficiency',type='spanwised')
     print(rst)

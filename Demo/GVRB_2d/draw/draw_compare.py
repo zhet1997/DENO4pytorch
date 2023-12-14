@@ -29,8 +29,8 @@ def stage_define(name=None):
 
 def draw_span_curve(Visual, rst, label=None, xlim=None, fig=None, axs=None):
     # colorList = ['steelblue', 'darkslateblue']
-    # colorList = ['brown', 'chocolate']
-    colorList = ['g', 'lawngreen']
+    colorList = ['brown', 'chocolate']
+    # colorList = ['g', 'lawngreen']
     markerList = ['^', '-']
     shape = rst.shape
     Visual.plot_curve_scatter(fig, axs, rst,
@@ -142,17 +142,24 @@ if __name__ == '__main__':
     input_dim = 100
     output_dim = 8
     type = 'valid'
-    stage_name = 'S1'
-    parameterList = [
-         'Absolute_nozzle_pressure_ratio',
-         'Relative_nozzle_pressure_ratio',
-         'Absolute_Enthalpy',
-         'Relative_Enthalpy',
-    ]
-    # parameterList = ['Static_pressure_ratio',
-    #                  'Total_total_efficiency',
-    #                  'Total_static_efficiency',
-    #                  'Degree_reaction',
+    stage_name = 'stage'
+    print(os.getcwd())
+    work_load_path = os.path.join("..", 'work')
+    work = WorkPrj(os.path.join(work_load_path, name))
+    save_path = os.path.join(work.root, 'save_figure')
+    # parameterList = [
+    #      # 'Absolute_nozzle_pressure_ratio',
+    #      # 'Relative_nozzle_pressure_ratio',
+    #     # 'Relative Total Pressure',
+    #     # 'Absolute Total Pressure',
+    #      # 'Absolute_Enthalpy',
+    #      # 'Relative_Enthalpy',
+    # ]
+    parameterList = ['Static_pressure_ratio',
+                     'Total_total_efficiency',
+                     'Total_static_efficiency',
+                     'Degree_reaction',
+                     ]
     #                  'atan(Vx/Vz)',
     #                  'atan(Wx/Wz)',
     # 'Mass_flow',
@@ -187,9 +194,7 @@ if __name__ == '__main__':
     #                  ]
 
     ## get the train or valid data
-    print(os.getcwd())
-    work_load_path = os.path.join("..", 'work')
-    work = WorkPrj(os.path.join(work_load_path, name))
+
     if not os.path.exists(work.train):
         work.save_pred()
     if type=='train':
@@ -201,16 +206,15 @@ if __name__ == '__main__':
 
     ## get the draw data
     grid = get_grid_interp(grid_num_s=64,grid_num_z=128)
-    post_true = cfdPost_2d(data_true, grid)
-    post_pred = cfdPost_2d(data_pred, grid)
+    post_true = cfdPost_2d(data=data_true, grid=grid)
+    post_pred = cfdPost_2d(data=data_pred, grid=grid)
 
-    save_path = os.path.join(work.root, 'save_figure_S1')
     if not os.path.exists(save_path):
         os.mkdir(save_path)
 
+    draw_diagnal(post_true, post_pred, work=work, save_path=save_path)
     draw_span_all(post_true, post_pred, work=work, save_path=save_path)
-    # draw_diagnal(post_true, post_pred, work=work, save_path=save_path)
-    # draw_meridian(post_true, post_pred, work=work, save_path=save_path)
+    draw_meridian(post_true, post_pred, work=work, save_path=save_path)
 
 
 

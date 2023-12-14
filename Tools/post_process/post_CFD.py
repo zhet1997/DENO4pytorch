@@ -1,12 +1,12 @@
 import numpy as np
-import math
+import torch
 
 class cfdPost_2d(object):
     def __init__(self, **kwargs): #默认输入格式为64*64*5
         self.par_init = False
         self.sim_init = False
-
-        self.field_data_readin(**kwargs)
+        if len(kwargs)>0:
+            self.field_data_readin(**kwargs)
 
     def paramter_calculate_init(self):
         self.par_init = True
@@ -26,14 +26,14 @@ class cfdPost_2d(object):
     def field_data_readin(self,data=None,grid=None,
                           inputdict=None,
                           boundarydict=None,
-                          boundarycondtion=None,
+                          boundarycondition=None,
                           similarity=False):
         if grid is not None:
             self.grid = grid
         if data is not None:
             self.data_raw = data
-        if boundarycondtion is not None:
-            self.bouCondtion_raw = boundarycondtion
+        # if boundarycondition is not None:
+        self.bouCondition_raw = boundarycondition
         if inputdict is None:
             self.inputDict = {'Static Pressure': 0,
                               'Static Temperature': 1,
@@ -49,8 +49,8 @@ class cfdPost_2d(object):
 
         if boundarydict is None:
             self.boundaryDict = {'Flow Angle': 0,
-                              'Absolute Total Pressure': 1,
-                              'Absolute Total Temperature': 2,
+                              'Absolute Total Temperature': 1,
+                              'Absolute Total Pressure': 2,
                               'Rotational_speed': 3,
                               }
         else:
@@ -64,13 +64,53 @@ class cfdPost_2d(object):
 
         if not similarity:
             self.data_2d = self.data_raw
-            self.bouCondtion_1d = self.bouCondtion_raw
+            self.bouCondition_1d = self.bouCondition_raw
+            self.num = self.num_raw
 
-    def loader_readin(self):
-        pass
+    def loader_readin(self, loader, **kwargs):
+        x, y, batchsize = self.recover_data_from_loader(loader)
+        self.field_data_readin(data=y,
+                               boundarycondition=x[:,-4:],#specially
+                               similarity=True,
+                               **kwargs,
+                               )
+        self.loader = {
+            'x': x,
+            'batch_size': batchsize,
+        }
 
-    def loader_export(self):
-        pass
+    def loader_export(self, expand=1):
+        x = self.loader['x'].repeat_interleave(expand, dim=0)
+        x[:,-4:] = torch.tensor(self.bouCondition_1d, dtype=torch.float).detach().clone()
+        loader = torch.utils.data.DataLoader(
+            torch.utils.data.TensorDataset(x, torch.tensor(self.data_2d, dtype=torch.float).detach().clone()),
+                                                   batch_size=self.loader['batch_size'], shuffle=False, drop_last=False)
+
+        return loader
+
+    def loader_similarity(self, loader, grid=None, scale=[-0.1,0.1], expand=1):
+        self.loader_readin(loader, grid=grid)
+        self.get_data_after_similarity(expand=expand, scale=scale)
+        return self.loader_export(expand=expand)
+
+    @staticmethod
+    def recover_data_from_loader(data_loader):
+        x_list = []
+        y_list = []
+        batch_size=None
+
+        # 遍历数据加载器的迭代器
+        for batch_x, batch_y in data_loader:
+            x_list.append(batch_x)
+            y_list.append(batch_y)
+            if batch_size is None:
+                batch_size = batch_x.size(0)
+
+        # 拼接所有 batch 中的输入和标签
+        x = torch.cat(x_list, dim=0)
+        y = torch.cat(y_list, dim=0)
+
+        return x, y, batch_size
 
 
     #===============================================================================#
@@ -96,7 +136,7 @@ class cfdPost_2d(object):
         self.shroud = self.grid[-1, :]
 
     def set_change_rotateSpeed(self):
-        rotateSpeed = self.bouCondtion_1d[:, self.boundaryDict['Rotational Speed']]
+        rotateSpeed = self.bouCondition_1d[:, self.boundaryDict['Rotational Speed']]
         self.fieldSaveDict.update({'Rotational Speed': np.tile(rotateSpeed[:, None, None, :], [1, self.n_1d, self.n_2d])})
 
     def struct_input_check(self):
@@ -154,7 +194,8 @@ class cfdPost_2d(object):
         self.fieldSaveDict.update({'Gird Node Z': np.tile(self.grid[None, :, :, 0], [self.num, 1, 1])})
         self.fieldSaveDict.update({'Gird Node R': np.tile(self.grid[None, :, :, 1], [self.num, 1, 1])})
         self.fieldSaveDict.update({'R/S Interface': np.where(self.grid[None, :, :, 0]<self.RSInterface, 0, 1)})
-        self.fieldSaveDict.update({'Rotational Speed': np.tile(self.rotateSpeed[None, None, None, :], [self.num, self.n_1d, self.n_2d])})
+
+        self.fieldSaveDict.update({'Rotational Speed': np.tile(np.array(self.rotateSpeed)[None, None, None], [self.num, self.n_1d, self.n_2d])})
         for quanlity in self.quanlityList:
             self.fieldSaveDict.update({quanlity: None})  # initiaize of all fields
 
@@ -172,6 +213,12 @@ class cfdPost_2d(object):
         self.fieldCalculateDict['|W|^2'] = lambda x1, x2: (x2 - x1) * 2 * self.Cp
         self.fieldParaDict['|W|^2'] = ('Static Temperature', 'Relative Total Temperature')  # |U| is spectail
 
+        self.fieldCalculateDict['|V|'] = lambda x1, x2, x3: np.power(x1*x1 + x2*x2 + x3*x3,0.5)
+        self.fieldParaDict['|V|'] = ('Vx', 'Vy', 'Vz')  # |U| is spectail
+        self.fieldCalculateDict['|W|'] = lambda x1, x2, x3: np.power(x1 * x1 + x2 * x2 + x3 * x3, 0.5)
+        self.fieldParaDict['|W|'] = ('Wx', 'Wy', 'Wz')  # |U| is spectail
+
+
         self.fieldCalculateDict['Wx'] = lambda x1, x2: x1 + x2
         self.fieldParaDict['Wx'] = ('Vx','|U|')  # |U| is spectail
         self.fieldCalculateDict['Wy'] = lambda x1: x1
@@ -184,10 +231,10 @@ class cfdPost_2d(object):
         self.fieldCalculateDict['atan(Wx/Wz)'] = lambda x1, x2: np.arctan(x1 / x2) / np.pi * 180
         self.fieldParaDict['atan(Wx/Wz)'] = ('Wx', 'Wz')  # |U| is spectail
 
-        self.fieldCalculateDict['Absolute Total Temperature'] = lambda x1, x2: x1 + x2 / 2 / self.Cp #Attention to nonlinear term
-        self.fieldParaDict['Absolute Total Temperature']  = ('Static Temperature','|V|^2')
-        self.fieldCalculateDict['Relative Total Temperature'] = lambda x1, x2: x1 + x2 / 2 / self.Cp
-        self.fieldParaDict['Relative Total Temperature'] = ('Static Temperature', '|W|^2')
+        self.fieldCalculateDict['Absolute Total Temperature'] = lambda x1, x2: x1 + x2^2 / 2 / self.Cp #Attention to nonlinear term
+        self.fieldParaDict['Absolute Total Temperature']  = ('Static Temperature','|V|')
+        self.fieldCalculateDict['Relative Total Temperature'] = lambda x1, x2: x1 + x2^2 / 2 / self.Cp
+        self.fieldParaDict['Relative Total Temperature'] = ('Static Temperature', '|W|')
         self.fieldCalculateDict['Rotary Total Temperature'] = lambda x1, x2: x1 + np.power(x2, 2) / 2 / self.Cp
         self.fieldParaDict['Rotary Total Temperature'] = ('Static Temperature', '|U|') # |U| is spectail
 
@@ -226,6 +273,8 @@ class cfdPost_2d(object):
         self.fieldParaDict['Density Flow'] = ('Density', 'Vz')
 
     def get_field(self,quanlity):
+        if not self.par_init:
+            self.paramter_calculate_init()
         if self.fieldSaveDict[quanlity] is None: # check whether the field has already calculated
             if quanlity in self.inputDict.keys():# input the field directly
                 rst = self.data_2d[..., self.inputDict[quanlity]]
@@ -388,6 +437,9 @@ class cfdPost_2d(object):
     def get_performance(self,performance,
                         type='averaged',
                         z1=None, z2=None):
+        if not self.par_init:
+            self.paramter_calculate_init()
+
         # check the up and down stream index
         if z1 is None:
             z1 = 0
@@ -468,11 +520,14 @@ class cfdPost_2d(object):
     def get_field_performance(self, name,
                               type='averaged',
                               z1=None, z2=None):
+        if not self.par_init:
+            self.paramter_calculate_init()
+
         if z1 is None:
             z1 = 0
         if z2 is None:
             z2 = self.n_2d - 1
-        assert z1 < z2
+        assert z1 <= z2
 
         if name in self.fieldSaveDict.keys():
             if type=='averaged':
@@ -570,39 +625,57 @@ class cfdPost_2d(object):
                             'atan(Vx/Vz)': basicDimensionalDict['0'],
                             'Flow Angle': basicDimensionalDict['0'],
                             'Rotational_speed': np.array([0, 0, -1, 0]),
+                            'Density':np.array([1,-3, 0, 0]),
                               }
 
     def get_dimensional_similarity(self, dof=1, scale=[-1, 1], expand=1):
         free_coef = self.get_free_similarity(dof=dof, scale=scale, expand=expand)
-        free_idx = slice([0, 2])
-        fixd_idx = slice([1]) # the length scale is fixed in this project
-        solve_idx = slice([3])
+        free_idx = slice(0, 3, 2)
+        fixd_idx = slice(1, 2, 1) # the length scale is fixed in this project
+        solve_idx = slice(3, 4, 1)
 
-        solve_coef = 0 - self.basicDimensionalDict['Rg'][free_idx] * free_coef
+        solve_coef = 0 - np.sum(self.basicDimensionalDict['Rg'][free_idx] * free_coef, axis=1, keepdims=True)
 
         dimensional_coef = np.zeros([self.num_raw * expand, 4])
-        dimensional_coef[free_idx] = free_coef
+        dimensional_coef[:, free_idx] = free_coef
         # dimensional_coef[fixd_idx] = np.zeros([self.num*expand, 1])
-        dimensional_coef[solve_idx] = solve_coef
+        dimensional_coef[:, solve_idx] = solve_coef
 
         return dimensional_coef
 
-    def get_data_after_similarity(self, expand=1):
-        dimensional_coef = self.get_dimensional_similarity(expand=expand)
+    def get_data_after_similarity(self, expand=1, scale=[-0.1,0.1], keeporder=True):
+        if not self.sim_init:
+            self.similarity_calculate_init()
+        if keeporder:
+            order=1
+            tile_idx = [1, expand, 1, 1, 1]
+        else:
+            order=0
+            tile_idx = [expand, 1, 1, 1, 1]
+
+        dimensional_coef = self.get_dimensional_similarity(dof=2, scale=scale, expand=expand)
+        self.num = int(self.num_raw * expand)
         # for the output field
-        field_dimensional_matrix = np.zeros(self.num_raw * expand, len(self.inputDict))
+        field_dimensional_matrix = np.zeros([self.num_raw * expand, len(self.inputDict)])
         for key in self.inputDict.keys():
             dim = np.tile(self.dimensionalSaveDict[key], [self.num_raw * expand, 1]) * dimensional_coef
             dim = np.sum(dim, axis=1)
-            field_dimensional_matrix[int(self.inputDict[key])] = np.power(10, dim)
-        self.data_2d = np.tile(self.data_raw, [expand]) * np.tile(field_dimensional_matrix[:, None, None, :], [1, self.n_1d, self.n_2d, 1])
+            field_dimensional_matrix[:, int(self.inputDict[key])] = np.power(10, dim)
+
+            tmp = np.tile(np.expand_dims(self.data_raw, axis=order), tile_idx).reshape(
+                [-1, self.n_1d, self.n_2d, len(self.inputDict)])
+            self.data_2d = tmp * np.tile(field_dimensional_matrix[:, None, None, :], [1, self.n_1d, self.n_2d, 1])
+
         # for the input boundary condition
-        boudary_dimensional_matrix = np.zeros(self.num_raw * expand, len(self.inputDict))
+        boudary_dimensional_matrix = np.zeros([self.num_raw * expand, len(self.boundaryDict)])
         for key in self.boundaryDict.keys():
             dim = np.tile(self.dimensionalSaveDict[key], [self.num_raw * expand, 1]) * dimensional_coef
             dim = np.sum(dim, axis=1)
-            boudary_dimensional_matrix[int(self.inputDict[key])] = np.power(10, dim)
-        self.bouCondtion_1d = np.tile(self.bouCondtion_raw, [expand]) * field_dimensional_matrix
+            boudary_dimensional_matrix[:, int(self.boundaryDict[key])] = np.power(10, dim)
+        tmp = np.tile(np.expand_dims(self.bouCondition_raw, axis=order), tile_idx[:2]).reshape(
+            [-1, len(self.boundaryDict)])
+        self.bouCondition_1d = tmp * boudary_dimensional_matrix
+        self.get_field_save_dict() # clear the old data
 
 if __name__ == "__main__":
 

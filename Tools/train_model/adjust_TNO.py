@@ -1,5 +1,5 @@
 import os
-from post_process.load_model import build_model_yml, loaddata
+from Tools.post_process.load_model import build_model_yml, loaddata
 from model_whole_life import DLModelWhole
 from train_task_construct import WorkPrj, add_yml, change_yml, work_construct_togethor
 
