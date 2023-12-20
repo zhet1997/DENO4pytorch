@@ -9,7 +9,8 @@ from Demo.Rotor37_2d.utilizes_rotor37 import get_grid
 from Utilizes.process_data import DataNormer
 from Tools.post_process.post_CFD import cfdPost_2d
 
-def predictor_establish(name, work_load_path, predictor=True):
+
+def predictor_establish(name, work_load_path, is_predictor=True):
 
     nameReal = name.split("_")[0]
     id = None
@@ -32,16 +33,23 @@ def predictor_establish(name, work_load_path, predictor=True):
     y_normlizer = DataNormer(np.array([1, 1]), method="mean-std", axis=0)
     y_normlizer.load(norm_save_y)
 
-    assert os.path.exists(work.yml), print('The yml file is not exist')
-    Net_model, inference, _, _ = build_model_yml(work.yml, work.device, name=nameReal)
-    isExist = os.path.exists(work.pth)
-    if isExist:
-        checkpoint = torch.load(work.pth, map_location=work.device)
-        Net_model.load_state_dict(checkpoint['net_model'])
-        # Net_model.set_state_dict(checkpoint)
-        Net_model.eval()
+    if os.path.exists(work.fpth):
+        Net_model = torch.load(work.fpth, map_location=work.device)
+        # checkpoint = torch.load(work.fpth, map_location=work.device)
+        # Net_model = checkpoint['net_model']
+        from Tools.model_define.define_STNO import inference
+        # inference = None
+    else:
+        assert os.path.exists(work.yml), print('The yml file is not exist')
+        Net_model, inference, _, _ = build_model_yml(work.yml, work.device, name=nameReal)
+        isExist = os.path.exists(work.pth)
+        if isExist:
+            checkpoint = torch.load(work.pth, map_location=work.device)
+            Net_model.load_state_dict(checkpoint['net_model'])
 
-    if predictor:
+    Net_model.eval()
+
+    if is_predictor:
         model_all = DLModelPost(Net_model, work.device,
                             name=nameReal,
                             in_norm=x_normlizer,

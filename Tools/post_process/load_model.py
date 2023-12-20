@@ -25,16 +25,16 @@ def loaddata_Sql(name,
             batch_size=32,
             norm_x=None,
             norm_y=None,
+            norm_method='mean-std',
                  ):
 
-    # design, fields = get_origin_gemo(realpath=os.path.join("..", "data"),shuffled=shuffled) # 获取原始数据
-    # design, fields = get_origin_GVRB()
     design, fields, grids = get_origin(type='struct', realpath='E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data/',
                                        quanlityList=["Static Pressure", "Static Temperature", "Density",
                                                      "Vx", "Vy", "Vz",
-                                                     'Relative Total Temperature',
-                                                     'Absolute Total Temperature']
-                                       )
+                                                     # 'Relative Total Temperature',
+                                                     # 'Absolute Total Temperature',
+                                                     ],
+                                                                              )
     nameReal = name.split("_")[0]
     id = None
     if len(name.split("_")) == 2:
@@ -42,11 +42,6 @@ def loaddata_Sql(name,
 
     name = nameReal
     if name in ("FNO", "FNM", "UNet", "Transformer"):
-        # input = np.tile(design[:, None, None, :], (1, 128, 128, 1))
-        # r1 = 10
-        # input = design[:, :, ::r1, :]
-        # input = input.reshape([input.shape[0], -1])  # 二维数据
-        # input = np.tile(input[:, None, None, :], (1, 64, 64, 1))
         input = np.tile(design[:, None, None, :], (1, 128, 128, 1))
     else:
         input = design
@@ -66,14 +61,14 @@ def loaddata_Sql(name,
     valid_y = output[-nvalid:]
 
     if norm_x is None:
-        x_normalizer = DataNormer(train_x, method='mean-std')
+        x_normalizer = DataNormer(train_x, method=norm_method)
     else:
         x_normalizer = norm_x
     train_x = x_normalizer.norm(train_x)
     valid_x = x_normalizer.norm(valid_x)
 
     if norm_y is None:
-        y_normalizer = DataNormer(train_y, method='mean-std')
+        y_normalizer = DataNormer(train_y, method=norm_method)
     else:
         y_normalizer = norm_y
     train_y = y_normalizer.norm(train_y)
@@ -88,10 +83,10 @@ def loaddata_Sql(name,
         train_y = train_y + noise_train
 
     # 完成了归一化后再转换数据
-    train_x = torch.tensor(train_x, dtype=torch.float)
-    train_y = torch.tensor(train_y, dtype=torch.float)
-    valid_x = torch.tensor(valid_x, dtype=torch.float)
-    valid_y = torch.tensor(valid_y, dtype=torch.float)
+    train_x = torch.as_tensor(train_x, dtype=torch.float)
+    train_y = torch.as_tensor(train_y, dtype=torch.float)
+    valid_x = torch.as_tensor(valid_x, dtype=torch.float)
+    valid_y = torch.as_tensor(valid_y, dtype=torch.float)
 
     if name in ("deepONet"):
         grid = get_grid(real_path=os.path.join("../../Demo/Rotor37_2d", "data"))
@@ -305,9 +300,12 @@ def build_model_yml(yml_path, device, name=None):
 
 
 def get_true_pred(loader, Net_model, inference, Device,
-                  name=None, out_dim=8, iters=0, alldata=False):
+                  name=None, in_dim=100, out_dim=8, iters=0, alldata=False,
+                  x_output=False,
+                  ):
     true_list = []
     pred_list = []
+    x_list = []
     set_size_sub  = 32
     if alldata:
         num = len(loader.dataset)
@@ -336,20 +334,26 @@ def get_true_pred(loader, Net_model, inference, Device,
                                                      drop_last=False)
     # for ii in range(iters):
         if name in ('MLP','TNO'):
-            _, true, pred = inference(sub_loader, Net_model, Device)
+            x, true, pred = inference(sub_loader, Net_model, Device)
         else:
-            _, _, true, pred = inference(sub_loader, Net_model, Device)
+            x, _, true, pred = inference(sub_loader, Net_model, Device)
         true = true.reshape([true.shape[0], 64, 128, out_dim])
         pred = pred.reshape([pred.shape[0], 64, 128, out_dim])
+        x = x.reshape([pred.shape[0], in_dim])
         # pred = pred.reshape([pred.shape[0], 32, 92])
 
         true_list.append(true)
         pred_list.append(pred)
+        x_list.append(x)
 
     true = np.concatenate(true_list, axis=0)
     pred = np.concatenate(pred_list, axis=0)
+    x = np.concatenate(x_list, axis=0)
 
-    return true, pred
+    if x_output:
+        return x, true, pred
+    else:
+        return true, pred
 
 if __name__ == "__main__":
     noi = get_noise([3,3], 0.1)

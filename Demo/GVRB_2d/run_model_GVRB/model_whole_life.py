@@ -1,7 +1,7 @@
 import os
 import torch
 import numpy as np
-from Demo.Rotor37_2d.utilizes_rotor37 import Rotor37WeightLoss
+from utilizes_rotor37 import Rotor37WeightLoss
 from Tools.post_process.load_model import build_model_yml, loaddata
 from Tools.post_process.model_predict import DLModelPost
 from Utilizes.visual_data import MatplotlibVision
@@ -13,7 +13,7 @@ import time
 
 def change_yml(name, yml_path=None, **kwargs):
     # 加载config模板
-    template_path = os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\config_template.yml")
+    template_path = os.path.join("../..", "data", "data/configs/config_template.yml")
     with open(template_path, 'r', encoding="utf-8") as f:
         config_all = yaml.full_load(f)
         config_para = config_all[name + '_config']
@@ -37,7 +37,7 @@ def change_yml(name, yml_path=None, **kwargs):
         yaml.dump(data, f)
 
 def add_yml(key_set_list, yml_path=None):
-    template_path = os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\config_template.yml")
+    template_path = os.path.join("../..", "data", "data/configs/config_template.yml")
     with open(template_path, 'r', encoding="utf-8") as f:
     # 加载config模板
         config_all = yaml.full_load(f)
@@ -80,7 +80,7 @@ class DLModelWhole(object):
                  name=None,
                  in_norm=None,
                  out_norm=None,
-                 grid_size=128,
+                 grid_size=64,
                  work=None,
                  epochs=1000,
                  ):
@@ -111,7 +111,7 @@ class DLModelWhole(object):
         self.Loss_func = Rotor37WeightLoss()
         # 优化算法
         temp = config["Optimizer_config"]
-        temp['betas'] = tuple(float(x) for x in temp['betas'].split())
+        temp['betas'] = tuple(float(x) for x in temp['betas'][0].split())
         self.Optimizer = torch.optim.Adam(self.net_model.parameters(), **temp)
         # 下降策略
         self.Scheduler = torch.optim.lr_scheduler.StepLR(self.Optimizer, **config["Scheduler_config"])
@@ -129,6 +129,7 @@ class DLModelWhole(object):
             print('epoch: {:6d}, lr: {:.3e}, train_step_loss: {:.3e}, valid_step_loss: {:.3e}, cost: {:.2f}'.
                   format(epoch, self.Optimizer.param_groups[0]['lr'], log_loss[0][-1], log_loss[1][-1],
                          time.time() - star_time))
+            # print(os.environ['CUDA_VISIBLE_DEVICES'])
             star_time = time.time()
 
             if epoch > 0 and epoch % 5 == 0:
@@ -150,7 +151,7 @@ if __name__ == "__main__":
     id = 0
     train_num = 2500
     valid_num = 450
-    work = WorkPrj(os.path.join("..", "work_train", name + "_" + str(id)))
+    work = WorkPrj(os.path.join("../..", "work_train", name + "_" + str(id)))
 
     if torch.cuda.is_available():
         Device = torch.device('cuda')
