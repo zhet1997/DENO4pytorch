@@ -7,8 +7,9 @@ import matplotlib.pyplot as plt
 from Utilizes.visual_data import MatplotlibVision
 from Tools.train_model.train_task_construct import WorkPrj
 from Tools.post_process.post_CFD import cfdPost_2d
-from Demo.GVRB_2d.utilizes_GVRB import get_grid_interp
-
+from Demo.GVRB_2d.utilizes_GVRB import get_grid_interp,get_origin
+from Tools.post_process.model_predict import predictor_establish
+from Tools.post_process.load_model import loaddata_Sql, get_true_pred
 
 def stage_define(name=None):
     stage_dict={
@@ -135,16 +136,36 @@ def draw_meridian(post_true, post_pred, work=None, save_path=None):
                               # fmin_max=np.array(rangeList).T)
         fig.savefig(os.path.join(save_path, 'meridian_' + str(i) + '_valid' + '.jpg'))
 
+
+def draw_simple(train_true, train_pred,valid_true,valid_pred, work=None, save_path=None):
+    design, fields, grids = get_origin(type='struct', realpath='E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data/',
+                                       quanlityList=["Static Pressure", "Static Temperature", "Density",
+                                                     "Vx", "Vy", "Vz",
+                                                     'Relative Total Temperature',
+                                                     'Absolute Total Temperature'])
+    Visual = MatplotlibVision('', input_name=('x', 'y'),
+                              field_name=('ps', 'ts', 'rho', 'vx', 'vy', 'vz', 'tt1', 'tt2'))
+
+    for fig_id in range(5):
+        fig, axs = plt.subplots(8, 3, figsize=(18, 25), num=2)
+        Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], grids)
+        fig.savefig(os.path.join(work.root, 'train_solution_' + str(fig_id) + '.jpg'))
+        plt.close(fig)
+    for fig_id in range(5):
+        fig, axs = plt.subplots(8, 3, figsize=(18, 25), num=3)
+        Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], grids)
+        fig.savefig(os.path.join(work.root, 'valid_solution_' + str(fig_id) + '.jpg'))
+        plt.close(fig)
 # draw figures include true and pred
 if __name__ == '__main__':
 
-    name = 'TNO_9'
-    input_dim = 100
+    name = 'TNO_1'
+    input_dim = 96
     output_dim = 8
     type = 'valid'
     stage_name = 'stage'
     print(os.getcwd())
-    work_load_path = os.path.join("..", 'work')
+    work_load_path = os.path.join("..", 'work1')
     work = WorkPrj(os.path.join(work_load_path, name))
     save_path = os.path.join(work.root, 'save_figure')
     # parameterList = [
@@ -194,7 +215,6 @@ if __name__ == '__main__':
     #                  ]
 
     ## get the train or valid data
-
     if not os.path.exists(work.train):
         work.save_pred()
     if type=='train':
@@ -215,6 +235,48 @@ if __name__ == '__main__':
     draw_diagnal(post_true, post_pred, work=work, save_path=save_path)
     draw_span_all(post_true, post_pred, work=work, save_path=save_path)
     draw_meridian(post_true, post_pred, work=work, save_path=save_path)
+
+
+    # #get train and vaild data
+    # parameterList = ['Static_pressure_ratio',
+    #                  'Total_total_efficiency',
+    #                  'Total_static_efficiency',
+    #                  'Degree_reaction',
+    #                  ]
+    # name = 'TNO_5'
+    # input_dim = 96
+    # output_dim = 8
+    # type = 'valid'
+    # stage_name = 'stage'
+    # ## load the model
+    # print(os.getcwd())
+    # work_load_path = os.path.join('E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\work1')
+    # work_load_path1 = os.path.join('E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\work1\TNO_5')
+    # work = WorkPrj(os.path.join(work_load_path, name))
+    # save_path = os.path.join(work.root, 'save_figure')
+    # design, fields, grids = get_origin(type='struct', realpath='E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data/',
+    #                                    quanlityList=["Static Pressure", "Static Temperature", "Density",
+    #                                                  "Vx", "Vy", "Vz",
+    #                                                  'Relative Total Temperature',
+    #                                                  'Absolute Total Temperature'])
+    # train_loader, valid_loader, x_normalizer, y_normalizer = loaddata_Sql(name, 4000, 900, shuffled=True, )
+    # x_normalizer.save(work.x_norm)
+    # y_normalizer.save(work.y_norm)
+    # Net_model, inference, Device, _, _ = \
+    #     predictor_establish(name, work_load_path1, predictor=False)
+    # train_source, train_true, train_pred = inference(train_loader, Net_model, Device)
+    # valid_source, valid_true, valid_pred = inference(valid_loader, Net_model, Device)
+    #
+    # post_true = cfdPost_2d(data=valid_true, grid=grids)
+    # post_pred = cfdPost_2d(data=valid_pred, grid=grids)
+    #
+    # if not os.path.exists(save_path):
+    #     os.mkdir(save_path)
+    #
+    # draw_diagnal(post_true, post_pred, work=work, save_path=save_path)
+    # draw_span_all(post_true, post_pred, work=work, save_path=save_path)
+    # # draw_meridian(post_true, post_pred, work=work, save_path=save_path)
+    # # draw_simple(train_true,train_pred,valid_true,valid_pred,work=work,save_path=save_path)
 
 
 

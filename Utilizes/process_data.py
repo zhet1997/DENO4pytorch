@@ -50,6 +50,7 @@ class DataNormer(object):
             elif method == "mean-std":
                 self.mean = np.mean(data, axis=axis)
                 self.std = np.std(data, axis=axis)
+
         elif type(data) is torch.Tensor:
             if axis is None:
                 axis = tuple(range(len(data.shape) - 1))

@@ -2,7 +2,7 @@ import torch
 import os
 import numpy as np
 from torch.utils.data import DataLoader
-from Demo.Rotor37_2d.utilizes_rotor37 import get_grid, get_origin
+from Demo.Rotor37_2d.utilizes_rotor37 import get_grid, get_origin,get_origin_GVRB
 from Utilizes.process_data import DataNormer
 import yaml
 # from utilizes_rotor37 import get_origin_GVRB
@@ -19,7 +19,7 @@ def get_noise(shape, scale):
 
 def loaddata_Sql(name,
             ntrain=4000,
-            nvalid=1000,
+            nvalid=900,
             shuffled=False,
             noise_scale=None,
             batch_size=32,
@@ -29,6 +29,10 @@ def loaddata_Sql(name,
 
     # design, fields = get_origin_gemo(realpath=os.path.join("..", "data"),shuffled=shuffled) # 获取原始数据
     # design, fields = get_origin_GVRB()
+    # design, fields = get_origin_GVRB(quanlityList=["Static Pressure", "Static Temperature", "Density",
+    #                                                  "Vx", "Vy", "Vz",
+    #                                                  'Relative Total Temperature',
+    #                                                  'Absolute Total Temperature'])
     design, fields, grids = get_origin(type='struct', realpath='E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data/',
                                        quanlityList=["Static Pressure", "Static Temperature", "Density",
                                                      "Vx", "Vy", "Vz",
