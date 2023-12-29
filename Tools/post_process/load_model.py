@@ -18,8 +18,8 @@ def get_noise(shape, scale):
     return random_array * scale
 
 def loaddata_Sql(name,
-            ntrain=4000,
-            nvalid=1000,
+            ntrain=1000,
+            nvalid=900,
             shuffled=False,
             noise_scale=None,
             batch_size=32,
@@ -31,8 +31,8 @@ def loaddata_Sql(name,
     design, fields, grids = get_origin(type='struct', realpath='E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data/',
                                        quanlityList=["Static Pressure", "Static Temperature", "Density",
                                                      "Vx", "Vy", "Vz",
-                                                     # 'Relative Total Temperature',
-                                                     # 'Absolute Total Temperature',
+                                                     'Relative Total Temperature',
+                                                     'Absolute Total Temperature',
                                                      ],
                                                                               )
     nameReal = name.split("_")[0]
@@ -291,10 +291,9 @@ def build_model_yml(yml_path, device, name=None):
     with open(yml_path) as f:
         config = yaml.full_load(f)
         config = config[name + '_config'] #字典里面有字典
-
     # build the model
     model_func, inference, train, valid = import_model_by_name(name)
-    net_model = model_func(**config).to(device)
+    net_model = model_func(**config, yml_path=yml_path).to(device)
 
     return net_model, inference, train, valid
 

@@ -24,9 +24,12 @@ def predictor_establish(name, work_load_path, is_predictor=True):
     if os.path.exists(work.x_norm):
         norm_save_x = work.x_norm
         norm_save_y = work.y_norm
+    # else:
+    #     norm_save_x = os.path.join("..", "data", "x_norm_1250.pkl")
+    #     norm_save_y = os.path.join("..", "data", "y_norm_1250.pkl")
     else:
-        norm_save_x = os.path.join("..", "data", "x_norm_1250.pkl")
-        norm_save_y = os.path.join("..", "data", "y_norm_1250.pkl")
+        norm_save_x = os.path.join("E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\work1\TNO_1", 'x_norm.pkl')
+        norm_save_y = os.path.join("E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\work1\TNO_1", 'y_norm.pkl')
 
     x_normlizer = DataNormer(np.array([1, 1]), method="mean-std", axis=0)
     x_normlizer.load(norm_save_x)

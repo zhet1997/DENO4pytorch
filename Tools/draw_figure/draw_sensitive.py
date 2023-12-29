@@ -148,7 +148,7 @@ def draw_sensitive_2d(predictor, work=None):
 # draw figures include true and pred
 if __name__ == '__main__':
 
-    name = 'TNO_9'
+    name = 'TNO_1'
     input_dim = 100
     output_dim = 8
     type = 'valid'
@@ -187,9 +187,9 @@ if __name__ == '__main__':
 
     ## get the train or valid data
     print(os.getcwd())
-    work_load_path = os.path.join("../../Demo/GVRB_2d", 'work')
+    work_load_path = os.path.join("E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d", 'work1')
     work = WorkPrj(os.path.join(work_load_path, name))
-    predictor = predictor_establish(name, work.root, predictor=True)
+    predictor = predictor_establish(name, work.root, is_predictor=True)
     grid = get_grid_interp(grid_num_s=64, grid_num_z=128)
 
     draw_sensitive_1d(predictor, work=work)

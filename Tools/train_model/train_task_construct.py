@@ -1,8 +1,9 @@
+import copy
 import os
 import torch
 import yaml
 import numpy as np
-
+from Tools.post_process.post_CFD import cfdPost_2d
 def work_construct(para_list_dict):
     work_list = []
     for key in para_list_dict.keys():
@@ -103,6 +104,7 @@ class WorkPrj(object):
         self.y_norm = os.path.join(self.root, 'y_norm.pkl')
         self.train = os.path.join(self.root, 'train.npz')
         self.valid = os.path.join(self.root, 'valid.npz')
+        self.valid_sim = os.path.join(self.root, 'valid_sim.npz')
         self.grid = os.path.join(self.root, 'grid.npz')
 
         if torch.cuda.is_available():
@@ -133,8 +135,10 @@ class WorkPrj(object):
         from Tools.post_process.load_model import loaddata_Sql, get_true_pred
         Net_model, inference, Device, x_normalizer, y_normalizer = \
             predictor_establish(self.name, self.root, is_predictor=False)
-        train_loader, valid_loader, _, _ = loaddata_Sql(self.name, 3000, 900, shuffled=True,
+        train_loader, valid_loader, _, _ = loaddata_Sql(self.name, 500, 200, shuffled=True,
                                                         norm_x=x_normalizer, norm_y=y_normalizer)
+
+
         for data in ['train', 'valid']:
             if data=='train':
                 loader = train_loader
@@ -144,7 +148,7 @@ class WorkPrj(object):
                 path_save = self.valid
 
             x, true, pred = get_true_pred(loader, Net_model, inference, Device,
-                                       self.name, iters=0, alldata=True, out_dim=6, in_dim=100, x_output=True)
+                                       self.name, iters=0, alldata=True, out_dim=8, in_dim=100, x_output=True)
             x = x_normalizer.back(x)
             true = y_normalizer.back(true)
             pred = y_normalizer.back(pred)
@@ -154,3 +158,26 @@ class WorkPrj(object):
             save_dict.update({'true': true})
             save_dict.update({'pred': pred})
             np.savez(path_save, **save_dict)
+
+        post = cfdPost_2d()
+        norm_bc = copy.deepcopy(x_normalizer)
+        norm_bc.shrink(slice(96, 100, 1))
+        valid_loader_sim = post.loader_similarity(valid_loader,
+                                                  scale=[-0.005, 0.005], expand=1, log=True,
+                                                  x_norm=norm_bc,
+                                                  y_norm=y_normalizer,
+                                                  )
+        x, true, pred = get_true_pred(valid_loader_sim, Net_model, inference, Device,
+                                      self.name, iters=0, alldata=True, out_dim=8, in_dim=100, x_output=True)
+        x = x_normalizer.back(x)
+        true = y_normalizer.back(true)
+        pred = y_normalizer.back(pred)
+
+        save_dict = {}
+        save_dict.update({'x': x})
+        save_dict.update({'true': true})
+        save_dict.update({'pred': pred})
+        np.savez(self.valid_sim, **save_dict)
+
+
+

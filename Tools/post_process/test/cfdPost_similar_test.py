@@ -182,7 +182,41 @@ def test_loader_log_similarity(par_name_1='Isentropic_efficiency',
     assert np.any(np.abs(perf_new_2 - perf_raw_2) > 1e-3)
     print(0)
 
+
+def test_simlarity_generator():
+    designs, fields, grids = get_origin(
+        type='struct',
+        realpath=r'E:\\WQN\\CODE\\DENO4pytorch\\Demo\\GVRB_2d\\data',
+        shuffled=False,
+        getridbad=True,
+    )
+
+    x_normalizer = DataNormer(designs, method='mean-std')
+    x_normalizer.dim_change(2)
+    data_virtual = x_normalizer.sample_generate(100,2, norm=False)
+
+    x_normalizer_bc = DataNormer(designs, method='mean-std')
+    x_normalizer_bc.dim_change(2)
+    x_normalizer_bc.shrink(slice(96,100,1))
+
+    y_normalizer = DataNormer(fields, method='mean-std')
+    y_normalizer.dim_change(2)
+
+    post = cfdPost_2d()
+    post.bouCondition_data_readin(
+                       boundarycondition=data_virtual[:,-4:],
+                       # x_norm=x_normalizer_bc,
+                       )
+    field_matrix, bc_matrix = post.get_dimensional_matrix(expand=32, scale=[-0.01,0.01])
+    data_expand = post.data_expand(data_virtual[:,-4:], expand=32, keeporder=True)
+    data_sim = post.data_similarity_operate(data_expand, bc_matrix)
+
+    data_raw = post.data_similarity_reverse_operate(data_sim, bc_matrix)
+
+    assert np.all((data_expand - data_raw) < 1e-5)
+
+
 if __name__ == "__main__":
-    test_similarity()
+    test_simlarity_generator()
 
 

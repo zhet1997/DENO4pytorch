@@ -339,6 +339,91 @@ class GVRBWeightLoss(torch.nn.Module):
         loss = self.lossfunc(predicted * weighted_mat, target * weighted_mat)
         return loss
 
+class SelfSuperviseLoss(torch.nn.Module):
+    def __init__(self,):
+        super(SelfSuperviseLoss, self).__init__()
+
+        self.lossfunc = torch.nn.MSELoss()
+    def forward(self, predicted, field_matrix, y_norm=None):
+        # 自定义损失计算逻辑
+        device = predicted.device
+
+        tmp = y_norm.back(predicted)
+        tmp = tmp/field_matrix
+        predicted = y_norm.norm(tmp)
+
+        var = torch.var(predicted, dim=0)
+        zeros = torch.zeros_like(var)
+
+        loss = self.lossfunc(var, zeros)
+        return loss
+
+class SelfSuperviseLoss2(torch.nn.Module):
+    def __init__(self, ):
+        super(SelfSuperviseLoss2, self).__init__()
+
+        self.lossfunc = torch.nn.MSELoss()
+
+    def forward(self, predicted, field_matrix, y_norm=None):
+        # 自定义损失计算逻辑
+        device = predicted.device
+
+        tmp = y_norm.back(predicted)
+        tmp = tmp / field_matrix
+        predicted = y_norm.norm(tmp)
+
+        target = predicted[0:1,...].repeat(predicted.shape[0], 1, 1, 1)
+
+        loss = self.lossfunc(predicted, target)
+        return loss
+
+class SelfSuperviseLoss3(torch.nn.Module):
+    def __init__(self, ):
+        super(SelfSuperviseLoss3, self).__init__()
+
+        self.lossfunc = torch.nn.MSELoss()
+
+    def forward(self, predicted, field_matrix, y_norm=None):
+        # 自定义损失计算逻辑
+        device = predicted.device
+        num = int(predicted.shape[0]/2)
+
+        tmp = y_norm.back(predicted)
+        tmp = tmp / field_matrix
+        predicted = y_norm.norm(tmp)
+
+        # target = predicted[0:1,...].repeat(predicted.shape[0], 1, 1, 1)
+
+        loss = self.lossfunc(predicted[:num,...].detach(), predicted[num:,...])
+        return loss
+
+class SelfSuperviseLoss4(torch.nn.Module):# variance
+    def __init__(self, ):
+        super(SelfSuperviseLoss4, self).__init__()
+
+        self.lossfunc = torch.nn.MSELoss()
+
+    def forward(self, predicted, field_matrix, y_norm=None):
+        # 自定义损失计算逻辑
+        device = predicted.device
+        num = int(predicted.shape[0]/2)
+
+        tmp = y_norm.back(predicted[:num,...])
+        std = torch.sqrt(tmp.var(dim=(1,2), keepdim=True) + 1e-5)
+        mean = tmp.mean(dim=(1,2), keepdim=True)
+        predicted_norm = (tmp-mean)/std #已经归一化完了，不用再norm了。
+
+
+        var = torch.sqrt(predicted_norm.var(dim=0) + 1e-5)
+        delta = 0.07
+        std_loss = torch.mean(torch.nn.functional.relu(delta-var))
+
+
+        # target = predicted[0:1,...].repeat(predicted.shape[0], 1, 1, 1)
+
+        loss = self.lossfunc(predicted[:num,...], predicted[num:,...])
+        return std_loss
+
 if __name__ == "__main__":
     design, field = get_origin()
     # grid = get_grid()

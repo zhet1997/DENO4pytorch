@@ -88,7 +88,7 @@ class DataNormer(object):
             elif self.method == "mean-std":
                 x = (x - torch.tensor(self.mean, device=x.device)) / (torch.tensor(self.std + 1e-10, device=x.device))
             elif self.method == "log":
-                x = torch.log10(x - torch.tensor(self.logmin, device=x.device) + 1) / torch.log10(torch.tensor(self.logmax - self.logmin, device=x.device) + 1)
+                x = torch.log10(x - torch.as_tensor(self.logmin, device=x.device, dtype=torch.float) + 1) / torch.log10(torch.tensor(self.logmax - self.logmin, device=x.device, dtype=torch.float) + 1)
         else:
             if self.method == "min-max":
                 x = 2 * (x - self.min) / (self.max - self.min + 1e-10) - 1
@@ -113,7 +113,8 @@ class DataNormer(object):
             elif self.method == "mean-std":
                 x = x * (torch.tensor(self.std + 1e-10, device=x.device)) + torch.tensor(self.mean, device=x.device)
             elif self.method == "log":
-                x = torch.pow(10, x * torch.log10(torch.tensor(self.logmax - self.logmin, device=x.device) + 1)) + torch.tensor(self.logmin, device=x.device) - 1
+                x = (torch.pow(10, x * torch.log10(torch.tensor(self.logmax - self.logmin, device=x.device, dtype=torch.float) + 1))
+                     + torch.tensor(self.logmin, device=x.device, dtype=torch.float) - 1)
         else:
             if self.method == "min-max":
                 x = (x + 1) / 2 * (self.max - self.min + 1e-10) + self.min
@@ -173,12 +174,28 @@ class DataNormer(object):
         if self.method == "mean-std":
             self.std = self.std*coef
         elif self.method == "min-max":
-            pass
+            self.min = np.where(self.min < 0, self.min * coef, self.min / coef)
+            self.max = np.where(self.max < 0, self.max / coef, self.max * coef)
         elif self.method == "log":
             self.logmin = np.where(self.logmin < 0, self.logmin * coef, self.logmin / coef)
             self.logmax = np.where(self.logmax < 0, self.logmax / coef, self.logmax * coef)
             print(0)
+    def sample_generate(self, num, coef, norm=True):
+        if self.method == "mean-std":
+            samples = np.random.normal(loc=self.mean, scale=self.std/coef, size=(num,len(self.mean)))
+        elif self.method == "min-max":
+            min = np.where(self.min >= 0, self.min * coef, self.min / coef)
+            max = np.where(self.max >= 0, self.max / coef, self.max * coef)
+            samples = np.random.uniform(low=min, high=max, size=(num,len(self.min)))
+        elif self.method == "log":
+            logmin = np.where(self.logmin >= 0, self.logmin * coef, self.logmin / coef)
+            logmax = np.where(self.logmax >= 0, self.logmax / coef, self.logmax * coef)
+            samples = np.random.uniform(low=logmin, high=logmax, size=(num,len(self.logmin)))
 
+        if norm:
+            samples = self.norm(samples)
+
+        return samples
 
 
 # reading data

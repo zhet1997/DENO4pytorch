@@ -2,23 +2,24 @@ import numpy as np
 import yaml
 import os
 import torch
-from scipy.interpolate import interp1d
 from Utilizes.data_readin import get_values_from_mat, get_unstruct_quanlity_from_mat, get_struct_quanlity_from_mat
 def get_origin(quanlityList=None,
                 type='struct',
+                hole_num=1,
                 realpath=None,
                 existcheck=True,
                 shuffled=True,
-                getridbad=True):
+                getridbad=True
+               ):
 
     if quanlityList is None:
-        quanlityList = ["Static Pressure", "Static Temperature", "Density",
-                        "Vx", "Vy", "Vz",
-                        'Relative Total Temperature',
-                        'Absolute Total Temperature',
+        quanlityList_i = ["sdf",
                         ]
-
-    sample_files = pakB_data_files(real_path=None)
+        quanlityList_o = ["Temperature",
+                          ]
+    if realpath is None:
+        realpath = os.path.join('Demo', 'PakB_2d', 'data')
+    sample_files = pakB_data_files(real_path=realpath, type=type, hole_num=hole_num)
 
     if existcheck:
         sample_files_exists = []
@@ -32,13 +33,15 @@ def get_origin(quanlityList=None,
 
 
     if type == 'struct':
-        grid, fields, invalid_idx = get_struct_quanlity_from_mat(sample_files, quanlityList=quanlityList,
+        design, grid, fields, invalid_idx = get_struct_quanlity_from_mat(sample_files,
+                                                                 quanlityList_i=quanlityList_i,
+                                                                 quanlityList_o=quanlityList_o,
                                                                    invalid_idx=True)
     elif type == 'unstruct':
         grid, fields, invalid_idx = get_unstruct_quanlity_from_mat(sample_files, quanlityList=quanlityList, invalid_idx=True)
 
-    dict = get_values_from_mat(geom_files, keyList=['design', 'gemo', 'condition'])
-    design = np.concatenate((dict['design'],dict['condition']), axis=-1)
+    # dict = get_values_from_mat(geom_files, keyList=['design', 'gemo', 'condition'])
+    # design = dict['sdf']
 
     if getridbad:
         if realpath is None:
@@ -70,13 +73,12 @@ def get_origin(quanlityList=None,
 
     return design, fields, grid
 
-def pakB_data_files(real_path=None):
+def pakB_data_files(real_path=None, type=None, hole_num=1):
     if type == 'struct':
-        sample_files = [os.path.join(real_path, "sampleStruct_128_64_6000"),
+        sample_files = [os.path.join(real_path, 'struct_'+str(hole_num)+'_hole_1000'),
                         ]
     elif type == 'unstruct':
-        sample_files = [os.path.join(real_path, 'GV-RB3000(20231015)',"sampleUnstruct_3000"),
-                        os.path.join(real_path, 'GV-RB3000(20231017)',"sampleUnstruct_3000"),
+        sample_files = [os.path.join(real_path, 'unstruct_'+str(hole_num)+'_hole_1000'),
                         ]
     else:
         assert False
@@ -84,15 +86,22 @@ def pakB_data_files(real_path=None):
     return sample_files
 
 
+class PakBWeightLoss(torch.nn.Module):
+    def __init__(self, weighted_cof):
+        super(PakBWeightLoss, self).__init__()
+
+        self.lossfunc = torch.nn.MSELoss()
+        self.weighted_cof = weighted_cof
+    def forward(self, ww, predicted, target):
+        # 自定义损失计算逻辑
+        device = target.device
+        # xx, _ = torch.min(xx, dim=0)
+        weight = torch.as_tensor(ww, dtype=torch.float , device=device)#(xx > 0).int()
+        loss = self.lossfunc(predicted * weight[...,None], target * weight[...,None])
+        return loss
+
+
 if __name__ == "__main__":
-    design, field = get_origin()
-    # grid = get_grid()
-    # Rst = get_value(field, parameterList="PressureRatioW")
-    #
-    # sort_idx = np.argsort(Rst.squeeze())
-    # sort_value = Rst[sort_idx]
-    # design = get_gemodata_from_mat()
-    # print(design.shape)
-
-
+    os.chdir(r'E:\WQN\CODE\DENO4pytorch')
+    design, field, grid = get_origin()
     print(0)

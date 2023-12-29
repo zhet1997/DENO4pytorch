@@ -84,13 +84,13 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
     """
     grid = gen_uniform_grid(torch.tensor(np.zeros([1, 128, 128, 1]))).to(device)
     train_loss = 0
-    for batch, (xx, yy) in enumerate(dataloader):
+    for batch, (xx, yy, ww) in enumerate(dataloader):
         xx = xx.to(device)
         coords = grid.tile([xx.shape[0], 1, 1, 1])
         xx = xx.permute(3, 0, 1, 2).unsqueeze(-1)
         yy = yy.to(device)
         pred = netmodel(xx, coords)
-        loss = lossfunc(xx, pred, yy)
+        loss = lossfunc(ww, pred, yy)
 
         optimizer.zero_grad()
         loss.backward()
@@ -115,14 +115,14 @@ def valid(dataloader, netmodel, device, lossfunc):
     grid = gen_uniform_grid(torch.tensor(np.zeros([1, 128, 128, 1]))).to(device)
     valid_loss = 0
     with torch.no_grad():
-        for batch, (xx, yy) in enumerate(dataloader):
+        for batch, (xx, yy, ww) in enumerate(dataloader):
             xx = xx.to(device)
             coords = grid.tile([xx.shape[0], 1, 1, 1])
             xx = xx.permute(3, 0, 1, 2).unsqueeze(-1)
             yy = yy.to(device)
 
             pred = netmodel(xx, coords)
-            loss = lossfunc(xx, pred, yy)
+            loss = lossfunc(ww, pred, yy)
             valid_loss += loss.item()
 
             if batch >= batch_iter -1:
@@ -144,7 +144,7 @@ def inference(dataloader, netmodel, device):
     yy = None# 初始化 xx
     pred = None  # 初始化 pred
     with torch.no_grad():
-        for batch, (xx, yy) in enumerate(dataloader):
+        for batch, (xx, yy, ww) in enumerate(dataloader):
         # xx, yy = next(iter(dataloader))
             xx = xx.to(device)
             coords = grid.tile([xx.shape[0], 1, 1, 1])
@@ -179,9 +179,9 @@ def get_loader_pakB(input, output,
     train_y = y_normalizer.norm(train_y)
     valid_y = y_normalizer.norm(valid_y)
     #
-    train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_y),
+    train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_y, train_w),
                                                batch_size=batch_size, shuffle=True, drop_last=True)
-    valid_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(valid_x, valid_y),
+    valid_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(valid_x, valid_y, valid_w),
                                                batch_size=batch_size, shuffle=False, drop_last=True)
 
     return train_loader, valid_loader
@@ -233,7 +233,8 @@ if __name__ == "__main__":
     # # load data
     # ################################################################
     work = WorkPrj(work_path)
-    x_normalizer=None
+    x_normalizer = None
+    y_normalizer = None
     train_loader_list = []
     valid_loader_list = []
     for kk, hole_num in enumerate([1,2]):
@@ -286,10 +287,13 @@ if __name__ == "__main__":
     super_model = FcnSingle(planes=(config['n_targets']*2, 64, 64, config['n_targets']), last_activation=False).to(Device)
     Net_model = predictor(trunc=Tra_model, branch=MLP_model, supercondtion=super_model, share=Share_model, super_order=[0,]).to(Device)
     isExist = os.path.exists(work.pth)
+    log_loss = [[], []]
     if isExist:
+        print(work.pth)
         checkpoint = torch.load(work.pth, map_location=Device)
         Net_model.load_state_dict(checkpoint['net_model'])
-        # Net_model.eval()
+        log_loss = checkpoint['log_loss']
+        Net_model.eval()
 
 
     # model_statistics = summary(Net_model, input_size=(batch_size, train_x.shape[1]), device=str(Device))

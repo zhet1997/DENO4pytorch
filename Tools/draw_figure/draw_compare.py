@@ -144,13 +144,13 @@ def draw_meridian(post_true, post_pred, work=None, save_path=None, parameterList
 # draw figures include true and pred
 if __name__ == '__main__':
 
-    name = 'TNO_9'
+    name = 'TNO_1'
     input_dim = 100
     output_dim = 8
     type = 'valid'
     stage_name = 'stage'
     print(os.getcwd())
-    work_load_path = os.path.join("../../Demo/GVRB_2d", 'work')
+    work_load_path = os.path.join("E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d", 'work1')
     work = WorkPrj(os.path.join(work_load_path, name))
     save_path = os.path.join(work.root, 'save_figure')
     # parameterList = [
@@ -201,6 +201,7 @@ if __name__ == '__main__':
 
     ## get the train or valid data
 
+    print(work.train)
     if not os.path.exists(work.train):
         work.save_pred()
     if type=='train':
@@ -220,7 +221,7 @@ if __name__ == '__main__':
 
     draw_diagnal(post_true, post_pred, work=work, save_path=save_path)
     draw_span_all(post_true, post_pred, work=work, save_path=save_path)
-    draw_meridian(post_true, post_pred, work=work, save_path=save_path)
+    # draw_meridian(post_true, post_pred, work=work, save_path=save_path)
 
 
 
