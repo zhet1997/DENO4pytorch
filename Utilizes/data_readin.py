@@ -7,7 +7,6 @@ import os
 import torch
 from scipy.interpolate import interp1d
 
-
 def get_grid_interp(grid_num_s=128,
                     grid_num_z=128,
                     z_inlet=-0.059,
@@ -80,44 +79,49 @@ def get_unstruct_quanlity_from_mat(sample_files, quanlityList,invalid_idx=True):
         return grid, fields
 
 
-def get_struct_quanlity_from_mat(sample_files, quanlityList,invalid_idx=True):
-    grid = []
-    fields = []
+def get_struct_quanlity_from_mat(sample_files, quanlityList_i, quanlityList_o,invalid_idx=True):
     invalid_idx_list = []
+    output_list = []
     data_sum = 0
     if not isinstance(sample_files, list):
         sample_files = [sample_files]
     for ii, file in enumerate(sample_files):
         reader = MatLoader(file, to_torch=False)
-        grid.append(reader.read_field('grid'))
-        temp = [x for x in reader.data.keys() if not x.startswith('__') and not x == 'grid' and not x == 'invalid_idx']
+        temp = [x for x in reader.data.keys() if not x.startswith('__') and not x == 'invalid_idx']
+
         data_shape = reader.read_field(temp[0]).shape
-        output = np.zeros([*data_shape,len(quanlityList)])
+        output = {}
         if invalid_idx:
             idx = reader.read_field('invalid_idx')
             idx = [int(x+data_sum) for x in idx.squeeze()]
             invalid_idx_list.extend(idx)
-        Cp = 1004
-        for jj, quanlity in enumerate(quanlityList):
-            if quanlity == "DensityFlow":  # 设置一个需要计算获得的数据
-                Vm = np.sqrt(np.power(reader.read_field("Vxyz_X"), 2) + np.power(reader.read_field("Vxyz_Y"), 2))
-                output[:, :, :, jj] = (reader.read_field("Density") * Vm).copy()
-            elif quanlity == "W2":  # 设置一个需要计算获得的数据
-                output[:, :, :, jj] = 2 * Cp * (reader.read_field("Relative Total Temperature") - reader.read_field(
-                    "Static Temperature")).copy()
-            elif quanlity == "V2":  # 设置一个需要计算获得的数据
-                output[:, :, :, jj] = 2 * Cp * (reader.read_field("Absolute Total Temperature") - reader.read_field(
-                    "Static Temperature")).copy()
-            else:
-                output[:, :, :, jj] = reader.read_field(quanlity).copy()
-        fields.append(output)
 
-    grid = np.concatenate(grid, axis=0)
+        for quanlity in quanlityList_i + quanlityList_o:
+           assert quanlity in temp
+
+        for jj, quanlity in enumerate(quanlityList_i + quanlityList_o +['Grids_x', 'Grids_y']):
+            output.update({quanlity: reader.read_field(quanlity).copy()})
+        output_list.append(output)
+
+    designs = [np.concatenate(list(x[quanlity] for quanlity in quanlityList_i), axis=-1) for x in output_list]
+    designs = np.concatenate(designs, axis=0)
+
+    fields = [np.concatenate(list(x[quanlity][...,None] for quanlity in quanlityList_o), axis=-1) for x in output_list]
     fields = np.concatenate(fields, axis=0)
-    if invalid_idx:
-        return grid, fields, invalid_idx_list
+
+    if 'grid' in temp:
+        grid = [x['grid'] for x in output_list]
+    elif 'Grids_x' in temp:
+        grid = [np.concatenate((x['Grids_x'][...,None], x['Grids_y'][...,None]), axis=-1) for x in output_list]
     else:
-        return grid, fields
+        assert False
+    grid = np.concatenate(grid, axis=0)
+
+
+    if invalid_idx:
+        return designs, grid, fields, invalid_idx_list
+    else:
+        return designs, grid, fields
 
 def get_values_from_mat(sample_files, keyList=None):
     dict = {}

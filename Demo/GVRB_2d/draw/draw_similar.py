@@ -9,11 +9,13 @@ from Tools.train_model.train_task_construct import WorkPrj
 from Tools.post_process.post_CFD import cfdPost_2d
 from Demo.GVRB_2d.utilizes_GVRB import get_grid_interp
 from Tools.draw_figure.draw_compare import draw_diagnal, draw_span_all, draw_meridian
-from Tools.model_define.define_STNO import predictor
+# from Tools.model_define.define_STNO import predictor
+from Tools.model_define.define_TNO_1 import predictor
 
 
 if __name__ == '__main__':
     os.chdir(r'E:\\WQN\\CODE\\DENO4pytorch/')
+
 
     name = 'TNO_10'
     input_dim = 100
@@ -23,7 +25,7 @@ if __name__ == '__main__':
     print(os.getcwd())
     work_load_path = os.path.join('Demo', 'GVRB_2d', 'work')
     work = WorkPrj(os.path.join(work_load_path, name))
-    save_path = os.path.join(work.root, 'save_figure_2')
+    save_path = os.path.join(work.root, 'save_figure_sim')
     # parameterList = [
     #      # 'Absolute_nozzle_pressure_ratio',
     #      # 'Relative_nozzle_pressure_ratio',
@@ -56,13 +58,16 @@ if __name__ == '__main__':
 
     ## get the train or valid data
 
-    if not os.path.exists(work.train):
+    if not os.path.exists(work.valid_sim):
         work.save_pred()
     if type=='train':
         data = np.load(work.train)
-    else:
+    elif type=='valid':
         data = np.load(work.valid)
-    # data_x = data['x']
+    elif type == 'valid_sim':
+        data = np.load(work.valid_sim)
+
+    data_x = data['x']
     data_true = data['true']
     data_pred = data['pred']
 

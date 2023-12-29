@@ -26,7 +26,7 @@ import yaml
 from Demo.GVRB_2d.utilizes_GVRB import get_origin, GVRBWeightLoss
 from Demo.GVRB_2d.train_model_GVRB.model_whole_life import WorkPrj
 from Tools.post_process.post_CFD import cfdPost_2d
-
+torch.set_default_dtype(torch.float64)
 class predictor(nn.Module):
 
     def __init__(self, branch, trunc, share, field_dim):
@@ -135,7 +135,7 @@ if __name__ == "__main__":
 
 
     name = 'TNO'
-    work_path = os.path.join('../work', name + '_' + str(3))
+    work_path = os.path.join('../work', name + '_' + str(33) + '_log')
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     if not isCreated:
@@ -216,10 +216,6 @@ if __name__ == "__main__":
 
     y_normalizer.save(os.path.join(work_path, 'y_norm.pkl'))
 
-    aaa = y_normalizer.back(valid_y)
-    bbb = output[-nvalid:] - aaa
-    bbb = bbb.cpu().numpy()
-
     train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_y),
                                                batch_size=batch_size, shuffle=True, drop_last=True)
     valid_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(valid_x, valid_y),
@@ -252,7 +248,7 @@ if __name__ == "__main__":
         log_loss = checkpoint['log_loss']
         Net_model.eval()
 
-    torch.save(Net_model, os.path.join(work_path, 'final_model.pth'))
+    # torch.save(Net_model, os.path.join(work_path, 'final_model.pth'))
     # model_statistics = summary(Net_model, input_size=(batch_size, train_x.shape[1]), device=str(Device))
     # Logger.write(str(model_statistics))
     #

@@ -1,7 +1,7 @@
 import os
 import torch
 import numpy as np
-from utilizes_rotor37 import Rotor37WeightLoss
+# from utilizes_rotor37 import Rotor37WeightLoss
 from Tools.train_model.train_task_construct import WorkPrj, add_yml, change_yml
 from Tools.post_process.load_model import build_model_yml, loaddata
 from Utilizes.visual_data import MatplotlibVision

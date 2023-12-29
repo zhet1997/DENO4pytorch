@@ -165,6 +165,7 @@ def draw_simple(train_true, train_pred,valid_true,valid_pred, work=None, save_pa
 # draw figures include true and pred
 if __name__ == '__main__':
 
+
     name = 'TNO_7'
     input_dim = 100
     output_dim = 8
@@ -221,6 +222,8 @@ if __name__ == '__main__':
     #                  ]
 
     ## get the train or valid data
+
+    print(work.train)
     if not os.path.exists(work.train):
         work.save_pred()
     if type=='train':
@@ -237,6 +240,7 @@ if __name__ == '__main__':
 
     if not os.path.exists(save_path):
         os.mkdir(save_path)
+
 
     draw_diagnal(post_true, post_pred, work=work, save_path=save_path,parameterList = ['Static_pressure_ratio',
                      'Total_total_efficiency',
@@ -291,6 +295,11 @@ if __name__ == '__main__':
     # draw_span_all(post_true, post_pred, work=work, save_path=save_path)
     # # draw_meridian(post_true, post_pred, work=work, save_path=save_path)
     # # draw_simple(train_true,train_pred,valid_true,valid_pred,work=work,save_path=save_path)
+
+    # draw_diagnal(post_true, post_pred, work=work, save_path=save_path)
+    # draw_span_all(post_true, post_pred, work=work, save_path=save_path)
+    # draw_meridian(post_true, post_pred, work=work, save_path=save_path)
+
 
 
 
