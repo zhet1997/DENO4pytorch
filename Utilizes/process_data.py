@@ -51,6 +51,11 @@ class DataNormer(object):
                 self.mean = np.mean(data, axis=axis)
                 self.std = np.std(data, axis=axis)
 
+            elif method == "log":
+                self.logmax = np.max(data, axis=axis)
+                self.logmin = np.min(data, axis=axis)
+
+
         elif type(data) is torch.Tensor:
             if axis is None:
                 axis = tuple(range(len(data.shape) - 1))
@@ -62,6 +67,11 @@ class DataNormer(object):
             elif method == "mean-std":
                 self.mean = np.mean(data.numpy(), axis=axis)
                 self.std = np.std(data.numpy(), axis=axis)
+
+            elif method == "log":
+                self.logmax = np.max(data.numpy(), axis=axis)
+                self.logmin = np.min(data.numpy(), axis=axis)
+
         else:
             raise NotImplementedError("the data type is not supported!")
 
@@ -78,11 +88,15 @@ class DataNormer(object):
                     / (torch.tensor(self.max, device=x.device) - torch.tensor(self.min, device=x.device) + 1e-10) - 1
             elif self.method == "mean-std":
                 x = (x - torch.tensor(self.mean, device=x.device)) / (torch.tensor(self.std + 1e-10, device=x.device))
+            elif self.method == "log":
+                x = torch.log10(x - torch.tensor(self.logmin, device=x.device) + 1) / torch.log10(torch.tensor(self.logmax - self.logmin, device=x.device) + 1)
         else:
             if self.method == "min-max":
                 x = 2 * (x - self.min) / (self.max - self.min + 1e-10) - 1
             elif self.method == "mean-std":
                 x = (x - self.mean) / (self.std + 1e-10)
+            elif self.method == "log":
+                x =  np.log10(x - self.logmin + 1) / np.log10(self.logmax  - self.logmin + 1)
 
         return x
 
@@ -99,11 +113,15 @@ class DataNormer(object):
                                                                                                      device=x.device)
             elif self.method == "mean-std":
                 x = x * (torch.tensor(self.std + 1e-10, device=x.device)) + torch.tensor(self.mean, device=x.device)
+            elif self.method == "log":
+                x = torch.pow(10, x * torch.log10(torch.tensor(self.logmax - self.logmin, device=x.device) + 1)) + torch.tensor(self.logmin, device=x.device) - 1
         else:
             if self.method == "min-max":
                 x = (x + 1) / 2 * (self.max - self.min + 1e-10) + self.min
             elif self.method == "mean-std":
                 x = x * (self.std + 1e-10) + self.mean
+            elif self.method == "log":
+                x = np.power(10, x * np.log10(self.logmax - self.logmin + 1)) + self.logmin - 1
         return x
     def save(self, save_path):
         """
@@ -132,10 +150,36 @@ class DataNormer(object):
                 elif load.method == "min-max":
                     self.min = load.min
                     self.max = load.max
+                elif load.method == "log":
+                    self.logmin = load.logmin
+                    self.logmax = load.logmax
             except:
                 raise ValueError("the savefile format is not supported!")
         else:
             raise ValueError("The pkl file is not exist, CHECK PLEASE!")
+
+    def shrink(self, idx_remain):
+        if self.method == "mean-std":
+            self.std = self.std[idx_remain]
+            self.mean = self.mean[idx_remain]
+        elif self.method == "min-max":
+            self.min = self.min[idx_remain]
+            self.max = self.max[idx_remain]
+        elif self.method == "log":
+            self.logmin = self.logmin[idx_remain]
+            self.logmax = self.logmax[idx_remain]
+
+    def dim_change(self, coef):
+        assert coef>=1
+        if self.method == "mean-std":
+            self.std = self.std*coef
+        elif self.method == "min-max":
+            pass
+        elif self.method == "log":
+            self.logmin = np.where(self.logmin < 0, self.logmin * coef, self.logmin / coef)
+            self.logmax = np.where(self.logmax < 0, self.logmax / coef, self.logmax * coef)
+            print(0)
+
 
 
 # reading data

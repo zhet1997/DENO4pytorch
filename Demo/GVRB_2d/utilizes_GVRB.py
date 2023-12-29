@@ -38,8 +38,8 @@ def get_grid_interp(grid_num_s=128,
                     hub_adjust=0.00015,
                     shroud_adjust=0.0001,
                     ):
-    shroud_file = os.path.join('..','data',"shroud.dat")
-    hub_file = os.path.join('..','data',"hub.dat")
+    shroud_file = os.path.join('E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data', "shroud.dat")
+    hub_file = os.path.join('E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data', "hub.dat")
     hub = np.loadtxt(hub_file)/1000
     shroud = np.loadtxt(shroud_file)/1000
 
@@ -73,19 +73,20 @@ def get_origin(quanlityList=None,
         quanlityList = ["Static Pressure", "Static Temperature", "Density",
                         "Vx", "Vy", "Vz",
                         'Relative Total Temperature',
-                        'Absolute Total Temperature']
+                        'Absolute Total Temperature',
+                        ]
     if realpath is None:
         if type=='struct':
             sample_files = [os.path.join("data", "sampleStruct_128_64_6000"),
                             ]
         elif type=='unstruct':
-            sample_files = [os.path.join("data", 'GV-RB3000(20231015)',"sampleUnstruct_3000"),
-                            os.path.join("data", 'GV-RB3000(20231017)',"sampleUnstruct_3000"),
+            sample_files = [os.path.join("data", 'GV-RB3000(20231015)', "sampleUnstruct_3000"),
+                            os.path.join("data", 'GV-RB3000(20231017)', "sampleUnstruct_3000"),
                             ]
         else:
             assert False
-        geom_files =   [os.path.join("data", 'GV-RB3000(20231015)',"sampleGVM_3000"),
-                        os.path.join("data", 'GV-RB3000(20231017)',"sampleGVM_3000"),
+        geom_files =   [os.path.join("data", 'GV-RB3000(20231015)', "sampleGVM_3000"),
+                        os.path.join("data", 'GV-RB3000(20231017)', "sampleGVM_3000"),
                         ]
     else:
         if type == 'struct':

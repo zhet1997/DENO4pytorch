@@ -95,6 +95,7 @@ class WorkPrj(object):
         name = name.split("_")[0]
         self.name = name
         self.pth = os.path.join(self.root, 'latest_model.pth')
+        self.fpth = os.path.join(self.root, 'final_model.pth')
         self.pdparams = os.path.join(self.root, 'latest_model.pdparams')
         self.svg = os.path.join(self.root, 'log_loss.svg')
         self.yml= os.path.join(self.root, 'config.yml')
@@ -131,8 +132,8 @@ class WorkPrj(object):
         from Tools.post_process.model_predict import predictor_establish
         from Tools.post_process.load_model import loaddata_Sql, get_true_pred
         Net_model, inference, Device, x_normalizer, y_normalizer = \
-            predictor_establish(self.name, self.root, predictor=False)
-        train_loader, valid_loader, _, _ = loaddata_Sql(self.name, 5000, 900, shuffled=True,
+            predictor_establish(self.name, self.root, is_predictor=False)
+        train_loader, valid_loader, _, _ = loaddata_Sql(self.name, 4000, 900, shuffled=True,
                                                         norm_x=x_normalizer, norm_y=y_normalizer)
         for data in ['train', 'valid']:
             if data=='train':
@@ -142,12 +143,14 @@ class WorkPrj(object):
                 loader = valid_loader
                 path_save = self.valid
 
-            true, pred = get_true_pred(loader, Net_model, inference, Device,
-                                       self.name, iters=0, alldata=True)
+            x, true, pred = get_true_pred(loader, Net_model, inference, Device,
+                                       self.name, iters=0, alldata=True, out_dim=8, in_dim=100, x_output=True)
+            x = x_normalizer.back(x)
             true = y_normalizer.back(true)
             pred = y_normalizer.back(pred)
 
             save_dict = {}
+            save_dict.update({'x': x})
             save_dict.update({'true': true})
             save_dict.update({'pred': pred})
             np.savez(path_save, **save_dict)

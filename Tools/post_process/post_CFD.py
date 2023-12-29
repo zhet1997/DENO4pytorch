@@ -1,6 +1,65 @@
 import numpy as np
 import torch
 
+def apply_normalizer_similarity(func):
+    def wrapper(instance, data_raw, dimensional_matrix, vtype=None):
+        # Apply normalization if necessary
+        if vtype == 'x':
+            if instance.x_norm is not None:
+                data_raw = instance.x_norm.back(data_raw)
+            data_raw = func(instance, data_raw, dimensional_matrix, vtype)
+            if instance.x_norm is not None:
+                data_raw = instance.x_norm.norm(data_raw)
+        elif vtype == 'y':
+            if instance.y_norm is not None:
+                data_raw = instance.y_norm.back(data_raw)
+            data_raw = func(instance, data_raw, dimensional_matrix, vtype)
+            if instance.y_norm is not None:
+                data_raw = instance.y_norm.norm(data_raw)
+        else:
+            data_raw = func(instance, data_raw, dimensional_matrix, vtype)
+
+        return data_raw
+
+    return wrapper
+
+
+
+def apply_normalizer_readin(func):
+    def wrapper(instance, *args, **kwargs):
+        if 'boundarycondition' in kwargs.keys():
+            if torch.is_tensor(kwargs['boundarycondition']):
+                kwargs['boundarycondition'] = kwargs['boundarycondition'].cpu().numpy()
+        if torch.is_tensor(kwargs['data']):
+            kwargs['data'] = kwargs['data'].cpu().numpy()
+
+        if 'x_norm' in kwargs.keys():
+            instance.x_norm=kwargs['x_norm']
+            kwargs['boundarycondition'] = instance.x_norm.back(kwargs['boundarycondition'])
+            kwargs.pop('x_norm')
+        else:
+            instance.x_norm = None
+        if 'y_norm' in kwargs.keys():
+            instance.y_norm=kwargs['y_norm']
+            kwargs['data']=instance.y_norm.back(kwargs['data'])
+            kwargs.pop('y_norm')
+        else:
+            instance.y_norm = None
+        func(instance, *args, **kwargs)
+
+    return wrapper
+
+def apply_normalizer_export(func):
+    def wrapper(instance, *args, **kwargs):
+        if instance.x_norm is not None:
+            instance.bouCondition_1d = torch.tensor(instance.x_norm.norm(instance.bouCondition_1d), dtype=torch.float)
+        if instance.y_norm is not None:
+            instance.data_2d = torch.tensor(instance.y_norm.norm(instance.data_2d), dtype=torch.float)
+        loader = func(instance, *args, **kwargs)
+
+        return loader
+    return wrapper
+
 class cfdPost_2d(object):
     def __init__(self, **kwargs): #默认输入格式为64*64*5
         self.par_init = False
@@ -23,9 +82,10 @@ class cfdPost_2d(object):
     #==========================input and output part================================#
     #===============================================================================#
 
+    @apply_normalizer_readin
     def field_data_readin(self,data=None,grid=None,
-                          inputdict=None,
-                          boundarydict=None,
+                          inputdict={},
+                          boundarydict={},
                           boundarycondition=None,
                           similarity=False):
         if grid is not None:
@@ -34,7 +94,7 @@ class cfdPost_2d(object):
             self.data_raw = data
         # if boundarycondition is not None:
         self.bouCondition_raw = boundarycondition
-        if inputdict is None:
+        if inputdict=={}:
             self.inputDict = {'Static Pressure': 0,
                               'Static Temperature': 1,
                               'Density': 2,
@@ -47,7 +107,7 @@ class cfdPost_2d(object):
         else:
             self.inputDict = inputdict
 
-        if boundarydict is None:
+        if boundarycondition is not None and boundarydict=={}:
             self.boundaryDict = {'Flow Angle': 0,
                               'Absolute Total Temperature': 1,
                               'Absolute Total Pressure': 2,
@@ -71,7 +131,6 @@ class cfdPost_2d(object):
         x, y, batchsize = self.recover_data_from_loader(loader)
         self.field_data_readin(data=y,
                                boundarycondition=x[:,-4:],#specially
-                               similarity=True,
                                **kwargs,
                                )
         self.loader = {
@@ -79,18 +138,19 @@ class cfdPost_2d(object):
             'batch_size': batchsize,
         }
 
+    @apply_normalizer_export
     def loader_export(self, expand=1):
         x = self.loader['x'].repeat_interleave(expand, dim=0)
-        x[:,-4:] = torch.tensor(self.bouCondition_1d, dtype=torch.float).detach().clone()
+        x[:,-4:] = torch.as_tensor(self.bouCondition_1d, dtype=torch.float).detach().clone()
         loader = torch.utils.data.DataLoader(
-            torch.utils.data.TensorDataset(x, torch.tensor(self.data_2d, dtype=torch.float).detach().clone()),
+            torch.utils.data.TensorDataset(x, torch.as_tensor(self.data_2d, dtype=torch.float).detach().clone()),
                                                    batch_size=self.loader['batch_size'], shuffle=False, drop_last=False)
 
         return loader
 
-    def loader_similarity(self, loader, grid=None, scale=[-0.1,0.1], expand=1):
-        self.loader_readin(loader, grid=grid)
-        self.get_data_after_similarity(expand=expand, scale=scale)
+    def loader_similarity(self, loader, grid=None, scale=[-0.1,0.1], expand=1, log=False, **kwargs):
+        self.loader_readin(loader, grid=grid, similarity=True, **kwargs)
+        self.get_data_after_similarity(expand=expand, scale=scale, log=log)
         return self.loader_export(expand=expand)
 
     @staticmethod
@@ -191,13 +251,19 @@ class cfdPost_2d(object):
                              'Rotational Speed',
                              ]
         self.fieldSaveDict = {}
+        for quanlity in self.quanlityList:
+            self.fieldSaveDict.update({quanlity: None})  # initiaize of all fields
         self.fieldSaveDict.update({'Gird Node Z': np.tile(self.grid[None, :, :, 0], [self.num, 1, 1])})
         self.fieldSaveDict.update({'Gird Node R': np.tile(self.grid[None, :, :, 1], [self.num, 1, 1])})
         self.fieldSaveDict.update({'R/S Interface': np.where(self.grid[None, :, :, 0]<self.RSInterface, 0, 1)})
 
-        self.fieldSaveDict.update({'Rotational Speed': np.tile(np.array(self.rotateSpeed)[None, None, None], [self.num, self.n_1d, self.n_2d])})
-        for quanlity in self.quanlityList:
-            self.fieldSaveDict.update({quanlity: None})  # initiaize of all fields
+        if 'Rotational Speed' in self.boundaryDict.keys():
+            self.set_change_rotateSpeed()
+        else:
+            self.fieldSaveDict.update({'Rotational Speed': np.tile(np.array(self.rotateSpeed)[None, None, None],
+                                                                   [self.num, self.n_1d, self.n_2d])})
+
+
 
     def get_field_calculate_dict(self):
         self.fieldCalculateDict = {}
@@ -231,9 +297,9 @@ class cfdPost_2d(object):
         self.fieldCalculateDict['atan(Wx/Wz)'] = lambda x1, x2: np.arctan(x1 / x2) / np.pi * 180
         self.fieldParaDict['atan(Wx/Wz)'] = ('Wx', 'Wz')  # |U| is spectail
 
-        self.fieldCalculateDict['Absolute Total Temperature'] = lambda x1, x2: x1 + x2^2 / 2 / self.Cp #Attention to nonlinear term
+        self.fieldCalculateDict['Absolute Total Temperature'] = lambda x1, x2: x1 + x2*x2 / 2 / self.Cp #Attention to nonlinear term
         self.fieldParaDict['Absolute Total Temperature']  = ('Static Temperature','|V|')
-        self.fieldCalculateDict['Relative Total Temperature'] = lambda x1, x2: x1 + x2^2 / 2 / self.Cp
+        self.fieldCalculateDict['Relative Total Temperature'] = lambda x1, x2: x1 + x2*x2 / 2 / self.Cp
         self.fieldParaDict['Relative Total Temperature'] = ('Static Temperature', '|W|')
         self.fieldCalculateDict['Rotary Total Temperature'] = lambda x1, x2: x1 + np.power(x2, 2) / 2 / self.Cp
         self.fieldParaDict['Rotary Total Temperature'] = ('Static Temperature', '|U|') # |U| is spectail
@@ -628,7 +694,7 @@ class cfdPost_2d(object):
                             'Density':np.array([1,-3, 0, 0]),
                               }
 
-    def get_dimensional_similarity(self, dof=1, scale=[-1, 1], expand=1):
+    def get_dimensional_similarity(self, dof=1, scale=None, expand=1):
         free_coef = self.get_free_similarity(dof=dof, scale=scale, expand=expand)
         free_idx = slice(0, 3, 2)
         fixd_idx = slice(1, 2, 1) # the length scale is fixed in this project
@@ -643,7 +709,7 @@ class cfdPost_2d(object):
 
         return dimensional_coef
 
-    def get_data_after_similarity(self, expand=1, scale=[-0.1,0.1], keeporder=True):
+    def get_data_after_similarity(self, expand=1, scale=None, keeporder=True, log=False):
         if not self.sim_init:
             self.similarity_calculate_init()
         if keeporder:
@@ -660,22 +726,33 @@ class cfdPost_2d(object):
         for key in self.inputDict.keys():
             dim = np.tile(self.dimensionalSaveDict[key], [self.num_raw * expand, 1]) * dimensional_coef
             dim = np.sum(dim, axis=1)
-            field_dimensional_matrix[:, int(self.inputDict[key])] = np.power(10, dim)
-
-            tmp = np.tile(np.expand_dims(self.data_raw, axis=order), tile_idx).reshape(
-                [-1, self.n_1d, self.n_2d, len(self.inputDict)])
-            self.data_2d = tmp * np.tile(field_dimensional_matrix[:, None, None, :], [1, self.n_1d, self.n_2d, 1])
+            field_dimensional_matrix[:, int(self.inputDict[key])] = dim
+        tmp = np.tile(np.expand_dims(self.data_raw, axis=order), tile_idx).reshape(
+            [-1, self.n_1d, self.n_2d, len(self.inputDict)])
+        self.data_2d = self.data_similarity_operate(tmp,
+                                                    np.tile(field_dimensional_matrix[:, None, None, :], [1, self.n_1d, self.n_2d, 1]),
+                                                    vtype='y')
 
         # for the input boundary condition
         boudary_dimensional_matrix = np.zeros([self.num_raw * expand, len(self.boundaryDict)])
         for key in self.boundaryDict.keys():
             dim = np.tile(self.dimensionalSaveDict[key], [self.num_raw * expand, 1]) * dimensional_coef
             dim = np.sum(dim, axis=1)
-            boudary_dimensional_matrix[:, int(self.boundaryDict[key])] = np.power(10, dim)
+            boudary_dimensional_matrix[:, int(self.boundaryDict[key])] = dim
         tmp = np.tile(np.expand_dims(self.bouCondition_raw, axis=order), tile_idx[:2]).reshape(
             [-1, len(self.boundaryDict)])
-        self.bouCondition_1d = tmp * boudary_dimensional_matrix
-        self.get_field_save_dict() # clear the old data
+        self.bouCondition_1d = self.data_similarity_operate(tmp, boudary_dimensional_matrix, vtype='x')
+        # clear the old data
+        self.get_field_save_dict()
+
+
+    #@apply_normalizer_similarity
+    def data_similarity_operate(self, data_raw, dimensional_matrix, vtype=None):
+        assert data_raw.shape==dimensional_matrix.shape
+        dimensional_matrix = np.power(10, dimensional_matrix)
+        data_raw = data_raw * dimensional_matrix
+        return data_raw
+
 
 if __name__ == "__main__":
 
