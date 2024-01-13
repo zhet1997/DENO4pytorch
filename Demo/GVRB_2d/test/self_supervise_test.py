@@ -24,6 +24,7 @@ def generate_virtual_loader(x_normalizer, virtual_batchs, batch_size,
                             scale=[-0.02, 0.02],
                             in_dim = 100,
                             out_dim=8,
+                            sim_multi=1,
                             ):
     half = int(batch_size/2)
     data_virtual = x_normalizer.sample_generate(virtual_batchs*batch_size, 2, norm=False)
@@ -33,7 +34,7 @@ def generate_virtual_loader(x_normalizer, virtual_batchs, batch_size,
         boundarycondition=data_virtual[:, -4:],
     )
 
-    field_matrix, bc_matrix = post.get_dimensional_matrix(expand=1, scale=scale)
+    field_matrix, bc_matrix = post.get_dimensional_matrix(expand=sim_multi, scale=scale)
     field_matrix = np.power(10, field_matrix)
 
 
@@ -75,6 +76,43 @@ def generate_virtual_loader(x_normalizer, virtual_batchs, batch_size,
     self_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(input_virtual, matrix_virtual),
                                               batch_size=batch_size, shuffle=False, drop_last=True)
     return self_loader
+
+
+def generate_virtual_loader_new(x_normalizer, virtual_batchs, batch_size,
+                            scale=[-0.02, 0.02],
+                            in_dim = 100,
+                            out_dim=8,
+                            sim_multi=1,
+                            ):
+    data_v = x_normalizer.sample_generate(virtual_batchs*batch_size, 2, norm=False)
+
+    post = cfdPost_2d()
+    post.bouCondition_data_readin(
+        boundarycondition=data_v[:, -4:],
+    )
+
+    field_matrix, bc_matrix = post.get_dimensional_matrix(expand=sim_multi, scale=scale)
+    field_matrix = np.power(10, field_matrix)
+
+
+    data_s = data_v.copy()
+    data_s[:, -4:] = post.data_similarity_operate(data_v[:, -4:].copy(), bc_matrix)
+    data_v = x_normalizer.norm(data_v)
+    data_s = x_normalizer.norm(data_s)
+
+
+
+    #
+    # matrix_virtual = np.tile(matrix_virtual[:, None, None, :], [1, 64, 128, 1])
+    # input_virtual = np.tile(input_virtual[:, None, None, :], [1, 64, 128, 1])
+    data_s = torch.as_tensor(data_s, dtype=torch.float)
+    data_v = torch.as_tensor(data_v, dtype=torch.float)
+
+    virtual_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(data_v, field_matrix),
+                                              batch_size=batch_size, shuffle=False, drop_last=True)
+    similar_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(data_s, field_matrix),
+                                                 batch_size=batch_size, shuffle=False, drop_last=True)
+    return virtual_loader, similar_loader
 
 def test_virtual_generation():
     in_dim = 100

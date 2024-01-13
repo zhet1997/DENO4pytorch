@@ -116,7 +116,7 @@ if __name__ == "__main__":
     out_dim = 8
 
     batch_size = 32
-    batch_number = 50
+    batch_number = 20
 
     ntrain = batch_number * batch_size
     nvalid = 640

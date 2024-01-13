@@ -24,8 +24,8 @@ def get_grid_interp(grid_num_s=128,
         shroud_file = os.path.join(data_path,"shroud.dat")
         hub_file = os.path.join(data_path,"hub.dat")
     else:
-        shroud_file = os.path.join('../data', "shroud.dat")
-        hub_file = os.path.join('../data', "hub.dat")
+        shroud_file = os.path.join('data', "shroud.dat")
+        hub_file = os.path.join('data', "hub.dat")
     hub = np.loadtxt(hub_file)/1000
     shroud = np.loadtxt(shroud_file)/1000
 
@@ -50,8 +50,8 @@ def get_grid_interp(grid_num_s=128,
 
 def readAllfield(quanlityList=None):
 
-    sample_files = [os.path.join("../data", 'GV-RB3000(20231015)', "sampleUnstruct_3000"),
-                    os.path.join("../data", 'GV-RB3000(20231017)', "sampleUnstruct_3000"),
+    sample_files = [os.path.join("data", 'GV-RB3000(20231015)', "sampleUnstruct_3000"),
+                    os.path.join("data", 'GV-RB3000(20231017)', "sampleUnstruct_3000"),
                     ]
 
     grid, fields, invalid_idx = get_unstruct_quanlity_from_mat(sample_files, quanlityList=quanlityList,
@@ -69,7 +69,7 @@ if __name__ == "__main__":
                     'Relative Total Temperature',
                     'Absolute Total Temperature']
 
-    data_path = os.path.join('../data')
+    data_path = os.path.join('data')
     grid = get_grid_interp(data_path=data_path, grid_num_s=64, grid_num_z=128)
     print(grid.shape)
     field_dict_new = {}

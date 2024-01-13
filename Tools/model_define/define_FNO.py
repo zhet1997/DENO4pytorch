@@ -9,14 +9,14 @@
 """
 import os
 import numpy as np
-import paddle
-import paddle.nn as nn
+import torch
+import torch.nn as nn
 from fno.FNOs import FNO2d
-from Tools.visualization import MatplotlibVision
-from Tools.data_process import DataNormer
+from Utilizes.visual_data import MatplotlibVision
+from Utilizes.process_data import DataNormer
 import matplotlib.pyplot as plt
 import time
-from Tools.utilizes_rotor37 import get_grid, get_origin
+from Demo.Rotor37_2d.utilizes_rotor37 import get_grid,get_origin
 
 
 def feature_transform(x):
@@ -28,11 +28,11 @@ def feature_transform(x):
     """
     shape = x.shape
     batchsize, size_x, size_y = shape[0], shape[1], shape[2]
-    gridx = paddle.linspace(0, 1, size_x, dtype=paddle.float32)
+    gridx = torch.linspace(0, 1, size_x, dtype=torch.float32)
     gridx = gridx.reshape([1, size_x, 1, 1]).tile([batchsize, 1, size_y, 1])
-    gridy = paddle.linspace(0, 1, size_y, dtype=paddle.float32)
+    gridy = torch.linspace(0, 1, size_y, dtype=torch.float32)
     gridy = gridy.reshape([1, 1, size_y, 1]).tile([batchsize, size_x, 1, 1])
-    return paddle.concat((gridx, gridy), axis=-1)
+    return torch.concat((gridx, gridy), axis=-1)
 
 
 
@@ -72,7 +72,7 @@ def valid(dataloader, netmodel, device, lossfunc):
         lossfunc: Loss function
     """
     valid_loss = 0
-    with paddle.no_grad():
+    with torch.no_grad():
         for batch, (xx, yy) in enumerate(dataloader):
             # xx = xx.to(device)
             # yy = yy.to(device)
@@ -93,7 +93,7 @@ def inference(dataloader, netmodel, device): # 这个是？？
         out_pred: predicted fields
     """
 
-    with paddle.no_grad():
+    with torch.no_grad():
         xx, yy = next(iter(dataloader))
         # xx = xx.to(device)
         gd = feature_transform(xx)
@@ -120,10 +120,10 @@ if __name__ == "__main__":
         # sys.stdout = TextLogger(os.path.join(work_path, 'train.log'), sys.stdout)
         #  torch.cuda.set_device(1)
 
-        if paddle.device.is_compiled_with_cuda():
-            Device = paddle.device.set_device('gpu')
+        if torch.device.is_compiled_with_cuda():
+            Device = torch.device.set_device('gpu')
         else:
-            Device = paddle.device.set_device('cpu')
+            Device = torch.device.set_device('cpu')
 
         # design, fields = get_origin()
         design, fields = get_origin(realpath=os.path.join("..","data"),
@@ -163,11 +163,11 @@ if __name__ == "__main__":
         ################################################################
 
         input = np.tile(design[:, None, None, :], (1, 64, 64, 1))
-        input = paddle.to_tensor(input, dtype='float32')
+        input = torch.to_tensor(input, dtype='float32')
 
         # output = fields[:, 0, :, :, :].transpose((0, 2, 3, 1))
         output = fields
-        output = paddle.to_tensor(output, dtype='float32')
+        output = torch.to_tensor(output, dtype='float32')
         print(input.shape, output.shape)
 
         train_x = input[:ntrain, ::r1, ::r2][:, :s1, :s2]
@@ -183,9 +183,9 @@ if __name__ == "__main__":
         train_y = y_normalizer.norm(train_y)
         valid_y = y_normalizer.norm(valid_y)
 
-        train_loader = paddle.io.DataLoader(paddle.io.TensorDataset([train_x, train_y]),
+        train_loader = torch.io.DataLoader(torch.io.TensorDataset([train_x, train_y]),
                                                    batch_size=batch_size, shuffle=True, drop_last=True)
-        valid_loader = paddle.io.DataLoader(paddle.io.TensorDataset([valid_x, valid_y]),
+        valid_loader = torch.io.DataLoader(torch.io.TensorDataset([valid_x, valid_y]),
                                                    batch_size=batch_size, shuffle=False, drop_last=True)
 
         ################################################################
@@ -209,8 +209,8 @@ if __name__ == "__main__":
         # Loss_func = FieldsLpLoss(size_average=False)
         # L1loss = nn.SmoothL1Loss()
         # 优化算法
-        Scheduler = paddle.optimizer.lr.StepDecay(learning_rate, step_size=scheduler_step, gamma=scheduler_gamma)
-        Optimizer = paddle.optimizer.Momentum(parameters=Net_model.parameters(), learning_rate=learning_rate,
+        Scheduler = torch.optimizer.lr.StepDecay(learning_rate, step_size=scheduler_step, gamma=scheduler_gamma)
+        Optimizer = torch.optimizer.Momentum(parameters=Net_model.parameters(), learning_rate=learning_rate,
                                               weight_decay=1e-4)
         # 可视化
         Visual = MatplotlibVision(work_path, input_name=('x', 'y'), field_name=('p', 't', 'rho', 'alf', 'v'))
@@ -252,7 +252,7 @@ if __name__ == "__main__":
                 train_coord, train_grid, train_true, train_pred = inference(train_loader, Net_model, Device)
                 valid_coord, valid_grid, valid_true, valid_pred = inference(valid_loader, Net_model, Device)
 
-                paddle.save({'log_loss': log_loss, 'net_model': Net_model.state_dict(), 'optimizer': Optimizer.state_dict()},
+                torch.save({'log_loss': log_loss, 'net_model': Net_model.state_dict(), 'optimizer': Optimizer.state_dict()},
                            os.path.join(work_path, 'latest_model.pth'))
 
                 for fig_id in range(5):

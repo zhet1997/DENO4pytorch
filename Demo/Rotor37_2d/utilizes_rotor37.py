@@ -42,6 +42,33 @@ def get_grid(real_path=None, GV_RB=False, grid_num=128):
 
     return np.concatenate([xx[:,:,np.newaxis],yy[:,:,np.newaxis]],axis=2)
 
+
+def get_grid1(real_path=None,  grid_num=128):
+
+    if real_path is None:
+            hub_file = os.path.join('hub_lower_GV.txt')
+            shroud_files = os.path.join('shroud_upper_GV.txt')
+            xx = np.linspace(-0.06, 0.12, grid_num)
+    else:
+            hub_file = os.path.join(real_path, 'hub_lower_GV.txt')
+            shroud_files = os.path.join(real_path, 'shroud_upper_GV.txt')
+            xx = np.linspace(-0.06, 0.12, grid_num)
+
+    xx = np.tile(xx, [grid_num, 1])
+
+    hub = np.loadtxt(hub_file)
+    shroud = np.loadtxt(shroud_files)
+
+    yy = []
+    for i in range(grid_num):
+        yy.append(np.linspace(hub[i],shroud[i],grid_num))
+
+    yy = np.concatenate(yy, axis=0)
+    yy = yy.reshape(grid_num, grid_num).T
+    xx = xx.reshape(grid_num, grid_num)
+
+    return np.concatenate([xx[:,:,np.newaxis],yy[:,:,np.newaxis]],axis=2)
+
 def get_origin_old():
     # sample_num = 500
     # sample_start = 0

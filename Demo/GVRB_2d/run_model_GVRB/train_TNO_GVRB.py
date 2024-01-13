@@ -18,13 +18,13 @@ from Tools.model_define.define_TNO import train, valid
 
 
 if __name__ == "__main__":
-    name = 'TNO_7'
+    name = 'TNO_6'
     input_dim = 100
     output_dim = 8
     ## load the model
     print(os.getcwd())
     work_load_path = os.path.join('E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\work1')
-    work_load_path1 = os.path.join('E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\work1\TNO_7')
+    work_load_path1 = os.path.join('E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\work1\TNO_1')
     work = WorkPrj(os.path.join(work_load_path, name))
     # grid = get_grid(real_path='E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\TestData',GV_RB=True)
     design, fields, grids = get_origin(type='struct', realpath='E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data/',
@@ -32,7 +32,7 @@ if __name__ == "__main__":
                                                      "Vx", "Vy", "Vz",
                                                      'Relative Total Temperature',
                                                      'Absolute Total Temperature'])
-    train_loader, valid_loader, x_normalizer, y_normalizer = loaddata_Sql(name, 4000, 900, shuffled=True, )
+    train_loader, valid_loader, x_normalizer, y_normalizer = loaddata_Sql(name, 5000, 900, shuffled=True, )
     x_normalizer.save(work.x_norm)
     y_normalizer.save(work.y_norm)
     Net_model, inference, Device, _, _ = \

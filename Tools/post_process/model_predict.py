@@ -27,16 +27,14 @@ def predictor_establish(name, work_load_path, is_predictor=True):
     #     norm_save_x = os.path.join("..", "data", "x_norm_1250.pkl")
     #     norm_save_y = os.path.join("..", "data", "y_norm_1250.pkl")
     else:
-        norm_save_x = os.path.join("E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\work1\TNO_7",'x_norm.pkl')
-        norm_save_y = os.path.join("E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\work1\TNO_7", 'y_norm.pkl')
+        norm_save_x = os.path.join("E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\work1\deepONet_1",'x_norm.pkl')
+        norm_save_y = os.path.join("E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\work1\deepONet_1", 'y_norm.pkl')
 
     x_normlizer = DataNormer(np.array([1, 1]), method="mean-std", axis=0)
     x_normlizer.load(norm_save_x)
     y_normlizer = DataNormer(np.array([1, 1]), method="mean-std", axis=0)
     y_normlizer.load(norm_save_y)
 
-
-    assert os.path.exists(work.yml), print('The yml file is not exist')
 
     Net_model, inference, _, _ = build_model_yml(work.yml, work.device, name=nameReal)
     isExist = os.path.exists(work.pth)
@@ -50,6 +48,7 @@ def predictor_establish(name, work_load_path, is_predictor=True):
         Net_model = torch.load(work.fpth, map_location=work.device)
         # checkpoint = torch.load(work.fpth, map_location=work.device)
         # Net_model = checkpoint['net_model']
+        # from Tools.model_define.define_STNO import inference
         from Tools.model_define.define_STNO import inference
         # inference = None
     else:
@@ -73,69 +72,6 @@ def predictor_establish(name, work_load_path, is_predictor=True):
     else:
         return Net_model, inference, work.device, x_normlizer, y_normlizer
 
-def predictor_establish1(name, work_load_path1, is_predictor=True):
-
-    nameReal = name.split("_")[0]
-    id = None
-    if len(name.split("_")) == 2:
-        id = int(name.split("_")[1])
-
-    # work_path = os.path.join(work_load_path, name)
-    work = WorkPrj(work_load_path1)
-    print(work.device)
-
-    if os.path.exists(work.x_norm):
-        norm_save_x = work.x_norm
-        norm_save_y = work.y_norm
-    # else:
-    #     norm_save_x = os.path.join("..", "data", "x_norm_1250.pkl")
-    #     norm_save_y = os.path.join("..", "data", "y_norm_1250.pkl")
-    else:
-        norm_save_x = os.path.join("E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\work1\TNO_7",'x_norm.pkl')
-        norm_save_y = os.path.join("E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\work1\TNO_7", 'y_norm.pkl')
-
-    x_normlizer = DataNormer(np.array([1, 1]), method="mean-std", axis=0)
-    x_normlizer.load(norm_save_x)
-    y_normlizer = DataNormer(np.array([1, 1]), method="mean-std", axis=0)
-    y_normlizer.load(norm_save_y)
-
-
-    assert os.path.exists(work.yml), print('The yml file is not exist')
-
-    Net_model, inference, _, _ = build_model_yml(work.yml, work.device, name=nameReal)
-    isExist = os.path.exists(work.pth)
-    if isExist:
-        checkpoint = torch.load(work.pth, map_location=work.device)
-        Net_model.load_state_dict(checkpoint['net_model'])
-        # Net_model.set_state_dict(checkpoint)
-        Net_model.eval()
-
-    if os.path.exists(work.fpth):
-        Net_model = torch.load(work.fpth, map_location=work.device)
-        # checkpoint = torch.load(work.fpth, map_location=work.device)
-        # Net_model = checkpoint['net_model']
-        from Tools.model_define.define_STNO import inference
-        # inference = None
-    else:
-        assert os.path.exists(work.yml), print('The yml file is not exist')
-        Net_model, inference, _, _ = build_model_yml(work.yml, work.device, name=nameReal)
-        isExist = os.path.exists(work.pth)
-        if isExist:
-            checkpoint = torch.load(work.pth, map_location=work.device)
-            Net_model.load_state_dict(checkpoint['net_model'])
-
-
-    Net_model.eval()
-
-    if is_predictor:
-        model_all = DLModelPost(Net_model, work.device,
-                            name=nameReal,
-                            in_norm=x_normlizer,
-                            out_norm=y_normlizer,
-                            )
-        return model_all
-    else:
-        return Net_model, inference, work.device, x_normlizer, y_normlizer
 
 class DLModelPost(object):
     def __init__(self, netmodel, Device,

@@ -241,14 +241,17 @@ class MatplotlibVision(object):
     def plot_value_std_clean(self, fig, axs, x, y, label=None,
                              std = None, stdaxis=0, title=None,
                              xlim=[0,1], ylim=[0,1],
+                             log=False,
                              xylabels=('x', 'y'), rangeIndex=1e2, color=None):
         """
         stdaxis 表示std所在的坐标维度 x-0, y-1
         """
         num_rows, num_cols = axs.get_subplotspec().get_gridspec().get_geometry()
         print(f"Axes position: Row {num_rows}, Column {num_cols}")
-        axs.plot(x, y, label=label, color=color)
-        # axs.semilogy(x, y, label=label, color=color)
+        if log:
+            axs.semilogy(x, y, label=label, color=color, linewidth=2)
+        else:
+            axs.plot(x, y, label=label, color=color, linewidth=2)
 
         std = std * rangeIndex
         if stdaxis==0:

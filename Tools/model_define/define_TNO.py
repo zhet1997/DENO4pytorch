@@ -34,7 +34,8 @@ class TransBasedNeuralOperator(nn.Module):
             yml_path = find_file_in_directory(os.path.join('E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data\configs'), 'transformer_config_gvrb.yml')
         with open(yml_path) as f:
             config = yaml.full_load(f)
-            config = config['TNO_config']
+            # config = config['TNO_config']
+            config = config['GVRB_2d']
 
         # 建立网络
         Tra_model = FourierTransformer(**config)

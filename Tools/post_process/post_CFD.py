@@ -183,7 +183,7 @@ class cfdPost_2d(similarity, field, performance):
             x = x[:,0,0,:]
             self.loader.update({'expand': True})
         self.field_data_readin(data=y,
-                               boundarycondition=x[:,-4:],#specially
+                               boundarycondition=x,#[:,-4:],#specially
                                **kwargs,
                                )
         self.loader.update({'x': x})
@@ -193,7 +193,8 @@ class cfdPost_2d(similarity, field, performance):
     @apply_normalizer_export
     def loader_export(self, expand=1):
         x = self.loader['x'].repeat_interleave(expand, dim=0) #here has a mistake while expand > 0!!!!!!!!
-        x[:,-4:] = torch.as_tensor(self.bouCondition_1d, dtype=torch.float).detach().clone()
+        x = torch.as_tensor(self.bouCondition_1d, dtype=torch.float).detach().clone()
+        # x[:,-4:] = torch.as_tensor(self.bouCondition_1d, dtype=torch.float).detach().clone()
         if 'expand' in self.loader.keys():
             x = x.unsqueeze(1).unsqueeze(2).expand(-1, 64, 128, -1)
         loader = torch.utils.data.DataLoader(

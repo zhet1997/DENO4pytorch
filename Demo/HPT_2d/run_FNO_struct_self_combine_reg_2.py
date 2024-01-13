@@ -15,7 +15,7 @@ from cnn.ConvNets import UNet2d
 import matplotlib.pyplot as plt
 import time
 import yaml
-from Demo.GVRB_2d.utilizes_GVRB import get_origin, SelfSuperviseLoss, SelfSuperviseLoss2, SelfSuperviseLoss3, SelfSuperviseLoss4
+from Demo.HPT_2d.utilizes_HPT import get_origin, SelfSuperviseLoss_var, SelfSuperviseLoss_reg
 from Demo.GVRB_2d.train_model_GVRB.model_whole_life import WorkPrj
 from Tools.post_process.post_CFD import cfdPost_2d
 import warnings
@@ -80,69 +80,40 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
     scheduler.step()
     return train_loss / (batch + 1)
 
-def train_self_supervise(dataloader, netmodel, device, lossfunc, optimizer, scheduler, y_norm=None):
-    """
-    Args:
-        data_loader: output fields at last time step
-        netmodel: Network
-        lossfunc: Loss function
-        optimizer: optimizer
-        scheduler: scheduler
-    """
-    grid = gen_uniform_grid(torch.tensor(np.zeros([1, 64, 128, 8]))).to(device)
-    train_loss = 0
-    for batch, (xx, yy) in enumerate(dataloader):
-        xx = xx.to(device)
-        yy = yy.to(device)
-        coords = grid.tile([xx.shape[0], 1, 1, 1])
-
-        pred = netmodel(xx, coords)
-        loss = lossfunc(pred, yy, y_norm=y_norm)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        train_loss += loss.item()
-
-    scheduler.step()
-    return train_loss / (batch + 1)
-
-def train_combine_reg(dataloader_1, dataloader_2,
+def train_combine_reg(dataloader_real, dataloader_virtual, dataloader_sim,
                   netmodel, device,
                   lossfunc_1, lossfunc_2, lossfunc_3,
-                  optimizer, scheduler, y_norm=None):
-    """
-    Args:
-        data_loader: output fields at last time step
-        netmodel: Network
-        lossfunc: Loss function
-        optimizer: optimizer
-        scheduler: scheduler
-    """
+                  optimizer, scheduler,
+                    y_norm=None,
+                    mu_2=None,
+                      ):
     grid = gen_uniform_grid(torch.tensor(np.zeros([1, 64, 128, 8]))).to(device)
     train_loss_1 = 0
     train_loss_2 = 0
     train_loss_3 = 0
-    for batch, ((xx1, yy1), (xx2, yy2)) in enumerate(zip(dataloader_1, dataloader_2)):
+    for batch, ((xx1, yy1), (xx2, yy2), (xx3, yy3)) in enumerate(zip(dataloader_real, dataloader_virtual, dataloader_sim)):
         xx1 = xx1.to(device)
         yy1 = yy1.to(device)
         xx2 = xx2.to(device)
         yy2 = yy2.to(device)
+        xx3 = xx3.to(device)
+        yy3 = yy3.to(device)
 
-        coords = grid.tile([xx1.shape[0] + xx2.shape[0], 1, 1, 1])
-        pred = netmodel(torch.cat((xx1,xx2),dim=0), coords)
+        coords = grid.tile([xx1.shape[0] + xx2.shape[0] + xx3.shape[0], 1, 1, 1])
+        pred = netmodel(torch.cat((xx1,xx2,xx3),dim=0), coords)
         pred1 = pred[:xx1.shape[0],...]
-        pred2 = pred[xx1.shape[0]:,...]
+        pred2 = pred[xx1.shape[0]:xx1.shape[0] + xx2.shape[0],...]
+        pred3 = pred[-xx3.shape[0]:, ...]
+
         loss1 = lossfunc_1(pred1, yy1)
-        loss2 = lossfunc_2(pred2, yy2, y_norm=y_norm)
-        loss3 = lossfunc_3(pred2, yy2, y_norm=y_norm)
-        mu_2 = 0.05
-        mu_3 = 0.05
-        if loss2.detach()>loss1.detach()*10:
-            loss = loss1 + 0.5 * loss2/loss2.detach()*loss1.detach() + mu_3 * loss3
-        else:
-            loss = loss1 + mu_2 * loss2 + mu_3 * loss3
+        loss2 = lossfunc_2(pred2, pred3, yy3, y_norm=y_norm)
+        loss3 = lossfunc_3(pred3, y_norm=y_norm)
+        # mu_2 = 0.4
+        mu_3 = 0.1
+        # if loss2.detach()>loss1.detach()*10:
+        #     loss = loss1 + 0.1 * loss2/loss2.detach()*loss1.detach() + mu_3 * loss3
+        # else:
+        loss = loss1 + mu_2 * loss2 + mu_3 * loss3
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -194,78 +165,49 @@ def inference(dataloader, netmodel, device):
     # equation = model.equation(u_var, y_var, out_pred)
     return xx.cpu().numpy(), yy.numpy(), pred.cpu().numpy()
 
-def generate_virtual_loader(x_normalizer, virtual_batchs, batch_size,
-                            scale=[-0.02, 0.02],
-                            in_dim = 100,
-                            out_dim=8,
+def generate_virtual_loader_new(x_normalizer, virtual_batchs, batch_size,
+                            scale=[-0.04, 0.04],
+                            sim_multi=1,
                             ):
-    half = int(batch_size/2)
-    data_virtual = x_normalizer.sample_generate(virtual_batchs*batch_size, 2, norm=False)
+    data_v = x_normalizer.sample_generate(virtual_batchs*batch_size, 2, norm=False)
 
     post = cfdPost_2d()
     post.bouCondition_data_readin(
-        boundarycondition=data_virtual[:, -4:],
+        boundarycondition=data_v,
+        boundarydict=boundaryDict,
     )
 
-    field_matrix, bc_matrix = post.get_dimensional_matrix(expand=1, scale=scale)
+    field_matrix, bc_matrix = post.get_dimensional_matrix(expand=sim_multi, scale=scale)
     field_matrix = np.power(10, field_matrix)
+    data_s = post.data_similarity_operate(data_v.copy(), bc_matrix)
+    data_v = x_normalizer.norm(data_v)
+    data_s = x_normalizer.norm(data_s)
 
+    field_matrix = np.tile(field_matrix[:, None, None, :], [1, 64, 128, 1])
+    data_s = np.tile(data_s[:, None, None, :], [1, 64, 128, 1])
+    data_v = np.tile(data_v[:, None, None, :], [1, 64, 128, 1])
+    field_matrix = torch.as_tensor(field_matrix, dtype=torch.float)
+    data_s = torch.as_tensor(data_s, dtype=torch.float)
+    data_v = torch.as_tensor(data_v, dtype=torch.float)
 
-    data_virtual_sim = data_virtual.copy()
-    data_virtual_sim[:, -4:] = post.data_similarity_operate(data_virtual[:, -4:].copy(), bc_matrix)
-    data_virtual_sim = x_normalizer.norm(data_virtual_sim)
-    data_virtual = x_normalizer.norm(data_virtual)
-
-    input_virtual = np.zeros([virtual_batchs*batch_size*2 , in_dim])
-    matrix_virtual = np.zeros([virtual_batchs * batch_size * 2, out_dim])
-    one_matrix = np.ones_like(field_matrix)
-
-
-    input_virtual = np.concatenate([data_virtual, data_virtual_sim], axis=-1)
-    input_virtual = np.concatenate(
-        [input_virtual[i:i + half, :] for i in range(0, virtual_batchs * batch_size, half)], axis=-1)
-    input_virtual = np.concatenate(
-        [input_virtual[:, i:i + in_dim] for i in range(0, virtual_batchs * in_dim * 4, in_dim)], axis=0)
-
-
-    matrix_virtual = np.concatenate([one_matrix,field_matrix], axis=-1)
-    matrix_virtual = np.concatenate(
-        [matrix_virtual[i:i + half, :] for i in range(0, virtual_batchs*batch_size, half)], axis=-1)
-    matrix_virtual = np.concatenate(
-        [matrix_virtual[:, i:i+out_dim] for i in range(0, virtual_batchs * out_dim * 4, out_dim)], axis=0)
-
-    # for ii in range(virtual_batchs):
-    #     input_virtual[ii * batch_size:ii * batch_size + half, :] = data_virtual[ii * half:(ii + 1) * half, :]
-    #     input_virtual[ii * batch_size + half:(ii+1) * batch_size , :] = data_virtual_sim[ii * half:(ii + 1) * half, :]
-    #
-    #     matrix_virtual[ii * batch_size:ii * batch_size + half, :] = np.ones([half, out_dim])
-    #     matrix_virtual[ii * batch_size + half:(ii + 1) * batch_size, :] = field_matrix[ii * half:(ii + 1) * half, :]
-
-    matrix_virtual = np.tile(matrix_virtual[:, None, None, :], [1, 64, 128, 1])
-    input_virtual = np.tile(input_virtual[:, None, None, :], [1, 64, 128, 1])
-    matrix_virtual = torch.as_tensor(matrix_virtual, dtype=torch.float)
-    input_virtual = torch.as_tensor(input_virtual, dtype=torch.float)
-
-    self_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(input_virtual, matrix_virtual),
+    virtual_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(data_v, field_matrix),
                                               batch_size=batch_size, shuffle=False, drop_last=True)
-    return self_loader
+    similar_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(data_s, field_matrix),
+                                              batch_size=batch_size, shuffle=False, drop_last=True)
+    return virtual_loader, similar_loader
+
 
 
 if __name__ == "__main__":
     ################################################################
     # configs
     ################################################################
-
-
-    # name = 'UNet'
     name = 'FNO'
-    work_path = os.path.join('../work', name + '_' + str(8) + '_self_combine_reg')
+    work_path = os.path.join('work', name + '_' + str(4) + '_self_combine_reg_5.3.x_10')
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     if not isCreated:
         os.makedirs(work_path)
-        # os.makedirs(train_path)
-
     # 将控制台的结果输出到log文件
     Logger = TextLogger(os.path.join(train_path, 'train.log'))
 
@@ -274,28 +216,20 @@ if __name__ == "__main__":
     else:
         Device = torch.device('cpu')
 
-    # Device = torch.device('cpu')
-    # design, fields = get_origin_old()
-    # fields = fields[:, 0].transpose(0, 2, 3, 1)
-
-
-
-    in_dim = 100
+    in_dim = 5
     out_dim = 8
 
 
-    batch_size = 32
-    batch_number = 50
+    batch_size = 64
+    batch_number = 5
 
     ntrain = batch_number * batch_size
     nvalid = 640
 
-
-
-    epochs = 1001
-    learning_rate = 0.001
+    epochs = 2001
+    learning_rate = 0.0002
     scheduler_step = 200
-    scheduler_gamma = 0.5
+    scheduler_gamma = 0.9
 
     # net setting
     modes = (10, 10)
@@ -305,20 +239,20 @@ if __name__ == "__main__":
     padding = 8
     dropout = 0
 
-
-    r1 = 1
+    boundaryDict = {'Flow Angle': 0,
+                    'Absolute Total Temperature': 1,
+                    'Absolute Total Pressure': 2,
+                    'Rotational_speed': 3,
+                    'Shroud_Gap': 4
+                    }
     print(epochs, learning_rate, scheduler_step, scheduler_gamma)
-    # #这部分应该是重采样
-    # #不进行稀疏采样
-    #
-    #
     # ################################################################
     # # load data
     # ################################################################
 
 
     design, fields, grids = get_origin(type='struct',
-                                       realpath='E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data')  # 获取原始数据取原始数据
+                                       realpath='E:\WQN\CODE\DENO4pytorch\Demo\HPT_2d\data')  # 获取原始数据取原始数据
     work = WorkPrj(work_path)
     input = design
     input = np.tile(design[:, None, None, :], (1, 64, 128, 1))
@@ -332,21 +266,20 @@ if __name__ == "__main__":
     #
     train_x = input[:ntrain]
     train_y = output[:ntrain]
-    # train_g = grids[:ntrain, ::r1]
     valid_x = input[-nvalid:]
     valid_y = output[-nvalid:]
-    # valid_g = grids[-nvalid:, ::r1]
-    #
+
     x_normalizer = DataNormer(train_x.numpy(), method='mean-std')
     x_normalizer.dim_change(2)
 
-
-    x_normalizer_bc = DataNormer(train_x.numpy(), method='mean-std')
-    x_normalizer_bc.dim_change(2)
-    x_normalizer_bc.shrink(slice(96, 100, 1))
-
     y_normalizer = DataNormer(train_y.numpy(), method='mean-std')
     y_normalizer.dim_change(2)
+
+    delta_normalizer = DataNormer(train_y.numpy(), method='mean-std', axis=(1,2))
+    delta = train_y.numpy().copy()
+    delta = ((delta-np.tile(delta_normalizer.mean[:,None,None,:],[1,64,128,1]))/
+             np.tile(delta_normalizer.std[:,None,None,:],[1,64,128,1]))
+    delta = np.std(delta, axis=0)
 
 
     #########################################################################################################
@@ -392,8 +325,8 @@ if __name__ == "__main__":
     # # 损失函数
     Loss_func = nn.MSELoss()
     # Loss_func = GVRBWeightLoss(4, 10, 71)
-    Loss_self = SelfSuperviseLoss3()
-    Loss_reg = SelfSuperviseLoss4()
+    Loss_self = SelfSuperviseLoss_var()
+    Loss_reg = SelfSuperviseLoss_reg(torch.as_tensor(delta*0.7,dtype=torch.float, device=Device))
     # # Loss_func = nn.SmoothL1Loss()
     # # 优化算法
     Optimizer = torch.optim.AdamW(Net_model.parameters(), lr=learning_rate, betas=(0.7, 0.9), weight_decay=1e-6)
@@ -423,8 +356,9 @@ if __name__ == "__main__":
     # grid = gen_uniform_grid(train_y[:1]).to(Device)
     post = cfdPost_2d()
     valid_loader_sim = post.loader_similarity(valid_loader,
-                                                grid=grids, scale=[-0.015, 0.015], expand=1, log=True,
-                                                x_norm=x_normalizer_bc,
+                                                grid=grids, scale=[-0.03, 0.03], expand=1,
+                                                boundarydict=boundaryDict,
+                                                x_norm=x_normalizer,
                                                 y_norm=y_normalizer,
                                                 )
 
@@ -440,14 +374,22 @@ if __name__ == "__main__":
 
         Net_model.train()
         # log_loss[0].append(train(train_loader, Net_model, Device, Loss_func, Optimizer, Scheduler))
-        self_loader = generate_virtual_loader(x_normalizer, virtual_batchs, batch_size)
+        if epoch % 10==0:
+            self_loader, simlar_loader = generate_virtual_loader_new(x_normalizer, virtual_batchs, batch_size)
+
+        if log_loss[0][-1] > 2e-4:
+            temp = 0.5
+        else:
+            temp = (epoch / epochs) * 5+1
         # log_loss[2].append(train_self_supervise(self_loader, Net_model, Device, Loss_self, Optimizer_self, Scheduler, y_norm=y_normalizer))
-        loss1, loss2, loss3 = train_combine_reg(train_loader, self_loader,
+        loss1, loss2, loss3 = train_combine_reg(train_loader, self_loader, simlar_loader,
                                          Net_model, Device,
                                          Loss_func, Loss_self, Loss_reg,
                                          Optimizer, Scheduler,
-                                         y_norm=y_normalizer)
-        del self_loader
+                                         y_norm=y_normalizer,
+                                                mu_2=temp
+                                                )
+        # del self_loader
         log_loss[0].append(loss1)
         log_loss[2].append(loss2)
         log_loss[3].append(loss3)
