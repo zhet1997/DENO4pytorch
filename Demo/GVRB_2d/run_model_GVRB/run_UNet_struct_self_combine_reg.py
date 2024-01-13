@@ -148,10 +148,10 @@ def train_combine_reg(dataloader_1, dataloader_2,
         loss3 = lossfunc_3(pred2, yy2, y_norm=y_norm)
         mu_2 = 0.1
         mu_3 = 0.1
-        if loss2.detach()>loss3.detach()*10:
-            loss = loss1+ mu_3 * loss3
+        if loss2.detach()>loss1.detach()*10:
+            loss = loss1+ mu_2 * loss2/loss2.detach()*loss1.detach() + mu_3 * loss3
         else:
-            loss = loss1 + mu_2 * loss2+ mu_3 * loss3
+            loss = loss1 + mu_2 * loss2 + mu_3 * loss3
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -207,6 +207,7 @@ def generate_virtual_loader(x_normalizer, virtual_batchs, batch_size,
                             scale=[-0.02, 0.02],
                             in_dim = 100,
                             out_dim=8,
+                            TNO = False,
                             ):
     half = int(batch_size/2)
     data_virtual = x_normalizer.sample_generate(virtual_batchs*batch_size, 2, norm=False)
@@ -249,9 +250,10 @@ def generate_virtual_loader(x_normalizer, virtual_batchs, batch_size,
     #
     #     matrix_virtual[ii * batch_size:ii * batch_size + half, :] = np.ones([half, out_dim])
     #     matrix_virtual[ii * batch_size + half:(ii + 1) * batch_size, :] = field_matrix[ii * half:(ii + 1) * half, :]
+    if not TNO:
 
+        input_virtual = np.tile(input_virtual[:, None, None, :], [1, 64, 128, 1])
     matrix_virtual = np.tile(matrix_virtual[:, None, None, :], [1, 64, 128, 1])
-    input_virtual = np.tile(input_virtual[:, None, None, :], [1, 64, 128, 1])
     matrix_virtual = torch.as_tensor(matrix_virtual, dtype=torch.float)
     input_virtual = torch.as_tensor(input_virtual, dtype=torch.float)
 
@@ -268,7 +270,7 @@ if __name__ == "__main__":
 
     # name = 'UNet'
     name = 'FNO'
-    work_path = os.path.join('../work', name + '_' + str(4) + '_self_combine_reg')
+    work_path = os.path.join('../work', name + '_' + str(5) + '_self_combine_reg')
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     if not isCreated:
@@ -312,7 +314,7 @@ if __name__ == "__main__":
     depth = 6
     steps = 1
     padding = 8
-    dropout = 0.0
+    dropout = 0.4
 
 
     r1 = 1

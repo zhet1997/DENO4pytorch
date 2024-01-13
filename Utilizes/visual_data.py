@@ -204,7 +204,7 @@ class MatplotlibVision(object):
                                 s=msList[ii], facecolor=mfcList[ii], edgecolor=mecList[ii])
                 else:
                     axs.scatter(x[ii], y[ii], label=labelList[ii], color=color, marker=marker, linewidth=1,
-                                s=200, facecolor=color, edgecolor=None, alpha=0.5)
+                                s=120, facecolor=color, edgecolor=None, alpha=0.7)
             else:
                 axs.plot(x[ii], y[ii], label=labelList[ii], color=color, linewidth=2)
         # axs.grid(True)  # 添加网格
@@ -215,7 +215,7 @@ class MatplotlibVision(object):
         # axs.set_title(title, fontdict=self.font)
 
         axs.set_xlim(xlim)
-        axs.set_ylim([0,1])
+        axs.set_ylim([0,0.2])
 
 
 

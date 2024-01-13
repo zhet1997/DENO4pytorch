@@ -887,8 +887,8 @@ class FourierTransformer(nn.Module):
         bsz = node.size(0)
         n_s = int(pos.size(1))
 
-        n_s_1 = int(pos.size(1))
-        n_s_2 = int(pos.size(2))
+        n_s_1 = int(pos.size(-3))
+        n_s_2 = int(pos.size(-2))
         x_latent = []
         attn_weights = []
 

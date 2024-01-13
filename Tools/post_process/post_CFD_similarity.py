@@ -6,9 +6,12 @@ class cfdPost_2d(object):
     # ===============================================================================#
     # ==========================similarity set part==================================#
     # ===============================================================================#
-    def get_free_similarity(self, dof=1, scale=[-1,1], expand=1):
-        free_coef = np.random.random([self.num_raw * expand, dof])
-        free_coef = free_coef*(scale[1] - scale[0]) + scale[0]
+    def get_free_similarity(self, dof=1, scale=[-1,1], expand=1, norm=False):
+        if norm:
+            free_coef = np.random.normal(loc=0, scale=scale[1],size=(self.num_raw * expand, dof))
+        else:
+            free_coef = np.random.random([self.num_raw * expand, dof])
+            free_coef = free_coef*(scale[1] - scale[0]) + scale[0]
 
         return free_coef
 

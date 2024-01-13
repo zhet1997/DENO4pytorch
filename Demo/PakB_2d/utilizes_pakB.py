@@ -2,7 +2,8 @@ import numpy as np
 import yaml
 import os
 import torch
-from Utilizes.data_readin import get_values_from_mat, get_unstruct_quanlity_from_mat, get_struct_quanlity_from_mat
+from Utilizes.process_data import DataNormer
+from Tools.pre_process.data_readin import get_unstruct_quanlity_from_mat, get_struct_quanlity_from_mat
 def get_origin(quanlityList=None,
                 type='struct',
                 hole_num=1,
@@ -85,21 +86,60 @@ def pakB_data_files(real_path=None, type=None, hole_num=1):
 
     return sample_files
 
+def get_loader_pakB(
+            train_x, train_y,
+            x_normalizer=None,
+            y_normalizer=None,
+            batch_size = 32
+           ):
+    if x_normalizer is None:
+        x_normalizer = DataNormer(train_x, method='mean-std', axis=(0,1,2,3))
+    if y_normalizer is None:
+        y_normalizer = DataNormer(train_y, method='mean-std')
+
+    train_x = x_normalizer.norm(train_x)
+    train_y = y_normalizer.norm(train_y)
+
+    train_x = torch.as_tensor(train_x, dtype=torch.float)
+    train_y = torch.as_tensor(train_y, dtype=torch.float)
+
+    train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_y),
+                                               batch_size=batch_size, shuffle=True, drop_last=True)
+
+    return train_loader, x_normalizer, y_normalizer
+
 
 class PakBWeightLoss(torch.nn.Module):
-    def __init__(self, weighted_cof):
+    def __init__(self, weighted_cof=None, shreshold_cof=None, x_norm=None):
         super(PakBWeightLoss, self).__init__()
+
+        if weighted_cof is None:
+            weighted_cof = 0
+
+        if shreshold_cof is None:
+            shreshold_cof = 0
 
         self.lossfunc = torch.nn.MSELoss()
         self.weighted_cof = weighted_cof
-    def forward(self, ww, predicted, target):
+        self.shreshold_cof = shreshold_cof
+        self.x_norm = x_norm
+    def forward(self, predicted, target, xx_mask):
         # 自定义损失计算逻辑
         device = target.device
-        # xx, _ = torch.min(xx, dim=0)
-        weight = torch.as_tensor(ww, dtype=torch.float , device=device)#(xx > 0).int()
-        loss = self.lossfunc(predicted * weight[...,None], target * weight[...,None])
+        if xx_mask.shape[-1] > 1:
+            xx_mask = xx_mask.min(dim=-1, keepdim=True).values
+        xx_mask = self.x_norm.back(xx_mask)
+        weight = (xx_mask > self.shreshold_cof).int()
+        loss = self.lossfunc(predicted * weight, target * weight)
         return loss
 
+def clear_value_in_hole(pred, xx_mask, x_norm=None):
+    if xx_mask.shape[-1] > 1:
+        xx_mask = np.min(xx_mask, axis=-1, keepdims=True)
+    xx_mask = x_norm.back(xx_mask)
+    weight = (xx_mask > 0)
+    pred[~weight] = np.nan
+    return np.ma.masked_invalid(pred)
 
 if __name__ == "__main__":
     os.chdir(r'E:\WQN\CODE\DENO4pytorch')
