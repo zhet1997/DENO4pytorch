@@ -6,7 +6,7 @@ print(torch.cuda.device_count())
 # torch.cuda.set_device(1)
 from Tools.post_process.load_model import loaddata
 from model_whole_life import WorkPrj, DLModelWhole, change_yml, add_yml
-from adjust_FNO import work_construct_togethor
+from Demo.PakB_2d.BandW.adjust_FNO import work_construct_togethor
 
 if __name__ == "__main__":
     name = "deepONet"

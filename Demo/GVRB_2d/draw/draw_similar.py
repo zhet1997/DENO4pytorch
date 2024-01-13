@@ -82,6 +82,6 @@ if __name__ == '__main__':
     if not os.path.exists(save_path):
         os.mkdir(save_path)
 
-    draw_diagnal(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList)
+    # draw_diagnal(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList)
     draw_span_all(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList)
     # draw_meridian(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList)

@@ -131,6 +131,7 @@ venv/
 .idea
 .idea/
 data/
+wandb/
 */work/
 */*/work/
 */*/work*/

@@ -101,6 +101,8 @@ class FieldsLpLoss(object):
                 else:
                     return all_norms
         else:
+            x = np.nan_to_num(x)
+            y = np.nan_to_num(y)
             all_norms = np.linalg.norm(x.reshape(x.shape[0], -1, x.shape[-1]) - y.reshape(x.shape[0], -1, x.shape[-1]),
                                    self.p, 1)
 
@@ -124,6 +126,8 @@ class FieldsLpLoss(object):
                 else:
                     return diff_norms / y_norms
         else:
+            x = np.nan_to_num(x)
+            y = np.nan_to_num(y)
             diff_norms = np.linalg.norm(x.reshape(x.shape[0], -1, x.shape[-1]) - y.reshape(x.shape[0], -1, x.shape[-1]),
                                     self.p, 1)
             y_norms = np.linalg.norm(y.reshape(x.shape[0], -1, x.shape[-1]), self.p, 1)

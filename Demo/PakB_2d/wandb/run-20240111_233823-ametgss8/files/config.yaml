@@ -1,0 +1,173 @@
+wandb_version: 1
+
+in_dim:
+  desc: null
+  value: 16
+out_dim:
+  desc: null
+  value: 1
+ntrain:
+  desc: null
+  value: 700
+nvalid:
+  desc: null
+  value: 200
+dataset:
+  desc: null
+  value:
+  - 1
+  - 2
+  - 3
+  - 5
+  - 10
+batch_size:
+  desc: null
+  value: 32
+epochs:
+  desc: null
+  value: 801
+learning_rate:
+  desc: null
+  value: 0.001
+scheduler_step:
+  desc: null
+  value: 700
+scheduler_gamma:
+  desc: null
+  value: 0.1
+node_feats:
+  desc: null
+  value: 16
+pos_dim:
+  desc: null
+  value: 2
+n_targets:
+  desc: null
+  value: 1
+n_hidden:
+  desc: null
+  value: 64
+num_feat_layers:
+  desc: null
+  value: 0
+num_encoder_layers:
+  desc: null
+  value: 3
+n_head:
+  desc: null
+  value: 4
+dim_feedforward:
+  desc: null
+  value: 128
+attention_type:
+  desc: null
+  value: galerkin
+feat_extract_type:
+  desc: null
+  value: None
+xavier_init:
+  desc: null
+  value: 0.01
+diagonal_weight:
+  desc: null
+  value: 0.01
+symmetric_init:
+  desc: null
+  value: false
+layer_norm:
+  desc: null
+  value: true
+attn_norm:
+  desc: null
+  value: false
+norm_eps:
+  desc: null
+  value: 1.0e-07
+batch_norm:
+  desc: null
+  value: false
+return_attn_weight:
+  desc: null
+  value: false
+return_latent:
+  desc: null
+  value: false
+decoder_type:
+  desc: null
+  value: ifft
+last_activation:
+  desc: null
+  value: false
+freq_dim:
+  desc: null
+  value: 64
+num_regressor_layers:
+  desc: null
+  value: 1
+regressor_activation:
+  desc: null
+  value: gelu
+fourier_modes:
+  desc: null
+  value: 16
+spacial_dim:
+  desc: null
+  value: 2
+spacial_fc:
+  desc: null
+  value: true
+dropout:
+  desc: null
+  value: 0.0
+encoder_dropout:
+  desc: null
+  value: 0.0
+decoder_dropout:
+  desc: null
+  value: 0.0
+ffn_dropout:
+  desc: null
+  value: 0.0
+debug:
+  desc: null
+  value: false
+upsample_mode:
+  desc: null
+  value: interp
+downsample_mode:
+  desc: null
+  value: interp
+boundary_condition:
+  desc: null
+  value: dirichlet
+_wandb:
+  desc: null
+  value:
+    python_version: 3.11.5
+    cli_version: 0.16.1
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1704987503.409649
+    t:
+      1:
+      - 1
+      - 5
+      - 53
+      - 55
+      2:
+      - 1
+      - 5
+      - 53
+      - 55
+      3:
+      - 2
+      - 13
+      - 16
+      - 23
+      4: 3.11.5
+      5: 0.16.1
+      8:
+      - 3
+      - 5
+      13: windows-amd64

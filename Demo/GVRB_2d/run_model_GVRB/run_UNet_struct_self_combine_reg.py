@@ -198,6 +198,7 @@ def generate_virtual_loader(x_normalizer, virtual_batchs, batch_size,
                             scale=[-0.02, 0.02],
                             in_dim = 100,
                             out_dim=8,
+                            TNO = False,
                             ):
     half = int(batch_size/2)
     data_virtual = x_normalizer.sample_generate(virtual_batchs*batch_size, 2, norm=False)
@@ -240,9 +241,10 @@ def generate_virtual_loader(x_normalizer, virtual_batchs, batch_size,
     #
     #     matrix_virtual[ii * batch_size:ii * batch_size + half, :] = np.ones([half, out_dim])
     #     matrix_virtual[ii * batch_size + half:(ii + 1) * batch_size, :] = field_matrix[ii * half:(ii + 1) * half, :]
+    if not TNO:
 
+        input_virtual = np.tile(input_virtual[:, None, None, :], [1, 64, 128, 1])
     matrix_virtual = np.tile(matrix_virtual[:, None, None, :], [1, 64, 128, 1])
-    input_virtual = np.tile(input_virtual[:, None, None, :], [1, 64, 128, 1])
     matrix_virtual = torch.as_tensor(matrix_virtual, dtype=torch.float)
     input_virtual = torch.as_tensor(input_virtual, dtype=torch.float)
 
@@ -259,7 +261,7 @@ if __name__ == "__main__":
 
     # name = 'UNet'
     name = 'FNO'
-    work_path = os.path.join('../work', name + '_' + str(8) + '_self_combine_reg')
+    work_path = os.path.join('../work', name + '_' + str(5) + '_self_combine_reg')
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     if not isCreated:
@@ -304,7 +306,6 @@ if __name__ == "__main__":
     steps = 1
     padding = 8
     dropout = 0
-
 
     r1 = 1
     print(epochs, learning_rate, scheduler_step, scheduler_gamma)

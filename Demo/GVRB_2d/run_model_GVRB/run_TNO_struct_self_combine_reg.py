@@ -25,6 +25,7 @@ import yaml
 from Demo.GVRB_2d.utilizes_GVRB import get_origin, SelfSuperviseLoss, SelfSuperviseLoss2, SelfSuperviseLoss3, SelfSuperviseLoss4
 from Demo.GVRB_2d.train_model_GVRB.model_whole_life import WorkPrj
 from Tools.post_process.post_CFD import cfdPost_2d
+from run_UNet_struct_self_combine_reg import generate_virtual_loader, train_combine_reg
 import warnings
 
 # 禁止显示 UserWarning
@@ -115,48 +116,6 @@ def train_self_supervise(dataloader, netmodel, device, lossfunc, optimizer, sche
     scheduler.step()
     return train_loss / (batch + 1)
 
-def train_combine_reg(dataloader_1, dataloader_2,
-                  netmodel, device,
-                  lossfunc_1, lossfunc_2, lossfunc_3,
-                  optimizer, scheduler, y_norm=None):
-    """
-    Args:
-        data_loader: output fields at last time step
-        netmodel: Network
-        lossfunc: Loss function
-        optimizer: optimizer
-        scheduler: scheduler
-    """
-    grid = gen_uniform_grid(torch.tensor(np.zeros([1, 64, 128, 8]))).to(device)
-    train_loss_1 = 0
-    train_loss_2 = 0
-    train_loss_3 = 0
-    for batch, ((xx1, yy1), (xx2, yy2)) in enumerate(zip(dataloader_1, dataloader_2)):
-        xx1 = xx1.to(device)
-        yy1 = yy1.to(device)
-        xx2 = xx2.to(device)
-        yy2 = yy2.to(device)
-
-        coords = grid.tile([xx1.shape[0], 1, 1, 1])
-
-        pred1 = netmodel(xx1, coords)
-        pred2 = netmodel(xx2, coords)
-        loss1 = lossfunc_1(pred1, yy1)
-        loss2 = lossfunc_2(pred2, yy2, y_norm=y_norm)
-        loss3 = lossfunc_3(pred2, yy2, y_norm=y_norm)
-        mu=0.1
-        loss = loss1+loss2+mu*loss3
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        train_loss_1 += loss1.item()
-        train_loss_2 += loss2.item()
-        train_loss_3 += loss3.item()
-
-    scheduler.step()
-    return train_loss_1 / (batch + 1), train_loss_2 / (batch + 1),  train_loss_3 / (batch + 1)
-
 
 def valid(dataloader, netmodel, device, lossfunc):
     """
@@ -197,32 +156,6 @@ def inference(dataloader, netmodel, device):
     # equation = model.equation(u_var, y_var, out_pred)
     return xx.cpu().numpy(), yy.numpy(), pred.cpu().numpy()
 
-def generate_virtual_loader(x_normalizer, virtual_batchs, batch_size):
-
-    data_virtual = x_normalizer.sample_generate(virtual_batchs*batch_size, 2, norm=False)
-    post = cfdPost_2d()
-    post.bouCondition_data_readin(
-        boundarycondition=data_virtual[:, -4:],
-        # x_norm=x_normalizer_bc,
-    )
-    field_matrix, bc_matrix = post.get_dimensional_matrix(expand=2, scale=[-0.02, 0.02])
-    # divisible_indices = np.where(np.mod(np.arange(field_matrix.shape[0]), batch_size) == 0)
-    # field_matrix[divisible_indices, ...] = 0
-    field_matrix[:virtual_batchs*batch_size, ...] = 0
-    bc_matrix[:virtual_batchs * batch_size, ...] = 0
-
-    field_matrix = np.power(10, field_matrix)
-    field_matrix = np.tile(field_matrix[:, None, None, :], [1, 64, 128, 1])
-    field_matrix = torch.as_tensor(field_matrix, dtype=torch.float)
-    data_expand = post.data_expand(data_virtual, expand=2, keeporder=False)
-    data_virtual_sim = data_expand.copy()
-    data_virtual_sim[:, -4:] = post.data_similarity_operate(data_expand[:, -4:], bc_matrix)
-    data_virtual_sim = x_normalizer.norm(data_virtual_sim)
-    data_virtual_sim = torch.as_tensor(data_virtual_sim, dtype=torch.float)
-
-    self_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(data_virtual_sim, field_matrix),
-                                              batch_size=batch_size, shuffle=True, drop_last=True)
-    return self_loader
 
 
 if __name__ == "__main__":
@@ -232,7 +165,7 @@ if __name__ == "__main__":
 
 
     name = 'TNO'
-    work_path = os.path.join('../work', name + '_' + str(22) + '_self_combine_reg')
+    work_path = os.path.join('../work', name + '_' + str(24) + '_self_combine_reg_log')
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     if not isCreated:
@@ -261,14 +194,14 @@ if __name__ == "__main__":
     batch_number = 50
 
     ntrain = batch_number * batch_size
-    nvalid = 500
+    nvalid = 640
 
 
 
     epochs = 1001
     learning_rate = 0.001
-    scheduler_step = 700
-    scheduler_gamma = 0.1
+    scheduler_step = 200
+    scheduler_gamma = 0.5
     r1 = 1
     print(epochs, learning_rate, scheduler_step, scheduler_gamma)
     # #这部分应该是重采样
@@ -299,15 +232,15 @@ if __name__ == "__main__":
     valid_y = output[-nvalid:]
     # valid_g = grids[-nvalid:, ::r1]
     #
-    x_normalizer = DataNormer(train_x.numpy(), method='mean-std')
+    x_normalizer = DataNormer(train_x.numpy(), method='min-max')
     x_normalizer.dim_change(2)
 
 
-    x_normalizer_bc = DataNormer(train_x.numpy(), method='mean-std')
+    x_normalizer_bc = DataNormer(train_x.numpy(), method='min-max')
     x_normalizer_bc.dim_change(2)
     x_normalizer_bc.shrink(slice(96, 100, 1))
 
-    y_normalizer = DataNormer(train_y.numpy(), method='mean-std')
+    y_normalizer = DataNormer(train_y.numpy(), method='min-max')
     y_normalizer.dim_change(2)
 
 
@@ -400,9 +333,13 @@ if __name__ == "__main__":
         if epoch==epochs-1:
             torch.save(Net_model,os.path.join(work_path, 'final_model.pth'))
 
+        Net_model.eval()
+        log_loss[1].append(valid(valid_loader, Net_model, Device, Loss_func))
+        log_loss[4].append(valid(valid_loader_sim, Net_model, Device, Loss_func))
+
         Net_model.train()
         # log_loss[0].append(train(train_loader, Net_model, Device, Loss_func, Optimizer, Scheduler))
-        self_loader = generate_virtual_loader(x_normalizer, virtual_batchs, batch_size)
+        self_loader = generate_virtual_loader(x_normalizer, virtual_batchs, batch_size, TNO=True)
         # log_loss[2].append(train_self_supervise(self_loader, Net_model, Device, Loss_self, Optimizer_self, Scheduler, y_norm=y_normalizer))
         loss1, loss2, loss3 = train_combine_reg(train_loader, self_loader,
                                          Net_model, Device,
@@ -413,11 +350,21 @@ if __name__ == "__main__":
         log_loss[0].append(loss1)
         log_loss[2].append(loss2)
         log_loss[3].append(loss3)
-        Net_model.eval()
-        log_loss[1].append(valid(valid_loader, Net_model, Device, Loss_func))
-        log_loss[4].append(valid(valid_loader_sim, Net_model, Device, Loss_func))
-        print('epoch: {:6d}, lr: {:.3e}, train_step_loss: {:.3e}, valid_step_loss: {:.3e}, self_step_loss: {:.3e}, cost: {:.2f}'.
-              format(epoch, learning_rate, log_loss[0][-1], log_loss[1][-1], log_loss[2][-1], time.time() - star_time))
+
+        print('epoch: {:6d}, lr: {:.3e}, '
+              'train_step_loss: {:.3e}, '
+              'valid_step_loss: {:.3e}, '
+              'self_step_loss: {:.3e}, '
+              'reg_step_loss: {:.3e}, '
+              'valid_sim_step_loss: {:.3e}, '
+              'cost: {:.2f}'.
+              format(epoch, learning_rate,
+                     log_loss[0][-1],
+                     log_loss[1][-1],
+                     log_loss[2][-1],
+                     log_loss[3][-1],
+                     log_loss[4][-1],
+                     time.time() - star_time))
 
         star_time = time.time()
 
@@ -426,8 +373,9 @@ if __name__ == "__main__":
             Visual.plot_loss(fig, axs, np.arange(len(log_loss[0])), np.array(log_loss)[0, :], 'train_step')
             Visual.plot_loss(fig, axs, np.arange(len(log_loss[0])), np.array(log_loss)[1, :], 'valid_step')
             Visual.plot_loss(fig, axs, np.arange(len(log_loss[0])), np.array(log_loss)[2, :], 'self_step')
-            Visual.plot_loss(fig, axs, np.arange(len(log_loss[0])), np.array(log_loss)[3, :], 'reg_step')
             Visual.plot_loss(fig, axs, np.arange(len(log_loss[0])), np.array(log_loss)[4, :], 'valid_2_step')
+            Visual.plot_loss(fig, axs, np.arange(len(log_loss[0])), np.array(log_loss)[3, :], 'reg_step')
+
             fig.suptitle('training loss')
             fig.savefig(os.path.join(train_path, 'log_loss.svg'))
             plt.close(fig)
@@ -435,7 +383,7 @@ if __name__ == "__main__":
         ################################################################
         # Visualization
         ################################################################
-        if epoch % 100 == 0:
+        if epoch > 0 and epoch % 100 == 0:
             train_source, train_true, train_pred = inference(train_loader, Net_model, Device)
             valid_source, valid_true, valid_pred = inference(valid_loader, Net_model, Device)
 
