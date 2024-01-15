@@ -95,6 +95,7 @@ def get_struct_quanlity_from_mat(sample_files, quanlityList_i, quanlityList_o,in
             idx = reader.read_field('invalid_idx')
             idx = [int(x+data_sum) for x in idx.squeeze()]
             invalid_idx_list.extend(idx)
+        data_sum = + data_shape[0]
 
         for quanlity in quanlityList_i + quanlityList_o:
            assert quanlity in temp

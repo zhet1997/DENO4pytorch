@@ -211,6 +211,7 @@ def get_struct_quanlity_from_mat(sample_files, quanlityList,invalid_idx=True):
             idx = [int(x+data_sum) for x in idx.squeeze()]
             invalid_idx_list.extend(idx)
         Cp = 1004
+        data_sum = + data_shape[0]
         for jj, quanlity in enumerate(quanlityList):
             if quanlity == "DensityFlow":  # 设置一个需要计算获得的数据
                 Vm = np.sqrt(np.power(reader.read_field("Vxyz_X"), 2) + np.power(reader.read_field("Vxyz_Y"), 2))

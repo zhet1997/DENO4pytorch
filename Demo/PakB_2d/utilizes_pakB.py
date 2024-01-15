@@ -78,6 +78,10 @@ def pakB_data_files(real_path=None, type=None, hole_num=1):
     if type == 'struct':
         sample_files = [os.path.join(real_path, 'struct_'+str(hole_num)+'_hole_1000'),
                         ]
+        gather = os.path.join(real_path, 'gather_struct_'+str(hole_num)+'_hole_300')
+        if os.path.exists(gather + '.mat'):
+            sample_files.append(gather)
+
     elif type == 'unstruct':
         sample_files = [os.path.join(real_path, 'unstruct_'+str(hole_num)+'_hole_1000'),
                         ]

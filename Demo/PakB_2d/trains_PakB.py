@@ -37,7 +37,7 @@ def train_supercondition(dataloader, netmodel, device, lossfunc, optimizer, sche
     for batch, (xx, yy) in enumerate(dataloader):
         xx = xx.to(device)
         yy = yy.to(device)
-        xx = fill_channels(xx, x_norm=x_norm, channel_num=channel_num * (2 ** super_num), device=device, shuffle=True)
+        xx = fill_channels(xx, x_norm=x_norm, channel_num=channel_num * (2 ** super_num), shuffle=True)
         gd = feature_transform(xx)
         gd = gd.to(device)
 
@@ -68,7 +68,6 @@ def valid_supercondition(dataloader, netmodel, device, lossfunc, x_norm=None, su
             xx = fill_channels(xx, x_norm=x_norm, channel_num=channel_num * (2 ** super_num), shuffle=True)
             gd = feature_transform(xx)
             gd = gd.to(device)
-
             pred = netmodel(xx, gd)
             loss = lossfunc(pred, yy, xx)
             valid_loss += loss.item()
@@ -77,6 +76,7 @@ def valid_supercondition(dataloader, netmodel, device, lossfunc, x_norm=None, su
 
 def valid_detail(dataloader, netmodel, device, lossfunc,
                  x_norm=None,
+                 shuffle=False,
                  super_num=1, channel_num=16, hole_num=1, split_num=0,
                  ):
     """
@@ -95,8 +95,8 @@ def valid_detail(dataloader, netmodel, device, lossfunc,
 
             xx_0 = xx[..., :split_num].detach().clone()
             xx_1 = xx[..., split_num:].detach().clone()
-            xx_0 = fill_channels(xx_0, x_norm=x_norm, channel_num=channel_num, shuffle=False)
-            xx_1 = fill_channels(xx_1, x_norm=x_norm, channel_num=channel_num, shuffle=False)
+            xx_0 = fill_channels(xx_0, x_norm=x_norm, channel_num=channel_num, shuffle=shuffle)
+            xx_1 = fill_channels(xx_1, x_norm=x_norm, channel_num=channel_num, shuffle=shuffle)
 
             xx = torch.cat((xx_0, xx_1), dim=-1)  # now the channel num is 16*(2**super_num)
             gd = feature_transform(xx)
@@ -107,3 +107,35 @@ def valid_detail(dataloader, netmodel, device, lossfunc,
             valid_loss += loss.item()
 
     return valid_loss / (batch + 1)
+
+
+def inference_detail(dataloader, netmodel, device,
+                     x_norm=None,
+                     shuffle=False,
+                     super_num=1, channel_num=16, hole_num=1, split_num=0,
+                     ): # 这个是？？
+    """
+    Args:
+        dataloader: input coordinates
+        netmodel: Network
+    Returns:
+        out_pred: predicted fields
+    """
+    assert super_num == 1
+    assert split_num <= hole_num
+
+    with torch.no_grad():
+        xx, yy = next(iter(dataloader))
+        xx = xx.to(device)
+        xx_0 = xx[..., :split_num].detach().clone()
+        xx_1 = xx[..., split_num:].detach().clone()
+        xx_0 = fill_channels(xx_0, x_norm=x_norm, channel_num=channel_num, shuffle=shuffle)
+        xx_1 = fill_channels(xx_1, x_norm=x_norm, channel_num=channel_num, shuffle=shuffle)
+
+        xx = torch.cat((xx_0, xx_1), dim=-1)  # now the channel num is 16*(2**super_num)
+        gd = feature_transform(xx)
+        gd = gd.to(device)
+        pred = netmodel(xx, gd)
+
+    # equation = model.equation(u_var, y_var, out_pred)
+    return xx.cpu().numpy(), yy.numpy(), pred.cpu().numpy()
