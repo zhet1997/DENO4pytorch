@@ -3,6 +3,7 @@ import numpy as np
 import torch.nn as nn
 from Tools.model_define.define_FNO import feature_transform
 from Tools.pre_process.data_reform import channel_to_instance, instance_to_half, fill_channels
+from Tools.pre_process.data_reform import little_windows, big_windows
 class supredictor(nn.Module):
 
     def __init__(self, pred, supercondition, channel_num=16,):
@@ -23,6 +24,65 @@ class supredictor(nn.Module):
             coords_tmp = coords.tile([int(field.shape[0] / batch_size), 1, 1, 1])
             field = self.super_net(field, coords_tmp.detach())
         return field
+
+class supredictor_list(nn.Module):
+
+    def __init__(self, pred, supercondition, channel_num=16):
+
+        super(supredictor_list, self).__init__()
+        self.pred_net = pred
+        self.super_net = supercondition
+        self.channel_num = channel_num
+
+    def forward(self, design, coords):
+        super_num = int(np.log2(design.shape[-1]/self.channel_num))
+        # assert int(design.shape[-1]/self.channel_num)==2**super_num
+        design_list = channel_to_instance(design, channel_num=self.channel_num, list=True)
+        field_list = []
+
+        for design in design_list:
+            field_list.append(self.pred_net(design, coords))
+
+        for _ in range(super_num):
+            super_list = []
+            field = torch.cat(field_list, dim=-1)
+            field_list = channel_to_instance(field, channel_num=2, list=True)
+            for field in field_list:
+                super_list.append(self.super_net(field, coords))
+            field_list = super_list
+
+        return field_list[0]
+
+
+class supredictor_list_windows(nn.Module):
+
+    def __init__(self, pred, supercondition, channel_num=16):
+
+        super(supredictor_list_windows, self).__init__()
+        self.pred_net = pred
+        self.super_net = supercondition
+        self.channel_num = channel_num
+
+    def forward(self, design, coords):
+        super_num = int(np.log2(design.shape[-1]/self.channel_num))
+        # assert int(design.shape[-1]/self.channel_num)==2**super_num
+        design_list = channel_to_instance(design, channel_num=self.channel_num, list=True)
+        field_list = []
+
+        for design in design_list:
+            field_list.append(self.pred_net(design, coords))
+
+        for _ in range(super_num):
+            super_list = []
+            field = torch.cat(field_list, dim=-1)
+            field_list = channel_to_instance(field, channel_num=2, list=True)
+            for field in field_list:
+                field = little_windows(field)
+                coords_new = little_windows(coords)
+                super_list.append(big_windows(self.super_net(field, coords_new.detach())))
+            field_list = super_list
+
+        return field_list[0]
 
 def train_supercondition(dataloader, netmodel, device, lossfunc, optimizer, scheduler, x_norm=None, super_num=1, channel_num=16):
     """
