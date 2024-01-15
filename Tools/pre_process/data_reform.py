@@ -60,6 +60,20 @@ def fill_channels(xx, x_norm=None, channel_num=16, shuffle=False,):
 
     return xx
 
+def little_windows(ff, num_rows=4, num_cols=4):
+    (b_z, f_rows, f_cols, c) = ff.shape
+    ff = (ff.reshape(b_z, f_rows//num_rows, num_rows, f_cols//num_rows, num_cols, c)
+          .permute(0,2,4,1,3,5)
+          .reshape(b_z*num_rows*num_cols, f_rows//num_rows, f_cols//num_rows, c))
+    return ff
+
+def big_windows(ff, num_rows=4, num_cols=4):
+    (b_z, f_rows, f_cols, c) = ff.shape
+    ff = (ff.reshape(b_z//num_rows//num_cols, num_rows, num_cols, f_rows, f_cols, c)
+          .permute(0,3,1,4,2,5)
+          .reshape(b_z//num_rows//num_cols, f_rows*num_rows, f_cols*num_rows, c))
+    return ff
+
 def get_loader_from_list(
             train_x_list,
             train_y_list,

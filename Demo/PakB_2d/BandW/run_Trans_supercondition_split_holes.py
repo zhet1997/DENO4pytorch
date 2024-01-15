@@ -22,7 +22,7 @@ from transformer.Transformers import FourierTransformer
 from Utilizes.loss_metrics import FieldsLpLoss
 from Tools.model_define.define_FNO import train, valid, inference, train_random, train_mask
 from Tools.pre_process.data_reform import data_padding, split_train_valid, get_loader_from_list, get_loader_from_list_combine
-from Demo.PakB_2d.trains_PakB import train_supercondition, valid_supercondition, valid_detail, supredictor
+from Demo.PakB_2d.trains_PakB import train_supercondition, valid_supercondition, valid_detail, supredictor_list_windows
 import wandb
 os.chdir('E:\WQN\CODE\DENO4pytorch\Demo\PakB_2d/')
 
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     # configs
     ################################################################
     name = 'Trans'
-    work_path = os.path.join('work', name + '_test_' + str(6))
+    work_path = os.path.join('work', name + '_test_' + str(8))
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     work = WorkPrj(work_path)
@@ -81,7 +81,7 @@ if __name__ == "__main__":
         project="pak_B_film_cooling_predictor",  # 写自己的
         entity="turbo-1997",
         notes="const=350, channel=8",
-        name='trans_super_1_channel_8',
+        name='trans_super_1_channel_8_win',
         # Track hyperparameters and run metadata
         config={
                 **data_dict,
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     config['node_feats'] = in_dim
     perd_model = FourierTransformer(**config).to(Device)
     super_model = FNO2d(in_dim=2, out_dim=1, **super_model_dict).to(Device)
-    Net_model = supredictor(perd_model, super_model, channel_num=in_dim).to(Device)
+    Net_model = supredictor_list_windows(perd_model, super_model, channel_num=in_dim).to(Device)
     # # 损失函数
     Loss_func = nn.MSELoss()
     # Loss_func = PakBWeightLoss(weighted_cof=0, shreshold_cof=50, x_norm=x_normalizer)
@@ -267,13 +267,13 @@ if __name__ == "__main__":
                                      ))
 
         if epoch > 0 and epoch % 100 == 0:
-            for fig_id in range(15):
+            for fig_id in range(5):
                 fig, axs = plt.subplots(out_dim, 3, figsize=(18, 6), num=2)
                 Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], grids)
                 fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
                 plt.close(fig)
 
-            for fig_id in range(15):
+            for fig_id in range(5):
                 fig, axs = plt.subplots(out_dim, 3, figsize=(18, 6), num=3)
                 Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], grids)
                 fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
