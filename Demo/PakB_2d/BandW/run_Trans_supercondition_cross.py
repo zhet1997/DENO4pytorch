@@ -23,7 +23,7 @@ from Utilizes.loss_metrics import FieldsLpLoss
 from Tools.model_define.define_FNO import train, valid, inference, train_random, train_mask, feature_transform
 from Tools.pre_process.data_reform import data_padding, split_train_valid, get_loader_from_list, channel_to_instance
 import wandb
-from Demo.PakB_2d.trains_PakB import train_supercondition, valid_supercondition, inference_detail, valid_detail, supredictor
+from Demo.PakB_2d.trains_PakB import train_supercondition, valid_supercondition, inference_detail, valid_detail, supredictor_list_windows
 
 os.chdir('E:\WQN\CODE\DENO4pytorch\Demo\PakB_2d/')
 
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     # configs
     ################################################################
     name = 'Trans'
-    work_path = os.path.join('work', name + '_test_' + str(2))
+    work_path = os.path.join('work', name + '_test_' + str(3))
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     work = WorkPrj(work_path)
@@ -40,14 +40,14 @@ if __name__ == "__main__":
     Device = work.device
     # data_para
     data_dict = {
-    'in_dim' : 16,
+    'in_dim' : 10,
     'out_dim' : 1,
     'ntrain' : 500,
     'nvalid' : 200,
     'dataset' : [1, 2, 3, 5],
     'dataset_train' : [1, 2, 3, 5],
     'dataset_cross': [10,],
-    'channel_num' : 16,
+    'channel_num' : 10,
     'super_num' : [0, 1],
     'work_path': work_path,
     }
@@ -68,8 +68,8 @@ if __name__ == "__main__":
         'width': 64,
         'depth': 2,
         'steps': 1,
-        'padding': 0,
-        'dropout': 0.0,
+        'padding': 8,
+        'dropout': 0.1,
     }
 
 
@@ -87,8 +87,8 @@ if __name__ == "__main__":
         # Set the project where this run will be logged
         project="pak_B_film_cooling_predictor_cross",  # 写自己的
         entity="turbo-1997",
-        notes="const=350, channel_num=16",
-        name='trans_super_1_without_10_16c',
+        notes="const=350, channel_num=10",
+        name='trans_super_1_without_10_10c_win',
         # Track hyperparameters and run metadata
         config={
                 **data_dict,
@@ -165,7 +165,7 @@ if __name__ == "__main__":
     # # 建立网络
     perd_model = FourierTransformer(**config).to(Device)
     super_model = FNO2d(in_dim=2, out_dim=1, **super_model_dict).to(Device)
-    Net_model = supredictor(perd_model, super_model, channel_num=in_dim).to(Device)
+    Net_model = supredictor_list_windows(perd_model, super_model, channel_num=in_dim).to(Device)
     # # 损失函数
     Loss_func = nn.MSELoss()
     # Loss_func = PakBWeightLoss(weighted_cof=0, shreshold_cof=50, x_norm=x_normalizer)
@@ -175,8 +175,11 @@ if __name__ == "__main__":
     all_parameters = dict(Net_model.named_parameters())
     pred_net_parameters = {name: param for name, param in all_parameters.items() if 'pred_net' in name}
     super_net_parameters = {name: param for name, param in all_parameters.items() if 'super_net' in name}
-    Optimizer = torch.optim.Adam(pred_net_parameters.values(), lr=learning_rate, betas=(0.7, 0.9),)# weight_decay=1e-7)
-    Optimizer_2 = torch.optim.Adam(super_net_parameters.values(), lr=learning_rate, betas=(0.7, 0.9),)  # weight_decay=1e-7)
+    Optimizer = torch.optim.Adam(pred_net_parameters.values(), lr=learning_rate, betas=(0.7, 0.9), weight_decay=1e-7)
+    Optimizer_2 = torch.optim.Adam(super_net_parameters.values(), lr=learning_rate, betas=(0.7, 0.9), weight_decay=1e-7)
+    Optimizer_3 = torch.optim.Adam([
+        {'params': Net_model.pred_net.parameters(), 'lr':learning_rate/10},  # 学习率为默认的
+        {'params': Net_model.super_net.parameters()}], lr=learning_rate, betas=(0.7, 0.9), weight_decay=1e-7)
     # # 下降策略
     Scheduler = torch.optim.lr_scheduler.StepLR(Optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
     Scheduler_2 = torch.optim.lr_scheduler.StepLR(Optimizer_2, step_size=scheduler_step, gamma=scheduler_gamma)
@@ -210,7 +213,7 @@ if __name__ == "__main__":
             train_supercondition(train_loader, Net_model, Device, Loss_func, Optimizer, Scheduler, x_norm=x_normalizer,
                                  super_num=0, channel_num=channel_num))
         log_loss['train_step_loss_1'].append(
-            train_supercondition(train_loader, Net_model, Device, Loss_func, Optimizer_2, Scheduler_2, x_norm=x_normalizer,
+            train_supercondition(train_loader, Net_model, Device, Loss_func, Optimizer_3, Scheduler_2, x_norm=x_normalizer,
                                  super_num=1, channel_num=channel_num))
 
         Net_model.eval()

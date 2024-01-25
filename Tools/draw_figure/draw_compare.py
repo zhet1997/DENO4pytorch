@@ -49,6 +49,7 @@ def draw_range_dict(key):
                 'Relative Total Pressure': [160000, 360000],
                 'Absolute Total Pressure': [160000, 360000],
                 'Absolute Mach Number': [0, 1],
+                'Relative Mach Number': [0, 1],
                 'Static Enthalpy': [570000, 720000],
                 'atan(Vx/Vz)': [-85, -60],#[-10, 25],
                 'atan(Wx/Wz)': [-60, -20],#[55, 75],
@@ -64,14 +65,11 @@ def draw_range_dict(key):
     return rst
 
 def draw_name_dict(key):
-    range_dict = {
-                'Static_pressure_ratio': [0.3, 0.5],
-                'Total_total_efficiency': [0.6, 1],
-                'Total_static_efficiency': [0.6, 1],
-                'Degree_reaction': [0.1, 0.4],
+    name_dict = {
                 'Relative Total Pressure': 'Pt[kPa]',
                 'Absolute Total Pressure': 'Pt[kPa]',
                 'Absolute Mach Number': '$\mathrm{Ma_{is}}$',
+                'Relative Mach Number': '$\mathrm{Ma_{is}}$',
                 'Static Enthalpy': '$\mathrm{S[J/K]}$',
                 'Static Pressure': 'Ps[kPa]',
                 'Static Temperature': 'Ts[K]',
@@ -80,12 +78,13 @@ def draw_name_dict(key):
                 'Vy': 'Vy[m/s]',
                 'Vz': 'Vz[m/s]',
                 'atan(Vx/Vz)': 'atan[deg]',
+                'atan(Wx/Wz)': 'atan[deg]',
                 'Density': r'$\mathrm{\rho[kg/m^{3}]}$'
                 }
     if isinstance(key, list):
-        rst = [range_dict[x] for x in key]
+        rst = [name_dict[x] for x in key]
     else:
-        rst = range_dict[key]
+        rst = name_dict[key]
     return rst
 
 
@@ -123,6 +122,8 @@ def draw_diagnal(post_true, post_pred,
         Visual.plot_regression_dot(fig, axs, rst_true.squeeze(), rst_pred.squeeze(),
                                    title=parameterList[j], color='tomato', label='TNO')
         fig.savefig(os.path.join(save_path, 'diagnal_' + parameterList[j] + '_valid' + '.jpg'))
+
+
 def draw_meridian(post_true, post_pred, work=None, save_path=None, parameterList=None):
     ## draw the figure
     Visual = MatplotlibVision(os.path.join(work.root, 'save_figure'), input_name=('x', 'y'), field_name=('none'))
@@ -132,15 +133,16 @@ def draw_meridian(post_true, post_pred, work=None, save_path=None, parameterList
     rst_pred = post_pred.get_fields(parameterList)
     # rangeList = draw_range_dict(parameterList)
     field_name = draw_name_dict(parameterList)
-    for i in range(50, 55):
-        fig, axs = plt.subplots(len(parameterList), 3, figsize=(18, 14))
+    for i in range(0, 30):
+        fig, axs = plt.subplots(len(parameterList), 3, figsize=(15, 2.5*len(parameterList)))
         Visual.field_name = field_name
         Visual.plot_fields_ms(fig, axs, rst_true[i], rst_pred[i], post_true.grid,
                               show_channel=None, cmaps=['Spectral_r', 'Spectral_r', 'coolwarm'],
                               fmin_max=None)
         fig.patch.set_alpha(0.)
                               # fmin_max=np.array(rangeList).T)
-        fig.savefig(os.path.join(save_path, 'meridian_' + str(i) + '_valid' + '.jpg'))
+        save_path_jpg = os.path.join(save_path, 'meridian_derive_' + str(i) + '_valid' + '.jpg')
+        fig.savefig(save_path_jpg, bbox_inches='tight', transparent=True)
 
 
 def draw_simple(train_true, train_pred,valid_true,valid_pred, work=None, save_path=None):

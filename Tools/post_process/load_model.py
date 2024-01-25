@@ -318,10 +318,10 @@ def build_model_yml(yml_path, device, name=None):
     # build the model
     model_func, inference, train, valid = import_model_by_name(name)
     # yml_path_gvrb = r"E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data\configs\transformer_config_gvrb.yml"
-    # net_model = model_func(**config,yml_path=yml_path_gvrb).to(device)
+    net_model = model_func(**config).to(device)
 
     # net_model = FNO2d(in_dim=100, out_dim=8, modes=(4, 4), width=128, depth=4, steps=1,padding=8, activation='gelu').to(device)
-    net_model = model_func(**config,operator_dims=[100, ],planes_branch=[64] * 3, planes_trunk=[64] * 3 ).to(device)
+    # net_model = model_func(**config,operator_dims=[100, ],planes_branch=[64] * 3, planes_trunk=[64] * 3 ).to(device)
 
     return net_model, inference, train, valid
 

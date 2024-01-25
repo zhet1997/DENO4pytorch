@@ -183,15 +183,9 @@ class MatplotlibVision(object):
                            title=None, xylabels=('x', 'y'),
                            colorList=None, markerList=None,
                            msList = None, mfcList = None, mecList = None,
-                           xlim=None
+                           xlim=None,
+                           ylim=0.2
                            ):
-        # sbn.set_style('ticks')
-        # sbn.set(color_codes=True)
-        # check
-        # if len(x.shape) == 1:
-        #     x.unsqueeze(0)
-        # if len(y.shape) == 1:
-        #     y.unsqueeze(0)
         if colorList is not None:
             assert (len(colorList)==x.shape[0])
         if markerList is not None:
@@ -215,7 +209,7 @@ class MatplotlibVision(object):
         # axs.set_title(title, fontdict=self.font)
 
         axs.set_xlim(xlim)
-        axs.set_ylim([0,0.2])
+        axs.set_ylim(ylim)
 
 
 
@@ -421,7 +415,7 @@ class MatplotlibVision(object):
 
         # plt.ylim((-0.2, 0.2))
         # plt.pause(0.001)
-    def plot_regression_dot(self, fig, axs, true, pred, title=None,label=None,
+    def plot_regression_dot(self, fig, axs, true, pred, title=None, label=None,
                             xylabels=('true value', 'pred value'),
                             color='r'
                             ):
@@ -440,7 +434,7 @@ class MatplotlibVision(object):
             split_label[index] = i + 1
 
         axs.scatter(true, pred, marker='.', color=color, s=320 , linewidth=1,
-                      facecolor = color, edgecolor = 'k', alpha=1, label =None
+                      facecolor = color, edgecolor = 'k', alpha=1, label=label
                     )
 
         axs.plot([min_value, max_value], [min_value, max_value], 'k--', linewidth=2.0)
