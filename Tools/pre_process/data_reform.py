@@ -2,16 +2,21 @@ import numpy as np
 from numpy import ndarray
 from Utilizes.process_data import DataNormer
 import torch
-def data_padding(data: ndarray, const=0, channel_num: int=16, expand=True) -> ndarray:
+def data_padding(data: ndarray, const=0, channel_num: int=16, expand=True, shuffle=True) -> ndarray:
     # the padding is only work for the last channel dim
     current_channel_num = data.shape[-1]
     if expand:
         while channel_num < current_channel_num:
             channel_num = channel_num * 2
 
-    assert channel_num > current_channel_num
+    assert channel_num >= current_channel_num
     input = np.zeros([*data.shape[:-1], channel_num]) + const
     input[..., :current_channel_num] = data
+
+    if shuffle:
+        for ii in range(input.shape[0]):
+            idx = np.random.permutation(input.shape[-1])
+            input[ii] = input[ii, :, :, idx].transpose(1,2,0)
 
     return input
 
@@ -119,6 +124,53 @@ def get_loader_from_list(
 
     return train_loader, x_normalizer, y_normalizer
 
+
+def get_loader_from_unpadding_list(
+            data_x_list,
+            data_y_list,
+            x_normalizer=None,
+            y_normalizer=None,
+            combine_list=True,
+            batch_size = 32,
+            shuffle=True,
+            channel_num=10,
+            padding=True
+           ):
+
+    data_x_all = []
+
+    if x_normalizer is None:
+        x_normalizer = norm_for_list(data_x_list)
+    if y_normalizer is None:
+        y_normalizer = norm_for_list(data_y_list)
+
+    if padding:
+        for data_x in data_x_list:
+            data_x_all.append(data_padding(data_x, const=350, channel_num=channel_num, shuffle=False))
+        data_x_list = data_x_all
+
+    if combine_list:
+        data_x = x_normalizer.norm(np.concatenate(data_x_list, axis=0))
+        data_y = y_normalizer.norm(np.concatenate(data_y_list, axis=0))
+
+        data_x = torch.as_tensor(data_x, dtype=torch.float)
+        data_y = torch.as_tensor(data_y, dtype=torch.float)
+        train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(data_x, data_y),
+                                                   batch_size=batch_size, shuffle=shuffle, drop_last=True)
+    else:
+        train_loader = []
+        for train_x, train_y in zip(data_x_list, data_y_list):
+            train_x = x_normalizer.norm(train_x)
+            train_y = y_normalizer.norm(train_y)
+
+            train_x = torch.as_tensor(train_x, dtype=torch.float)
+            train_y = torch.as_tensor(train_y, dtype=torch.float)
+
+            train_loader.append(torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_y),
+                                                       batch_size=batch_size, shuffle=shuffle, drop_last=True))
+
+
+    return train_loader, x_normalizer, y_normalizer
 
 def get_loader_from_list_combine(
             data_x_list,

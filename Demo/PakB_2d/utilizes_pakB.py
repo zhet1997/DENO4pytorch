@@ -133,6 +133,29 @@ class PakBWeightLoss(torch.nn.Module):
         loss = self.lossfunc(predicted * weight, target * weight)
         return loss
 
+class PakBAntiNormLoss(torch.nn.Module):
+    def __init__(self, weighted_cof=None, shreshold_cof=None, x_norm=None, y_norm=None):
+        super(PakBAntiNormLoss, self).__init__()
+        if weighted_cof is None:
+            weighted_cof = 0
+        if shreshold_cof is None:
+            shreshold_cof = 0
+
+        self.lossfunc = torch.nn.MSELoss()
+        self.weighted_cof = weighted_cof
+        self.shreshold_cof = shreshold_cof
+        self.x_norm = x_norm
+        self.y_norm = y_norm
+    def forward(self, predicted, target, xx_mask):
+        # 自定义损失计算逻辑
+        device = target.device
+        if xx_mask.shape[-1] > 1:
+            xx_mask = xx_mask.min(dim=-1, keepdim=True).values
+        xx_mask = self.x_norm.back(xx_mask)
+        weight = (xx_mask > self.shreshold_cof).int()
+        loss = self.lossfunc(self.y_norm.back(predicted) * weight, self.y_norm.back(target) * weight)
+        return loss
+
 def clear_value_in_hole(pred, xx_mask, x_norm=None):
     if xx_mask.shape[-1] > 1:
         xx_mask = np.min(xx_mask, axis=-1, keepdims=True)

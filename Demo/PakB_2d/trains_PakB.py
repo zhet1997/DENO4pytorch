@@ -18,7 +18,7 @@ class supredictor(nn.Module):
         super_num = int(np.log2(design.shape[-1]/self.channel_num))
         design = channel_to_instance(design, channel_num=self.channel_num, list=False)
         coords_tmp = coords.tile([int(design.shape[0]/batch_size),1,1,1])
-        field = self.pred_net(design, coords_tmp.detach())
+        field = self.pred_net(design, coords_tmp)
         for _ in range(super_num):
             field = instance_to_half(field, batch_size=batch_size, list=False)
             coords_tmp = coords.tile([int(field.shape[0] / batch_size), 1, 1, 1])
@@ -71,7 +71,7 @@ class supredictor_list_windows(nn.Module):
 
         for design in design_list:
             field_list.append(self.pred_net(design, coords))
-
+        del design; torch.cuda.empty_cache()
         for _ in range(super_num):
             super_list = []
             field = torch.cat(field_list, dim=-1)
@@ -79,7 +79,7 @@ class supredictor_list_windows(nn.Module):
             for field in field_list:
                 field = little_windows(field)
                 coords_new = little_windows(coords)
-                super_list.append(big_windows(self.super_net(field, coords_new.detach())))
+                super_list.append(big_windows(self.super_net(field, coords_new)))
             field_list = super_list
 
         return field_list[0]
@@ -97,7 +97,7 @@ def train_supercondition(dataloader, netmodel, device, lossfunc, optimizer, sche
     for batch, (xx, yy) in enumerate(dataloader):
         xx = xx.to(device)
         yy = yy.to(device)
-        xx = fill_channels(xx, x_norm=x_norm, channel_num=channel_num * (2 ** super_num), device=device, shuffle=True)
+        xx = fill_channels(xx, x_norm=x_norm, channel_num=channel_num * (2 ** super_num), shuffle=True)
         gd = feature_transform(xx)
         gd = gd.to(device)
 

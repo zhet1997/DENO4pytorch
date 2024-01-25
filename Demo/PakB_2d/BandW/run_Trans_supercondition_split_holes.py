@@ -32,7 +32,7 @@ if __name__ == "__main__":
     # configs
     ################################################################
     name = 'Trans'
-    work_path = os.path.join('work', name + '_test_' + str(8))
+    work_path = os.path.join('work', name + '_test_' + str(9))
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     work = WorkPrj(work_path)
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     'out_dim' : 1,
     'ntrain' : 300,
     'nvalid' : 200,
-    'dataset' : [1, 2, 3, 5, 10],
+    'dataset' : [5, 10],#[1, 2, 3, 5, 10],
     'work_path': work_path,
     }
 
@@ -76,20 +76,20 @@ if __name__ == "__main__":
         config = yaml.full_load(f)
         config = config['PakB_2d']
 
-    wandb.init(
-        # Set the project where this run will be logged
-        project="pak_B_film_cooling_predictor",  # 写自己的
-        entity="turbo-1997",
-        notes="const=350, channel=8",
-        name='trans_super_1_channel_8_win',
-        # Track hyperparameters and run metadata
-        config={
-                **data_dict,
-                **train_dict,
-                'pred_model_dict': config,
-                'super_model_dict': super_model_dict,
-                }
-    )
+    # wandb.init(
+    #     # Set the project where this run will be logged
+    #     project="pak_B_film_cooling_predictor",  # 写自己的
+    #     entity="turbo-1997",
+    #     notes="const=350, channel=8",
+    #     name='trans_super_1_channel_8_win',
+    #     # Track hyperparameters and run metadata
+    #     config={
+    #             **data_dict,
+    #             **train_dict,
+    #             'pred_model_dict': config,
+    #             'super_model_dict': super_model_dict,
+    #             }
+    # )
 
     print(epochs, learning_rate, scheduler_step, scheduler_gamma)
 
@@ -212,10 +212,11 @@ if __name__ == "__main__":
     for epoch in range(epochs):
 
         Net_model.train()
-        log_loss['train_step_loss'].append(
-            train(train_loader_0, Net_model, Device, Loss_func, Optimizer, Scheduler))
         log_loss['train_step_loss_1'].append(
             train(train_loader_1, Net_model, Device, Loss_func, Optimizer_2, Scheduler_2))
+        log_loss['train_step_loss'].append(
+            train(train_loader_0, Net_model, Device, Loss_func, Optimizer, Scheduler))
+
 
         Net_model.eval()
         log_loss['valid_step_loss'].append(valid(valid_loader_0, Net_model, Device, Loss_func_valid))
