@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from Demo.PakB_2d.utilizes_pakB import get_origin, PakBWeightLoss, get_loader_pakB, clear_value_in_hole
-from Tools.pre_process.data_reform import data_padding, split_train_valid, get_loader_from_list, channel_to_instance, fill_channels
+from Tools.pre_process.data_reform import data_padding, split_train_valid, get_loader_from_list, get_loader_from_unpadding_list
 import yaml
 def get_loaders(dataset_train,
                 dataset_valid,
@@ -11,6 +11,7 @@ def get_loaders(dataset_train,
                 batch_size=32,
                 channel_shuffle=False,
                 batch_shuffle=True,
+                unpadding=True
                 ):
     train_input_list = []
     train_output_list = []
@@ -23,8 +24,10 @@ def get_loaders(dataset_train,
     dataset = np.unique(np.array(dataset_train + dataset_valid)).tolist()
     # load all data
     for kk, hole_num in enumerate(dataset):
-        design, fields, grids = get_origin(type='struct', hole_num=hole_num, realpath=os.path.join('data'))  # 获取原始数据取原始数据
+        design, fields, grids = get_origin(type='struct', hole_num=hole_num, realpath=os.path.join('data'))
+        print(design.shape)# 获取原始数据取原始数据
         # input = data_padding(design, const=350, channel_num=channel_num, shuffle=channel_shuffle)
+        input = design
         output = fields
 
         train_i, valid_i = split_train_valid(input, train_num=train_num, valid_num=valid_num)
@@ -45,19 +48,25 @@ def get_loaders(dataset_train,
         valid_input_list.append(valid_input_dict[str(hole_num)])
         valid_output_list.append(valid_output_dict[str(hole_num)])
 
-    train_loader, x_normalizer, y_normalizer = get_loader_from_list(train_input_list,
+    if unpadding:
+        combine_func = get_loader_from_unpadding_list
+    else:
+        combine_func = get_loader_from_list
+
+    train_loader, x_normalizer, y_normalizer = combine_func(train_input_list,
                                                                    train_output_list,
                                                                    batch_size=batch_size,
                                                                    shuffle=batch_shuffle,
                                                                    combine_list=True,
                                                                    )
-    valid_loader_list, _, _ = get_loader_from_list(valid_input_list,
+    valid_loader_list, _, _ = combine_func(valid_input_list,
                                                    valid_output_list,
                                                    x_normalizer=x_normalizer,
                                                    y_normalizer=y_normalizer,
                                                    batch_size=batch_size,
                                                    shuffle=batch_shuffle,
                                                    combine_list=False,
+                                                   padding=False,
                                                    )
     return train_loader, valid_loader_list, x_normalizer, y_normalizer
     # ################################################################
@@ -68,7 +77,7 @@ def get_setting():
         'in_dim': 10,
         'out_dim': 1,
         'ntrain': 500,
-        'nvalid': 200,
+        'nvalid': 100,
     }
     train_dict = {
         'batch_size': 32,
@@ -91,3 +100,21 @@ def get_setting():
         pred_model_dict['node_feats'] = basic_dict['in_dim']
 
     return basic_dict, train_dict, pred_model_dict, super_model_dict
+
+
+# def calculate_per_0(n):
+#     permutations_list = []
+#     total_sum = np.math.factorial(n)
+#     for k in range(n + 1):
+#         permutation = np.math.perm(n, k)
+#         permutations_list.append(float(permutation/sum))
+
+    return permutations_list
+
+def calculate_per(n):
+    permutations_list = []
+    for k in range(n + 1):
+        permutation = np.math.factorial(n)/np.math.factorial(n-k)/np.math.factorial(k)/ np.power(2, n)
+        permutations_list.append(permutation)
+
+    return permutations_list

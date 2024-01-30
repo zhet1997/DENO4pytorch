@@ -56,12 +56,13 @@ class supredictor_list(nn.Module):
 
 class supredictor_list_windows(nn.Module):
 
-    def __init__(self, pred, supercondition, channel_num=16):
+    def __init__(self, pred, supercondition, channel_num=16, win_split=1):
 
         super(supredictor_list_windows, self).__init__()
         self.pred_net = pred
         self.super_net = supercondition
         self.channel_num = channel_num
+        self.win_split=win_split
 
     def forward(self, design, coords):
         super_num = int(np.log2(design.shape[-1]/self.channel_num))
@@ -77,9 +78,9 @@ class supredictor_list_windows(nn.Module):
             field = torch.cat(field_list, dim=-1)
             field_list = channel_to_instance(field, channel_num=2, list=True)
             for field in field_list:
-                field = little_windows(field)
-                coords_new = little_windows(coords)
-                super_list.append(big_windows(self.super_net(field, coords_new)))
+                field = little_windows(field, num_rows=self.win_split, num_cols=self.win_split)
+                coords_new = little_windows(coords, num_rows=self.win_split, num_cols=self.win_split)
+                super_list.append(big_windows(self.super_net(field, coords_new), num_rows=self.win_split, num_cols=self.win_split))
             field_list = super_list
 
         return field_list[0]
@@ -102,7 +103,7 @@ def train_supercondition(dataloader, netmodel, device, lossfunc, optimizer, sche
         gd = gd.to(device)
 
         pred = netmodel(xx, gd)
-        loss = lossfunc(pred, yy)
+        loss = lossfunc(pred, yy, xx)
 
         optimizer.zero_grad()
         loss.backward()
@@ -139,12 +140,6 @@ def valid_detail(dataloader, netmodel, device, lossfunc,
                  x_norm=None,
                  super_num=1, channel_num=16, hole_num=1, split_num=0,
                  ):
-    """
-    Args:
-        data_loader: input coordinates
-        model: Network
-        lossfunc: Loss function
-    """
     assert super_num == 1
     assert split_num <= hole_num
     valid_loss = 0

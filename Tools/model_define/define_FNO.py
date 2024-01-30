@@ -68,14 +68,6 @@ def train_record(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
 
 
 def train_random(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
-    """
-    Args:
-        data_loader: output fields at last time step
-        netmodel: Network
-        lossfunc: Loss function
-        optimizer: optimizer
-        scheduler: scheduler
-    """
     train_loss = 0
     for batch, (xx, yy) in enumerate(dataloader):
         xx = xx.to(device)
@@ -89,7 +81,7 @@ def train_random(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
         gd = gd.to(device)
 
         pred = netmodel(xx, gd)
-        loss = lossfunc(pred, yy)
+        loss = lossfunc(pred, yy, xx)
 
         optimizer.zero_grad()
         loss.backward()

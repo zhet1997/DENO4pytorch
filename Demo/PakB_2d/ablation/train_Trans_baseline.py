@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import torch
-import torch.nn as nn
 from Utilizes.visual_data import MatplotlibVision, TextLogger
 import matplotlib.pyplot as plt
 import time
@@ -21,7 +20,7 @@ os.chdir('E:\WQN\CODE\DENO4pytorch\Demo\PakB_2d/')
 #                    ):
 if __name__ == "__main__":
     dataset_train_list = [
-        [1],
+        # [1],
         [1,2],
         [1,2,3],
         [1,2,3,5],
