@@ -32,7 +32,7 @@ if __name__ == "__main__":
     # configs
     ################################################################
     name = 'Trans'
-    work_path = os.path.join('work', name + '_test_' + str(3))
+    work_path = os.path.join('work', name + '_test_' + str(10))
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     work = WorkPrj(work_path)
@@ -83,21 +83,21 @@ if __name__ == "__main__":
         config = config['PakB_2d']
     config['node_feats'] = in_dim
 
-    wandb.init(
-        # Set the project where this run will be logged
-        project="pak_B_film_cooling_predictor_cross",  # 写自己的
-        entity="turbo-1997",
-        notes="const=350, channel_num=10",
-        name='trans_super_1_without_10_10c_win',
-        # Track hyperparameters and run metadata
-        config={
-                **data_dict,
-                **train_dict,
-                # **Net_model_dict,
-                'super_model_dict': super_model_dict,
-                **config,
-                }
-    )
+    # wandb.init(
+    #     # Set the project where this run will be logged
+    #     project="pak_B_film_cooling_predictor_cross",  # 写自己的
+    #     entity="turbo-1997",
+    #     notes="const=350, channel_num=10",
+    #     name='trans_super_1_without_10_10c_win',
+    #     # Track hyperparameters and run metadata
+    #     config={
+    #             **data_dict,
+    #             **train_dict,
+    #             # **Net_model_dict,
+    #             'super_model_dict': super_model_dict,
+    #             **config,
+    #             }
+    # )
 
     print(epochs, learning_rate, scheduler_step, scheduler_gamma)
 
@@ -306,22 +306,22 @@ if __name__ == "__main__":
               )
 
         star_time = time.time()
-        wandb.log({
-            "train_step_loss": log_loss['train_step_loss'][-1],
-            "valid_step_loss": log_loss['valid_step_loss'][-1],
-            "train_step_loss_1": log_loss['train_step_loss_1'][-1],
-            "valid_step_loss_1": log_loss['valid_step_loss_1'][-1],
-            "valid_cross_step_loss": log_loss['valid_cross_step_loss'][-1],
-            "valid_cross_step_loss_1": log_loss['valid_cross_step_loss_1'][-1],
-            'train_abs_loss': float(np.mean(train_abs_loss)),
-            'train_rel_loss': float(np.mean(train_rel_loss)),
-            'valid_abs_loss': float(np.mean(valid_abs_loss)),
-            'valid_rel_loss': float(np.mean(valid_rel_loss)),
-            'valid_cross_abs_loss': float(np.mean(valid_cross_abs_loss)),
-            'valid_cross_rel_loss': float(np.mean(valid_cross_rel_loss)),
-        })
-
-    wandb.finish()
+    #     wandb.log({
+    #         "train_step_loss": log_loss['train_step_loss'][-1],
+    #         "valid_step_loss": log_loss['valid_step_loss'][-1],
+    #         "train_step_loss_1": log_loss['train_step_loss_1'][-1],
+    #         "valid_step_loss_1": log_loss['valid_step_loss_1'][-1],
+    #         "valid_cross_step_loss": log_loss['valid_cross_step_loss'][-1],
+    #         "valid_cross_step_loss_1": log_loss['valid_cross_step_loss_1'][-1],
+    #         'train_abs_loss': float(np.mean(train_abs_loss)),
+    #         'train_rel_loss': float(np.mean(train_rel_loss)),
+    #         'valid_abs_loss': float(np.mean(valid_abs_loss)),
+    #         'valid_rel_loss': float(np.mean(valid_rel_loss)),
+    #         'valid_cross_abs_loss': float(np.mean(valid_cross_abs_loss)),
+    #         'valid_cross_rel_loss': float(np.mean(valid_cross_rel_loss)),
+    #     })
+    #
+    # wandb.finish()
 
 
 
