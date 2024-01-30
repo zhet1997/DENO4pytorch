@@ -32,7 +32,7 @@ if __name__ == "__main__":
     # configs
     ################################################################
     name = 'FNO'
-    work_path = os.path.join('work', name + '_test_' + str(7))
+    work_path = os.path.join('work', name + '_test_' + str(0))
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     work = WorkPrj(work_path)
@@ -42,13 +42,14 @@ if __name__ == "__main__":
     data_dict = {
     'in_dim' : 8,
     'out_dim' : 1,
-    'ntrain' : 700,
+    'ntrain' : 500,
     'nvalid' : 200,
     'dataset' : [1, 2, 3, 5],
     'dataset_train' : [1, 2, 3, 5],
     'dataset_cross': [10,],
     'channel_num' : 8,
-    'super_num' : [0, 1]
+    'super_num' : [0, 1],
+    'work_path': work_path,
     }
 
     # train_para
@@ -65,8 +66,8 @@ if __name__ == "__main__":
         'width' : 64,
         'depth' : 4,
         'steps' : 1,
-        'padding' : 8,
-        'dropout' : 0.1,
+        'padding' : 0,
+        'dropout' : 0.0,
     }
 
     super_model_dict = {
@@ -74,7 +75,7 @@ if __name__ == "__main__":
         'width': 64,
         'depth': 2,
         'steps': 1,
-        'padding': 8,
+        'padding': 0,
         'dropout': 0.0,
     }
 

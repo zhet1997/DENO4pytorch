@@ -18,6 +18,9 @@ from Utilizes.visual_data import MatplotlibVision
 import matplotlib.pyplot as plt
 import time
 from Demo.GVRB_2d.utilizes_GVRB import get_origin
+from Tools.post_process.load_model import loaddata_Sql
+from Utilizes.loss_metrics import FieldsLpLoss
+from Tools.train_model.train_task_construct import WorkPrj
 
 def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
     """
@@ -84,7 +87,7 @@ def inference(dataloader, netmodel, device):
         pred = netmodel([f, ], x, size_set=True)
 
     # equation = model.equation(u_var, y_var, out_pred)
-    return x.cpu().numpy(), x.cpu().numpy(), u.numpy(), pred.cpu().numpy()
+    return f.cpu().numpy(), x.cpu().numpy(), u.numpy(), pred.cpu().numpy()
 
 
 if __name__ == "__main__":
@@ -92,8 +95,13 @@ if __name__ == "__main__":
     # configs
     ################################################################
 
-    name = 'deepONet'
-    work_path = os.path.join('../work', name)
+    name = 'deepONet_1'
+    work_path = os.path.join('E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\work1',name)
+    work_load_path = os.path.join('E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\work1')
+    work_load_path1 = os.path.join('E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\work1\deepONet_1')
+    work = WorkPrj(os.path.join(work_load_path, name))
+
+
     isCreated = os.path.exists(work_path)
     if not isCreated:
         os.makedirs(work_path)
@@ -106,12 +114,16 @@ if __name__ == "__main__":
     else:
         Device = torch.device('cpu')
 
-    design, fields, grids = get_origin()  # 获取原始数据
-
+    # design, fields, grids = get_origin()  # 获取原始数据
+    design, fields, grids = get_origin(type='struct', realpath='E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data/',
+                                       quanlityList=["Static Pressure", "Static Temperature", "Density",
+                                                     "Vx", "Vy", "Vz",
+                                                     'Relative Total Temperature',
+                                                     'Absolute Total Temperature'])
     in_dim = 100
     out_dim = 8
-
-    ntrain = 5000
+    #
+    ntrain = 500
     nvalid = 900
     batch_size = 32
     batch_size2 = batch_size
@@ -131,13 +143,13 @@ if __name__ == "__main__":
     # load data
     ################################################################
 
-    input = np.tile(design[:, None, :], (1, 13170, 1))
+    input = np.tile(design[:, None, None, :], (1, 64, 128, 1))
     input = torch.tensor(input, dtype=torch.float)
 
     # output = fields[:, 0, :, :, :].transpose((0, 2, 3, 1))
     output = fields
     output = torch.tensor(output, dtype=torch.float)
-
+    grids = np.tile(grids[None, ...], (design.shape[0], 1, 1, 1))
     grids = torch.tensor(grids, dtype=torch.float)
     print(input.shape, output.shape)
 
@@ -149,22 +161,26 @@ if __name__ == "__main__":
     valid_g = grids[-nvalid:, ::r1]
 
     x_normalizer = DataNormer(train_x.numpy(), method='mean-std')
+    x_normalizer.save(work.x_norm)
     train_x = x_normalizer.norm(train_x)
     valid_x = x_normalizer.norm(valid_x)
 
     y_normalizer = DataNormer(train_y.numpy(), method='mean-std')
+    y_normalizer.save(work.y_norm)
     train_y = y_normalizer.norm(train_y)
     valid_y = y_normalizer.norm(valid_y)
 
     g_normalizer = DataNormer(train_g.numpy(), method='mean-std')
     train_g = g_normalizer.norm(train_g)
     valid_g = g_normalizer.norm(valid_g)
-
+    print(train_x.size(0))
+    print(train_g.size(0))
+    print(train_y.size(0))
     train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_g, train_y),
                                                batch_size=batch_size, shuffle=True, drop_last=True)
     valid_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(valid_x, valid_g, valid_y),
                                                batch_size=batch_size, shuffle=False, drop_last=True)
-
+    # train_loader, valid_loader, x_normalizer, y_normalizer = loaddata_Sql(name, 500, 900, shuffled=True, )
     ################################################################
     #  Neural Networks
     ################################################################
@@ -229,15 +245,42 @@ if __name__ == "__main__":
             # valid_true = valid_true.reshape([valid_true.shape[0], 64, 64, out_dim])
             # valid_pred = valid_pred.reshape([valid_pred.shape[0], 64, 64, out_dim])
             #
-            # for fig_id in range(5):
-            #     fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20), num=2)
-            #     Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], grid)
-            #     fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
-            #     plt.close(fig)
-            #
-            # for fig_id in range(5):
-            #     fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20),num=3)
-            #     Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], grid)
-            #     fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
-            #     plt.close(fig)
+    #         for fig_id in range(5):
+    #             fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20), num=2)
+    #             Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], grids)
+    #             fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
+    #             plt.close(fig)
+    #
+    #         for fig_id in range(5):
+    #             fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20),num=3)
+    #             Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], grids)
+    #             fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
+    #             plt.close(fig)
+    # #
+    Loss_real = FieldsLpLoss(p=2, d=2)
 
+    # train_source, train_true, train_pred = inference(train_loader, Net_model, Device)
+    # valid_source, valid_true, valid_pred = inference(valid_loader, Net_model, Device)
+    # valid_ex_source, valid_ex_true, valid_ex_pred = inference(valid_expand_loader, Net_model, Device)
+    train_source, train_coord, train_true, train_pred = inference(train_loader, Net_model, Device)
+    valid_source, valid_coord, valid_true, valid_pred = inference(valid_loader, Net_model, Device)
+    train_pred = y_normalizer.back(train_pred)
+    train_true = y_normalizer.back(train_true)
+    valid_pred = y_normalizer.back(valid_pred)
+    valid_true = y_normalizer.back(valid_true)
+    # valid_ex_pred = y_normalizer.back(valid_ex_pred)
+    # valid_ex_true = y_normalizer.back(valid_ex_true)
+
+    absloss = Loss_real.abs(valid_true, valid_pred)
+    relloss = Loss_real.rel(valid_true, valid_pred)
+
+    # absloss_ex = Loss_real.abs(valid_ex_true, valid_ex_pred)
+    # relloss_ex = Loss_real.rel(valid_ex_true, valid_ex_pred)
+
+    absloss_t = Loss_real.abs(train_true, train_true)
+    relloss_t = Loss_real.rel(train_true, train_true)
+    #
+    # print("absloss:", absloss)
+    # print("relloss:", relloss)
+    # print("absloss_t:", absloss_t)
+    # print("relloss_t:", relloss_t)

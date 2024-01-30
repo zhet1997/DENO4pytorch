@@ -55,6 +55,7 @@ class DataNormer(object):
                 self.logmax = np.max(data, axis=axis)
                 self.logmin = np.min(data, axis=axis)
 
+
         elif type(data) is torch.Tensor:
             if axis is None:
                 axis = tuple(range(len(data.shape) - 1))

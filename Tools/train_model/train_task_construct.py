@@ -135,7 +135,8 @@ class WorkPrj(object):
         from Tools.post_process.load_model import loaddata_Sql, get_true_pred
         Net_model, inference, Device, x_normalizer, y_normalizer = \
             predictor_establish(self.name, self.root, is_predictor=False)
-        train_loader, valid_loader, _, _ = loaddata_Sql(self.name, 500, 200, shuffled=True,
+
+        train_loader, valid_loader, _, _ = loaddata_Sql(self.name, 500, 900, shuffled=True,
                                                         norm_x=x_normalizer, norm_y=y_normalizer)
 
 
@@ -159,25 +160,25 @@ class WorkPrj(object):
             save_dict.update({'pred': pred})
             np.savez(path_save, **save_dict)
 
-        post = cfdPost_2d()
-        norm_bc = copy.deepcopy(x_normalizer)
-        norm_bc.shrink(slice(96, 100, 1))
-        valid_loader_sim = post.loader_similarity(valid_loader,
-                                                  scale=[-0.005, 0.005], expand=1, log=True,
-                                                  x_norm=norm_bc,
-                                                  y_norm=y_normalizer,
-                                                  )
-        x, true, pred = get_true_pred(valid_loader_sim, Net_model, inference, Device,
-                                      self.name, iters=0, alldata=True, out_dim=8, in_dim=100, x_output=True)
-        x = x_normalizer.back(x)
-        true = y_normalizer.back(true)
-        pred = y_normalizer.back(pred)
-
-        save_dict = {}
-        save_dict.update({'x': x})
-        save_dict.update({'true': true})
-        save_dict.update({'pred': pred})
-        np.savez(self.valid_sim, **save_dict)
+        # post = cfdPost_2d()
+        # norm_bc = copy.deepcopy(x_normalizer)
+        # norm_bc.shrink(slice(96, 100, 1))
+        # valid_loader_sim = post.loader_similarity(valid_loader,
+        #                                           scale=[-0.005, 0.005], expand=1, log=True,
+        #                                           x_norm=norm_bc,
+        #                                           y_norm=y_normalizer,
+        #                                           )
+        # x, true, pred = get_true_pred(valid_loader_sim, Net_model, inference, Device,
+        #                               self.name, iters=0, alldata=True, out_dim=8, in_dim=100, x_output=True)
+        # x = x_normalizer.back(x)
+        # true = y_normalizer.back(true)
+        # pred = y_normalizer.back(pred)
+        #
+        # save_dict = {}
+        # save_dict.update({'x': x})
+        # save_dict.update({'true': true})
+        # save_dict.update({'pred': pred})
+        # np.savez(self.valid_sim, **save_dict)
 
 
 

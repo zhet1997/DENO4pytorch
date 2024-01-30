@@ -137,8 +137,8 @@ def train_combine_reg(dataloader_1, dataloader_2,
         loss1 = lossfunc_1(pred1, yy1)
         loss2 = lossfunc_2(pred2, yy2, y_norm=y_norm)
         loss3 = lossfunc_3(pred2, yy2, y_norm=y_norm)
-        mu_2 = 0.05
-        mu_3 = 0.05
+        mu_2 = 0.5
+        mu_3 = 0.1
         if loss2.detach()>loss1.detach()*10:
             loss = loss1 + 0.5 * loss2/loss2.detach()*loss1.detach() + mu_3 * loss3
         else:
@@ -198,7 +198,6 @@ def generate_virtual_loader(x_normalizer, virtual_batchs, batch_size,
                             scale=[-0.02, 0.02],
                             in_dim = 100,
                             out_dim=8,
-                            TNO = False,
                             ):
     half = int(batch_size/2)
     data_virtual = x_normalizer.sample_generate(virtual_batchs*batch_size, 2, norm=False)
@@ -241,10 +240,9 @@ def generate_virtual_loader(x_normalizer, virtual_batchs, batch_size,
     #
     #     matrix_virtual[ii * batch_size:ii * batch_size + half, :] = np.ones([half, out_dim])
     #     matrix_virtual[ii * batch_size + half:(ii + 1) * batch_size, :] = field_matrix[ii * half:(ii + 1) * half, :]
-    if not TNO:
 
-        input_virtual = np.tile(input_virtual[:, None, None, :], [1, 64, 128, 1])
     matrix_virtual = np.tile(matrix_virtual[:, None, None, :], [1, 64, 128, 1])
+    input_virtual = np.tile(input_virtual[:, None, None, :], [1, 64, 128, 1])
     matrix_virtual = torch.as_tensor(matrix_virtual, dtype=torch.float)
     input_virtual = torch.as_tensor(input_virtual, dtype=torch.float)
 
@@ -261,7 +259,7 @@ if __name__ == "__main__":
 
     # name = 'UNet'
     name = 'FNO'
-    work_path = os.path.join('../work', name + '_' + str(5) + '_self_combine_reg')
+    work_path = os.path.join('../work', name + '_' + str(7) + '_self_combine_reg')
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     if not isCreated:
@@ -287,17 +285,17 @@ if __name__ == "__main__":
 
 
     batch_size = 32
-    batch_number = 50
+    batch_number = 20
 
     ntrain = batch_number * batch_size
     nvalid = 640
 
 
 
-    epochs = 1001
-    learning_rate = 0.001
-    scheduler_step = 200
-    scheduler_gamma = 0.5
+    epochs = 501
+    learning_rate = 0.0005
+    scheduler_step = 100
+    scheduler_gamma = 0.6
 
     # net setting
     modes = (10, 10)
@@ -305,7 +303,8 @@ if __name__ == "__main__":
     depth = 6
     steps = 1
     padding = 8
-    dropout = 0
+    dropout = 0.4
+
 
     r1 = 1
     print(epochs, learning_rate, scheduler_step, scheduler_gamma)
@@ -397,7 +396,7 @@ if __name__ == "__main__":
     Loss_reg = SelfSuperviseLoss4()
     # # Loss_func = nn.SmoothL1Loss()
     # # 优化算法
-    Optimizer = torch.optim.AdamW(Net_model.parameters(), lr=learning_rate, betas=(0.7, 0.9), weight_decay=1e-6)
+    Optimizer = torch.optim.Adam(Net_model.parameters(), lr=learning_rate, betas=(0.7, 0.9), weight_decay=1e-7)
     # # 下降策略
     Scheduler = torch.optim.lr_scheduler.StepLR(Optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
     # # 可视化

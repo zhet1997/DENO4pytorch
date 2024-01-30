@@ -77,30 +77,22 @@ def get_origin(quanlityList=None,
                         ]
     if realpath is None:
         if type=='struct':
-            sample_files = [os.path.join("data", "sampleStruct_128_64_6000"),
+            sample_files = [os.path.join("data", "sampleStruct_fixGemo_128_64_3100"),
                             ]
         elif type=='unstruct':
-            sample_files = [os.path.join("data", 'GV-RB3000(20231015)', "sampleUnstruct_3000"),
-                            os.path.join("data", 'GV-RB3000(20231017)', "sampleUnstruct_3000"),
-                            ]
+            sample_files = []
         else:
             assert False
-        geom_files =   [os.path.join("data", 'GV-RB3000(20231015)', "sampleGVM_3000"),
-                        os.path.join("data", 'GV-RB3000(20231017)', "sampleGVM_3000"),
-                        ]
     else:
         if type == 'struct':
-            sample_files = [os.path.join(realpath, "sampleStruct_128_64_6000"),
+            sample_files = [os.path.join(realpath, "sampleStruct_fixGemo_128_64_3100"),
                             ]
+            bounary_files = os.path.join(realpath, "BCall_5D_3100.txt")
+
         elif type == 'unstruct':
-            sample_files = [os.path.join(realpath, 'GV-RB3000(20231015)',"sampleUnstruct_3000"),
-                            os.path.join(realpath, 'GV-RB3000(20231017)',"sampleUnstruct_3000"),
-                            ]
+            sample_files = []
         else:
             assert False
-        geom_files = [os.path.join(realpath, 'GV-RB3000(20231015)', "sampleGVM_3000"),
-                      os.path.join(realpath, 'GV-RB3000(20231017)', "sampleGVM_3000"),
-                      ]
 
     if existcheck:
         sample_files_exists = []
@@ -119,12 +111,14 @@ def get_origin(quanlityList=None,
     elif type == 'unstruct':
         grid, fields, invalid_idx = get_unstruct_quanlity_from_mat(sample_files, quanlityList=quanlityList, invalid_idx=True)
 
-    dict = get_values_from_mat(geom_files, keyList=['design', 'gemo', 'condition'])
-    design = np.concatenate((dict['design'],dict['condition']), axis=-1)
+    # dict = get_values_from_mat(sample_files, keyList=['boundary'])
+    # design = np.concatenate((dict['design'],dict['condition']), axis=-1)
+    design = np.loadtxt(bounary_files)
 
     if getridbad:
         if realpath is None:
-            file_path = os.path.join("../Rotor37_2d/data", "sus_bad_data.yml")
+            pass
+            # file_path = os.path.join("../Rotor37_2d/data", "sus_bad_data.yml")
         else:
             file_path = os.path.join(realpath, "sus_bad_data.yml")
 
@@ -211,7 +205,6 @@ def get_struct_quanlity_from_mat(sample_files, quanlityList,invalid_idx=True):
             idx = [int(x+data_sum) for x in idx.squeeze()]
             invalid_idx_list.extend(idx)
         Cp = 1004
-        data_sum = + data_shape[0]
         for jj, quanlity in enumerate(quanlityList):
             if quanlity == "DensityFlow":  # 设置一个需要计算获得的数据
                 Vm = np.sqrt(np.power(reader.read_field("Vxyz_X"), 2) + np.power(reader.read_field("Vxyz_Y"), 2))
@@ -340,106 +333,47 @@ class GVRBWeightLoss(torch.nn.Module):
         loss = self.lossfunc(predicted * weighted_mat, target * weighted_mat)
         return loss
 
-class SelfSuperviseLoss(torch.nn.Module):
-    def __init__(self,):
-        super(SelfSuperviseLoss, self).__init__()
+class SelfSuperviseLoss_var(torch.nn.Module):
+    def __init__(self, ):
+        super(SelfSuperviseLoss_var, self).__init__()
 
         self.lossfunc = torch.nn.MSELoss()
-    def forward(self, predicted, field_matrix, y_norm=None):
+
+    def forward(self, predicted_gen, predicted_sim, field_matrix, y_norm=None):
+        # 自定义损失计算逻辑
+        device = predicted_gen.device
+
+
+        predicted_sim = y_norm.back(predicted_sim)
+        predicted_sim = predicted_sim / field_matrix
+        predicted_sim = y_norm.norm(predicted_sim)
+
+        loss = self.lossfunc(predicted_gen, predicted_sim)
+        return loss
+
+class SelfSuperviseLoss_reg(torch.nn.Module):# variance
+    def __init__(self, delta):
+        super(SelfSuperviseLoss_reg, self).__init__()
+
+        self.lossfunc = torch.nn.MSELoss()
+        self.delta = delta
+
+    def forward(self, predicted, y_norm=None):
         # 自定义损失计算逻辑
         device = predicted.device
 
         tmp = y_norm.back(predicted)
-        tmp = tmp/field_matrix
-        predicted = y_norm.norm(tmp)
-
-        var = torch.var(predicted, dim=0)
-        zeros = torch.zeros_like(var)
-
-        loss = self.lossfunc(var, zeros)
-        return loss
-
-class SelfSuperviseLoss2(torch.nn.Module):
-    def __init__(self, ):
-        super(SelfSuperviseLoss2, self).__init__()
-
-        self.lossfunc = torch.nn.MSELoss()
-
-    def forward(self, predicted, field_matrix, y_norm=None):
-        # 自定义损失计算逻辑
-        device = predicted.device
-
-        tmp = y_norm.back(predicted)
-        tmp = tmp / field_matrix
-        predicted = y_norm.norm(tmp)
-
-        target = predicted[0:1,...].repeat(predicted.shape[0], 1, 1, 1)
-
-        loss = self.lossfunc(predicted, target)
-        return loss
-
-class SelfSuperviseLoss3(torch.nn.Module):
-    def __init__(self, ):
-        super(SelfSuperviseLoss3, self).__init__()
-
-        self.lossfunc = torch.nn.MSELoss()
-
-    def forward(self, predicted, field_matrix, y_norm=None):
-        # 自定义损失计算逻辑
-        device = predicted.device
-        num = int(predicted.shape[0]/2)
-
-        tmp = y_norm.back(predicted)
-        tmp = tmp / field_matrix
-        predicted = y_norm.norm(tmp)
-
-        # target = predicted[0:1,...].repeat(predicted.shape[0], 1, 1, 1)
-
-        loss = self.lossfunc(predicted[:num,...].detach(), predicted[num:,...])
-        return loss
-
-class SelfSuperviseLoss4(torch.nn.Module):# variance
-    def __init__(self, ):
-        super(SelfSuperviseLoss4, self).__init__()
-
-        self.lossfunc = torch.nn.MSELoss()
-
-    def forward(self, predicted, field_matrix, y_norm=None):
-        # 自定义损失计算逻辑
-        device = predicted.device
-        num = int(predicted.shape[0]/2)
-
-        tmp = y_norm.back(predicted[:num,...])
-        std = torch.sqrt(tmp.var(dim=(1,2), keepdim=True) + 1e-5)
+        std = torch.sqrt(tmp.var(dim=(1,2), keepdim=True) + 1e-7)
         mean = tmp.mean(dim=(1,2), keepdim=True)
         predicted_norm = (tmp-mean)/std #已经归一化完了，不用再norm了。
 
 
-        var = torch.sqrt(predicted_norm.var(dim=0) + 1e-5)
-        delta = 0.07
-        std_loss = torch.mean(torch.nn.functional.relu(delta-var))
+        var = torch.sqrt(predicted_norm.var(dim=0) + 1e-7)
+        std = torch.nn.functional.relu(self.delta-var)
+        zeros = torch.zeros_like(std)
 
-
-        # target = predicted[0:1,...].repeat(predicted.shape[0], 1, 1, 1)
-
-        loss = self.lossfunc(predicted[:num,...], predicted[num:,...])
-        return std_loss
+        loss = self.lossfunc(std, zeros.detach())
+        return loss
 
 if __name__ == "__main__":
-    design, field = get_origin()
-    # grid = get_grid()
-    # Rst = get_value(field, parameterList="PressureRatioW")
-    #
-    # sort_idx = np.argsort(Rst.squeeze())
-    # sort_value = Rst[sort_idx]
-    # design = get_gemodata_from_mat()
-    # print(design.shape)
-
-
     print(0)
-
-    # np.savetxt(os.path.join("Rst.txt"), Rst)
-    # file_path = os.path.join("data", "sus_bad_data.yml")
-    # import yaml
-    # with open(file_path,'r') as f:
-    #     data = yaml.load(f, Loader=yaml.FullLoader)

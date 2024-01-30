@@ -24,6 +24,7 @@ import time
 import yaml
 from Demo.GVRB_2d.utilizes_GVRB import get_origin
 from Demo.GVRB_2d.train_model_GVRB.model_whole_life import WorkPrj
+from Tools.post_process.post_CFD import cfdPost_2d
 
 class predictor(nn.Module):
 
@@ -130,7 +131,7 @@ if __name__ == "__main__":
 
 
     name = 'TNO'
-    work_path = os.path.join('../work', name + '_' + str(11) + '_origin')
+    work_path = os.path.join('../work', name + '_' + str(12))
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     if not isCreated:
@@ -174,11 +175,11 @@ if __name__ == "__main__":
     # ################################################################
     work = WorkPrj(work_path)
     input = design
-    input = torch.as_tensor(input, dtype=torch.float)
+    input = torch.tensor(input, dtype=torch.float)
 
     # output = fields[:, 0, :, :, :].transpose((0, 2, 3, 1))
     output = fields
-    output = torch.as_tensor(output, dtype=torch.float)
+    output = torch.tensor(output, dtype=torch.float)
 
     print(input.shape, output.shape)
     #
@@ -188,28 +189,22 @@ if __name__ == "__main__":
     valid_x = input[-nvalid:]
     valid_y = output[-nvalid:]
     # valid_g = grids[-nvalid:, ::r1]
-
+    #
     x_normalizer = DataNormer(train_x.numpy(), method='mean-std')
     x_normalizer.dim_change(2)
-    # data_virtual = x_normalizer.sample_generate(100,2, norm=False)
-
-    x_normalizer_bc = DataNormer(train_x.numpy(), method='mean-std')
-    x_normalizer_bc.dim_change(2)
-    x_normalizer_bc.shrink(slice(96,100,1))
-
-    y_normalizer = DataNormer(train_y.numpy(), method='mean-std')
-    y_normalizer.dim_change(2)
-    #
-    # x_normalizer = DataNormer(train_x.numpy(), method='mean-std')
     train_x = x_normalizer.norm(train_x)
     valid_x = x_normalizer.norm(valid_x)
 
-    # y_normalizer = DataNormer(train_y.numpy(), method='mean-std')
+    y_normalizer = DataNormer(train_y.numpy(), method='mean-std')
+    y_normalizer.dim_change(2)
     train_y = y_normalizer.norm(train_y)
     valid_y = y_normalizer.norm(valid_y)
     #
     x_normalizer.save(os.path.join(work_path, 'x_norm.pkl'))  # 将normalizer保存下来
     y_normalizer.save(os.path.join(work_path, 'y_norm.pkl'))
+
+    x_normalizer_bc = x_normalizer
+    x_normalizer_bc.shrink(slice(96, 100, 1))
     #
     train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_y),
                                                batch_size=batch_size, shuffle=True, drop_last=True)
@@ -252,7 +247,7 @@ if __name__ == "__main__":
     Loss_func = GVRBWeightLoss(4, 10, 71)
     # # Loss_func = nn.SmoothL1Loss()
     # # 优化算法
-    Optimizer = torch.optim.Adam(Net_model.parameters(), lr=learning_rate, betas=(0.7, 0.9))#, weight_decay=1e-7)
+    Optimizer = torch.optim.Adam(Net_model.parameters(), lr=learning_rate, betas=(0.7, 0.9), weight_decay=1e-7)
     # # 下降策略
     Scheduler = torch.optim.lr_scheduler.StepLR(Optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
     # # 可视化
@@ -268,13 +263,18 @@ if __name__ == "__main__":
     # grid = get_grid()
     # grid_real = get_grid()
     # grid = gen_uniform_grid(train_y[:1]).to(Device)
+    post = cfdPost_2d()
+    train_loader_sim = post.loader_similarity(train_loader, grid=grids, scale=[-0.001, 0.001],
+                                              x_norm=x_normalizer_bc,
+                                              y_norm=y_normalizer,
+                                              expand=1)
+    del post
+
+
     for epoch in range(epochs):
 
-        if epoch==0:
-            torch.save(Net_model,os.path.join(work_path, 'final_model.pth'))
-
         Net_model.train()
-        log_loss[0].append(train(train_loader, Net_model, Device, Loss_func, Optimizer, Scheduler))
+        log_loss[0].append(train(train_loader_sim, Net_model, Device, Loss_func, Optimizer, Scheduler))
 
         Net_model.eval()
         log_loss[1].append(valid(valid_loader, Net_model, Device, Loss_func))
@@ -285,7 +285,7 @@ if __name__ == "__main__":
 
         if epoch > 0 and epoch % 10 == 0:
             fig, axs = plt.subplots(1, 1, figsize=(15, 8), num=1)
-            Visual.plot_loss(fig, axs, np.arange(len(log_loss[0])), np.array(log_loss)[0, :], 'train_step')
+            Visual.plot_loss(fig, axs, np.arange(len(log_loss[0])), np.array(log_loss)[0, :], 'train_step_sim')
             Visual.plot_loss(fig, axs, np.arange(len(log_loss[0])), np.array(log_loss)[1, :], 'valid_step')
             fig.suptitle('training loss')
             fig.savefig(os.path.join(train_path, 'log_loss.svg'))
@@ -295,7 +295,7 @@ if __name__ == "__main__":
         # Visualization
         ################################################################
         if epoch % 100 == 0:
-            train_source, train_true, train_pred = inference(train_loader, Net_model, Device)
+            train_source, train_true, train_pred = inference(train_loader_sim, Net_model, Device)
             valid_source, valid_true, valid_pred = inference(valid_loader, Net_model, Device)
 
             torch.save(

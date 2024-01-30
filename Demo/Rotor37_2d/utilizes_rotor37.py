@@ -42,6 +42,33 @@ def get_grid(real_path=None, GV_RB=False, grid_num=128):
 
     return np.concatenate([xx[:,:,np.newaxis],yy[:,:,np.newaxis]],axis=2)
 
+
+def get_grid1(real_path=None,  grid_num=128):
+
+    if real_path is None:
+            hub_file = os.path.join('hub_lower_GV.txt')
+            shroud_files = os.path.join('shroud_upper_GV.txt')
+            xx = np.linspace(-0.06, 0.12, grid_num)
+    else:
+            hub_file = os.path.join(real_path, 'hub_lower_GV.txt')
+            shroud_files = os.path.join(real_path, 'shroud_upper_GV.txt')
+            xx = np.linspace(-0.06, 0.12, grid_num)
+
+    xx = np.tile(xx, [grid_num, 1])
+
+    hub = np.loadtxt(hub_file)
+    shroud = np.loadtxt(shroud_files)
+
+    yy = []
+    for i in range(grid_num):
+        yy.append(np.linspace(hub[i],shroud[i],grid_num))
+
+    yy = np.concatenate(yy, axis=0)
+    yy = yy.reshape(grid_num, grid_num).T
+    xx = xx.reshape(grid_num, grid_num)
+
+    return np.concatenate([xx[:,:,np.newaxis],yy[:,:,np.newaxis]],axis=2)
+
 def get_origin_old():
     # sample_num = 500
     # sample_start = 0
@@ -111,10 +138,11 @@ def get_origin(quanlityList=None,
                         os.path.join("data", "sampleRstZip_970")
                         ]
     else:
-        sample_files = [os.path.join(realpath, "sampleRstZip_1500"),
-                        os.path.join(realpath, "sampleRstZip_500"),
-                        os.path.join(realpath, "sampleRstZip_970")
-                        ]
+        # sample_files = [os.path.join(realpath, "sampleRstZip_1500"),
+        #                 os.path.join(realpath, "sampleRstZip_500"),
+        #                 os.path.join(realpath, "sampleRstZip_970")
+        #                 ]
+        sample_files = [os.path.join(realpath, "sampleStruct_128_64_6000")]
     if existcheck:
         sample_files_exists = []
         for file in sample_files:
@@ -220,9 +248,9 @@ def get_origin_GVRB(quanlityList=None,
         quanlityList = ["Static Pressure", "Static Temperature",
                         'Absolute Total Temperature',  "DensityFlow"]
     if realpath is None:
-        sample_files = [os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\sampleALL_5000")]
+        sample_files = [os.path.join("E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data\sampleStruct_128_64_6000")]
     else:
-        sample_files = [os.path.join( "D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\sampleALL_5000")]
+        sample_files = [os.path.join( "E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data\sampleStruct_128_64_6000")]
     if existcheck:
         sample_files_exists = []
         for file in sample_files:

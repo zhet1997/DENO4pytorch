@@ -9,7 +9,7 @@ if __name__ == "__main__":
 
     name = 'Transformer'
     input_dim = 96
-    output_dim = 4
+    output_dim = 8
     work_path = os.path.join("D:\WQN\CODE\DENO4pytorch-main\Demo\GV_RB\work_Trans5000_2")
     workList = os.listdir(work_path)
     folder_template = 'Transformer_{}'
@@ -22,11 +22,6 @@ if __name__ == "__main__":
         work = WorkPrj(work_load_path)
         name_parts = work_name.split("_")
         nameReal = name_parts[0]
-
-        if torch.cuda.is_available():
-            Device = torch.device('cuda')
-        else:
-            Device = torch.device('cpu')
 
         norm_save_x = work.x_norm
         norm_save_y = work.y_norm

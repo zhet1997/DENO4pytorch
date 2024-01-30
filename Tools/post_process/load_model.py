@@ -2,11 +2,14 @@ import torch
 import os
 import numpy as np
 from torch.utils.data import DataLoader
-from Demo.Rotor37_2d.utilizes_rotor37 import get_grid, get_origin
+from Demo.Rotor37_2d.utilizes_rotor37 import get_grid, get_origin,get_origin_GVRB
 from Utilizes.process_data import DataNormer
 import yaml
 # from utilizes_rotor37 import get_origin_GVRB
 from Demo.GVRB_2d.utilizes_GVRB import get_grid, get_origin
+from Demo.Rotor37_2d.utilizes_rotor37 import get_grid1
+from fno.FNOs import FNO2d
+
 
 
 
@@ -18,7 +21,7 @@ def get_noise(shape, scale):
     return random_array * scale
 
 def loaddata_Sql(name,
-            ntrain=1000,
+            ntrain=3000,
             nvalid=900,
             shuffled=False,
             noise_scale=None,
@@ -27,7 +30,6 @@ def loaddata_Sql(name,
             norm_y=None,
             norm_method='mean-std',
                  ):
-
     design, fields, grids = get_origin(type='struct', realpath='E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data/',
                                        quanlityList=["Static Pressure", "Static Temperature", "Density",
                                                      "Vx", "Vy", "Vz",
@@ -42,7 +44,8 @@ def loaddata_Sql(name,
 
     name = nameReal
     if name in ("FNO", "FNM", "UNet", "Transformer"):
-        input = np.tile(design[:, None, None, :], (1, 128, 128, 1))
+        input = np.tile(design[:, None, None, :], (1, 64, 128, 1))
+
     else:
         input = design
 
@@ -89,24 +92,45 @@ def loaddata_Sql(name,
     valid_y = torch.as_tensor(valid_y, dtype=torch.float)
 
     if name in ("deepONet"):
-        grid = get_grid(real_path=os.path.join("../../Demo/Rotor37_2d", "data"))
-        grid_trans = torch.tensor(grid[np.newaxis, :, :, :], dtype=torch.float)
-        train_grid = torch.tile(grid_trans, [train_x.shape[0], 1, 1, 1])  # 所有样本的坐标是一致的。
-        valid_grid = torch.tile(grid_trans, [valid_x.shape[0], 1, 1, 1])
+        # grid = get_grid(real_path=os.path.join("../../Demo/Rotor37_2d", "data"))
+        design, fields, grids = get_origin(type='struct', realpath='E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data/',
+                                           quanlityList=["Static Pressure", "Static Temperature", "Density",
+                                                         "Vx", "Vy", "Vz",
+                                                         'Relative Total Temperature',
+                                                         'Absolute Total Temperature'])
 
-        grid_normalizer = DataNormer(train_grid.numpy(), method='mean-std')  # 这里的axis不一样了
-        train_grid = grid_normalizer.norm(train_grid)
-        valid_grid = grid_normalizer.norm(valid_grid)
+        input = np.tile(design[:, None, None, :], (1, 64, 128, 1))
+        input = torch.tensor(input, dtype=torch.float)
 
-        # grid_trans = grid_trans.reshape([1, -1, 2])
-        train_grid = train_grid.reshape([train_x.shape[0], -1, 2])
-        valid_grid = valid_grid.reshape([valid_x.shape[0], -1, 2])
-        train_y = train_y.reshape([train_y.shape[0], -1, 5])
-        valid_y = valid_y.reshape([valid_y.shape[0], -1, 5])
+        # output = fields[:, 0, :, :, :].transpose((0, 2, 3, 1))
+        output = fields
+        output = torch.tensor(output, dtype=torch.float)
+        grids = np.tile(grids[None, ...], (design.shape[0], 1, 1, 1))
+        grids = torch.tensor(grids, dtype=torch.float)
+        print(input.shape, output.shape)
+        r1 = 1
+        train_x = input[:ntrain, ::r1]
+        train_y = output[:ntrain, ::r1]
+        train_g = grids[:ntrain, ::r1]
+        valid_x = input[-nvalid:, ::r1]
+        valid_y = output[-nvalid:, ::r1]
+        valid_g = grids[-nvalid:, ::r1]
 
-        train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_grid, train_y),
+        x_normalizer = DataNormer(train_x.numpy(), method='mean-std')
+        train_x = x_normalizer.norm(train_x)
+        valid_x = x_normalizer.norm(valid_x)
+
+        y_normalizer = DataNormer(train_y.numpy(), method='mean-std')
+        train_y = y_normalizer.norm(train_y)
+        valid_y = y_normalizer.norm(valid_y)
+
+        g_normalizer = DataNormer(train_g.numpy(), method='mean-std')
+        train_g = g_normalizer.norm(train_g)
+        valid_g = g_normalizer.norm(valid_g)
+
+        train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_g, train_y),
                                                    batch_size=batch_size, shuffle=True, drop_last=True)
-        valid_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(valid_x, valid_grid, valid_y),
+        valid_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(valid_x, valid_g, valid_y),
                                                    batch_size=batch_size, shuffle=False, drop_last=True)
     else:
         train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_y),
@@ -262,11 +286,11 @@ def import_model_by_name(name):
         model_func = MLP
     elif 'deepONet' in name:
         from don.DeepONets import DeepONetMulti
-        from run_deepONet import inference, train, valid
+        from Demo.GVRB_2d.run_model_GVRB.run_deepONet import inference, train, valid
         model_func = DeepONetMulti
     elif 'FNO' in name:
         from fno.FNOs import FNO2d
-        from run_FNO import inference, train, valid
+        from Demo.GVRB_2d.run_model_GVRB.run_FNO_struct import inference, train, valid
         model_func = FNO2d
     elif 'UNet' in name:
         from cnn.ConvNets import UNet2d
@@ -293,7 +317,11 @@ def build_model_yml(yml_path, device, name=None):
         config = config[name + '_config'] #字典里面有字典
     # build the model
     model_func, inference, train, valid = import_model_by_name(name)
-    net_model = model_func(**config, yml_path=yml_path).to(device)
+    # yml_path_gvrb = r"E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data\configs\transformer_config_gvrb.yml"
+    net_model = model_func(**config).to(device)
+
+    # net_model = FNO2d(in_dim=100, out_dim=8, modes=(4, 4), width=128, depth=4, steps=1,padding=8, activation='gelu').to(device)
+    # net_model = model_func(**config,operator_dims=[100, ],planes_branch=[64] * 3, planes_trunk=[64] * 3 ).to(device)
 
     return net_model, inference, train, valid
 
@@ -338,6 +366,8 @@ def get_true_pred(loader, Net_model, inference, Device,
             x, _, true, pred = inference(sub_loader, Net_model, Device)
         true = true.reshape([true.shape[0], 64, 128, out_dim])
         pred = pred.reshape([pred.shape[0], 64, 128, out_dim])
+        if len(x.shape)>2:
+            x = x[:,0,0,:]
         x = x.reshape([pred.shape[0], in_dim])
         # pred = pred.reshape([pred.shape[0], 32, 92])
 

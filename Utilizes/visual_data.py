@@ -183,15 +183,9 @@ class MatplotlibVision(object):
                            title=None, xylabels=('x', 'y'),
                            colorList=None, markerList=None,
                            msList = None, mfcList = None, mecList = None,
-                           xlim=None
+                           xlim=None,
+                           ylim=0.2
                            ):
-        # sbn.set_style('ticks')
-        # sbn.set(color_codes=True)
-        # check
-        # if len(x.shape) == 1:
-        #     x.unsqueeze(0)
-        # if len(y.shape) == 1:
-        #     y.unsqueeze(0)
         if colorList is not None:
             assert (len(colorList)==x.shape[0])
         if markerList is not None:
@@ -215,7 +209,7 @@ class MatplotlibVision(object):
         # axs.set_title(title, fontdict=self.font)
 
         axs.set_xlim(xlim)
-        axs.set_ylim([0,0.2])
+        axs.set_ylim(ylim)
 
 
 
@@ -241,14 +235,17 @@ class MatplotlibVision(object):
     def plot_value_std_clean(self, fig, axs, x, y, label=None,
                              std = None, stdaxis=0, title=None,
                              xlim=[0,1], ylim=[0,1],
+                             log=False,
                              xylabels=('x', 'y'), rangeIndex=1e2, color=None):
         """
         stdaxis 表示std所在的坐标维度 x-0, y-1
         """
         num_rows, num_cols = axs.get_subplotspec().get_gridspec().get_geometry()
         print(f"Axes position: Row {num_rows}, Column {num_cols}")
-        axs.plot(x, y, label=label, color=color)
-        # axs.semilogy(x, y, label=label, color=color)
+        if log:
+            axs.semilogy(x, y, label=label, color=color, linewidth=2)
+        else:
+            axs.plot(x, y, label=label, color=color, linewidth=2)
 
         std = std * rangeIndex
         if stdaxis==0:
@@ -418,7 +415,7 @@ class MatplotlibVision(object):
 
         # plt.ylim((-0.2, 0.2))
         # plt.pause(0.001)
-    def plot_regression_dot(self, fig, axs, true, pred, title=None,label=None,
+    def plot_regression_dot(self, fig, axs, true, pred, title=None, label=None,
                             xylabels=('true value', 'pred value'),
                             color='r'
                             ):
@@ -437,7 +434,7 @@ class MatplotlibVision(object):
             split_label[index] = i + 1
 
         axs.scatter(true, pred, marker='.', color=color, s=320 , linewidth=1,
-                      facecolor = color, edgecolor = 'k', alpha=1, label =None
+                      facecolor = color, edgecolor = 'k', alpha=1, label=label
                     )
 
         axs.plot([min_value, max_value], [min_value, max_value], 'k--', linewidth=2.0)

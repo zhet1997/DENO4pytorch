@@ -17,13 +17,13 @@ if __name__ == '__main__':
     os.chdir(r'E:\\WQN\\CODE\\DENO4pytorch/')
 
 
-    name = 'TNO_10'
-    input_dim = 100
+    name = 'FNO_4_self_combine_reg_5.3.3_expand_2'
+    input_dim = 5
     output_dim = 8
-    type = 'valid'
+    type = 'valid_sim'
     stage_name = 'stage'
     print(os.getcwd())
-    work_load_path = os.path.join('Demo', 'GVRB_2d', 'work')
+    work_load_path = os.path.join('Demo', 'HPT_2d', 'work')
     work = WorkPrj(os.path.join(work_load_path, name))
     save_path = os.path.join(work.root, 'save_figure_sim')
     # parameterList = [
@@ -82,6 +82,6 @@ if __name__ == '__main__':
     if not os.path.exists(save_path):
         os.mkdir(save_path)
 
-    # draw_diagnal(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList)
+    draw_diagnal(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList)
     draw_span_all(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList)
     # draw_meridian(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList)

@@ -45,6 +45,7 @@ class cfdPost_2d(object):
                             'Flow Angle': basicDimensionalDict['0'],
                             'Rotational_speed': np.array([0, 0, -1, 0]),
                             'Density':np.array([1,-3, 0, 0]),
+                            'Shroud_Gap':np.array([0, 1, 0, 0]),
                               }
 
     def get_dimensional_similarity(self, dof=1, scale=None, expand=1):

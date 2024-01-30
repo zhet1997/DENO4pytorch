@@ -146,8 +146,8 @@ def valid_detail(dataloader, netmodel, device, lossfunc,
 
             xx_0 = xx[..., :split_num].detach().clone()
             xx_1 = xx[..., split_num:].detach().clone()
-            xx_0 = fill_channels(xx_0, x_norm=x_norm, channel_num=channel_num, device=device, shuffle=False)
-            xx_1 = fill_channels(xx_1, x_norm=x_norm, channel_num=channel_num, device=device, shuffle=False)
+            xx_0 = fill_channels(xx_0, x_norm=x_norm, channel_num=channel_num, shuffle=False)
+            xx_1 = fill_channels(xx_1, x_norm=x_norm, channel_num=channel_num, shuffle=False)
 
             xx = torch.cat((xx_0, xx_1), dim=-1)  # now the channel num is 16*(2**super_num)
             gd = feature_transform(xx)
@@ -165,7 +165,7 @@ if __name__ == "__main__":
     # configs
     ################################################################
     name = 'FNO'
-    work_path = os.path.join('work', name + '_test_' + str(8))
+    work_path = os.path.join('work', name + '_test_' + str(0))
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     work = WorkPrj(work_path)
@@ -175,9 +175,10 @@ if __name__ == "__main__":
     data_dict = {
     'in_dim' : 16,
     'out_dim' : 1,
-    'ntrain' : 700,
+    'ntrain' : 500,
     'nvalid' : 200,
     'dataset' : [1, 2, 3, 5, 10],
+    'work_path': work_path,
     }
 
     # train_para
@@ -194,7 +195,7 @@ if __name__ == "__main__":
         'width' : 64,
         'depth' : 4,
         'steps' : 1,
-        'padding' : 8,
+        'padding' : 0,
         'dropout' : 0.1,
     }
 
@@ -203,7 +204,7 @@ if __name__ == "__main__":
         'width': 64,
         'depth': 2,
         'steps': 1,
-        'padding': 8,
+        'padding': 0,
         'dropout': 0.0,
     }
 

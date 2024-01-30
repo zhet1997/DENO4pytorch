@@ -8,7 +8,7 @@
 # @File    : run_Darcy_train..py.py
 """
 
-import paddle
+import torch
 
 def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
     """
@@ -42,7 +42,7 @@ def valid(dataloader, netmodel, device, lossfunc):
         lossfunc: Loss function
     """
     valid_loss = 0
-    with paddle.no_grad():
+    with torch.no_grad():
         for batch, (f, x, u) in enumerate(dataloader):
             pred = netmodel([f, ], x, size_set=False)
 
@@ -60,9 +60,12 @@ def inference(dataloader, netmodel, device):
     Returns:
         out_pred: predicted fields
     """
-    with paddle.no_grad():
+    with torch.no_grad():
         f, x, u = next(iter(dataloader))
-        pred = netmodel([f, ], x, size_set=False)
+        x = x.to(device)
+        f = f.to(device)
+
+        pred = netmodel([f, ], x,)# size_set=False)
 
     return x.cpu().numpy(), x.cpu().numpy(), u.numpy(), pred.cpu().numpy()
 

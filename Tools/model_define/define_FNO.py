@@ -12,6 +12,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 from fno.FNOs import FNO2d
+from Utilizes.visual_data import MatplotlibVision
+from Utilizes.process_data import DataNormer
+import matplotlib.pyplot as plt
+import time
+from Demo.Rotor37_2d.utilizes_rotor37 import get_grid,get_origin
 
 def feature_transform(x):
     """
@@ -179,4 +184,3 @@ if __name__ == "__main__":
     # configs
     ################################################################
     pass
-

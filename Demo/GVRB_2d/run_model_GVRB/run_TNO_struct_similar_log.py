@@ -242,7 +242,6 @@ if __name__ == "__main__":
     isExist = os.path.exists(work.pth)
     log_loss = [[], [], [], [], []]
     if isExist:
-
         print(work.pth)
         checkpoint = torch.load(work.pth, map_location=Device)
         Net_model.load_state_dict(checkpoint['net_model'])
@@ -345,6 +344,8 @@ if __name__ == "__main__":
 
         if epoch==0:
             torch.save(Net_model,os.path.join(work_path, 'final_model.pth'))
+
+            print(0)
 
         ################################################################
         # Visualization
