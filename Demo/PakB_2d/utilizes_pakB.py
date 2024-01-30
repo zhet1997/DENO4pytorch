@@ -76,11 +76,18 @@ def get_origin(quanlityList=None,
 
 def pakB_data_files(real_path=None, type=None, hole_num=1):
     if type == 'struct':
-        sample_files = [os.path.join(real_path, 'struct_'+str(hole_num)+'_hole_1000'),
-                        ]
-        gather = os.path.join(real_path, 'gather_struct_'+str(hole_num)+'_hole_300')
+        sample_files = []
+        basic = os.path.join(real_path, 'struct_'+str(hole_num)+'_hole_1000')
+        if os.path.exists(basic + '.mat'):
+            sample_files.append(basic)
+
+        gather = os.path.join(real_path, 'gather_struct_'+str(hole_num)+'_hole_1000')
         if os.path.exists(gather + '.mat'):
             sample_files.append(gather)
+
+        test = os.path.join(real_path, 'struct_' + str(hole_num) + '_hole_120')
+        if os.path.exists(test + '.mat'):
+            sample_files.append(test)
 
     elif type == 'unstruct':
         sample_files = [os.path.join(real_path, 'unstruct_'+str(hole_num)+'_hole_1000'),
@@ -135,6 +142,29 @@ class PakBWeightLoss(torch.nn.Module):
         xx_mask = self.x_norm.back(xx_mask)
         weight = (xx_mask > self.shreshold_cof).int()
         loss = self.lossfunc(predicted * weight, target * weight)
+        return loss
+
+class PakBAntiNormLoss(torch.nn.Module):
+    def __init__(self, weighted_cof=None, shreshold_cof=None, x_norm=None, y_norm=None):
+        super(PakBAntiNormLoss, self).__init__()
+        if weighted_cof is None:
+            weighted_cof = 0
+        if shreshold_cof is None:
+            shreshold_cof = 0
+
+        self.lossfunc = torch.nn.MSELoss()
+        self.weighted_cof = weighted_cof
+        self.shreshold_cof = shreshold_cof
+        self.x_norm = x_norm
+        self.y_norm = y_norm
+    def forward(self, predicted, target, xx_mask):
+        # 自定义损失计算逻辑
+        device = target.device
+        if xx_mask.shape[-1] > 1:
+            xx_mask = xx_mask.min(dim=-1, keepdim=True).values
+        xx_mask = self.x_norm.back(xx_mask)
+        weight = (xx_mask > self.shreshold_cof).int()
+        loss = self.lossfunc(self.y_norm.back(predicted) * weight, self.y_norm.back(target) * weight)
         return loss
 
 def clear_value_in_hole(pred, xx_mask, x_norm=None):

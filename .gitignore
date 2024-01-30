@@ -137,6 +137,8 @@ wandb/
 */*/work*/
 */*/data/
 */*/data*/
+*/*/wandb/
+*/*/wandb/
 *.npz
 *.npy
 *.mat

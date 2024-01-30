@@ -33,17 +33,7 @@ def feature_transform(x):
     gridy = gridy.reshape([1, 1, size_y, 1]).tile([batchsize, size_x, 1, 1])
     return torch.concat((gridx, gridy), axis=-1)
 
-
-
 def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
-    """
-    Args:
-        data_loader: output fields at last time step
-        netmodel: Network
-        lossfunc: Loss function
-        optimizer: optimizer
-        scheduler: scheduler
-    """
     train_loss = 0
     for batch, (xx, yy) in enumerate(dataloader):
         xx = xx.to(device)
@@ -51,7 +41,26 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
         gd = feature_transform(xx)
         gd = gd.to(device)
         pred = netmodel(xx, gd)
-        loss = lossfunc(pred, yy)
+        loss = lossfunc(pred, yy, xx)
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        train_loss += loss.item()
+
+    scheduler.step()
+    return train_loss / (batch + 1)
+
+def train_record(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
+    train_loss = 0
+    for batch, (xx, yy) in enumerate(dataloader):
+        xx = xx.to(device)
+        yy = yy.to(device)
+        gd = feature_transform(xx)
+        gd = gd.to(device)
+        pred = netmodel(xx, gd)
+        loss = lossfunc(pred, yy, xx)
 
         optimizer.zero_grad()
         loss.backward()
@@ -63,21 +72,12 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
     return train_loss / (batch + 1)
 
 
-def train_random(dataloader, netmodel, device, lossfunc, optimizer, scheduler, x_norm=None):
-    """
-    Args:
-        data_loader: output fields at last time step
-        netmodel: Network
-        lossfunc: Loss function
-        optimizer: optimizer
-        scheduler: scheduler
-    """
+def train_random(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
     train_loss = 0
     for batch, (xx, yy) in enumerate(dataloader):
         xx = xx.to(device)
         yy = yy.to(device)
 
-        # xx_mask = torch.zeros([*xx.shape[:-1],1], device=device)
         for ii in range(xx.shape[0]):
             idx = torch.randperm(xx.shape[-1])
             xx[ii] = xx[ii,..., idx]
@@ -86,8 +86,7 @@ def train_random(dataloader, netmodel, device, lossfunc, optimizer, scheduler, x
         gd = gd.to(device)
 
         pred = netmodel(xx, gd)
-        loss = lossfunc(pred, yy)
-        # loss = lossfunc(pred, yy, xx_mask)
+        loss = lossfunc(pred, yy, xx)
 
         optimizer.zero_grad()
         loss.backward()

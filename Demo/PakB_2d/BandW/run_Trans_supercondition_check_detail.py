@@ -22,7 +22,7 @@ from transformer.Transformers import FourierTransformer
 from Utilizes.loss_metrics import FieldsLpLoss
 from Tools.model_define.define_FNO import train, valid, inference, train_random, train_mask
 from Tools.pre_process.data_reform import data_padding, split_train_valid, get_loader_from_list
-from Demo.PakB_2d.trains_PakB import train_supercondition, valid_supercondition, valid_detail, supredictor
+from Demo.PakB_2d.trains_PakB import train_supercondition, valid_supercondition, valid_detail, supredictor_list_windows
 import wandb
 os.chdir('E:\WQN\CODE\DENO4pytorch\Demo\PakB_2d/')
 
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     # configs
     ################################################################
     name = 'Trans'
-    work_path = os.path.join('work', name + '_test_' + str(3))
+    work_path = os.path.join('work', name + '_test_' + str(10))
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     work = WorkPrj(work_path)
@@ -45,11 +45,10 @@ if __name__ == "__main__":
     'out_dim' : 1,
     'ntrain' : 300,
     'nvalid' : 200,
-    'dataset' : [1, 2, 3, 5, 10],
+    'dataset' : [5, 3],#[1, 2, 3, 5, 10],
     'work_path': work_path,
     }
-
-    # train_para
+        # train_para
     train_dict = {
         'batch_size' : 16,
         'epochs' : 801,
@@ -76,20 +75,20 @@ if __name__ == "__main__":
         config = yaml.full_load(f)
         config = config['PakB_2d']
 
-    wandb.init(
-        # Set the project where this run will be logged
-        project="pak_B_film_cooling_predictor",  # 写自己的
-        entity="turbo-1997",
-        notes="const=350, channel=8",
-        name='supercondition_trans_0_1_detail',
-        # Track hyperparameters and run metadata
-        config={
-                **data_dict,
-                **train_dict,
-                'pred_model_dict': config,
-                'super_model_dict': super_model_dict,
-                }
-    )
+    # wandb.init(
+    #     # Set the project where this run will be logged
+    #     project="pak_B_film_cooling_predictor",  # 写自己的
+    #     entity="turbo-1997",
+    #     notes="const=350, channel=8",
+    #     name='supercondition_trans_0_1_detail',
+    #     # Track hyperparameters and run metadata
+    #     config={
+    #             **data_dict,
+    #             **train_dict,
+    #             'pred_model_dict': config,
+    #             'super_model_dict': super_model_dict,
+    #             }
+    # )
 
     print(epochs, learning_rate, scheduler_step, scheduler_gamma)
 
@@ -156,9 +155,10 @@ if __name__ == "__main__":
     # ################################################################
     #
     # # 建立网络
+    config['node_feats'] = in_dim
     perd_model = FourierTransformer(**config).to(Device)
     super_model = FNO2d(in_dim=2, out_dim=1, **super_model_dict).to(Device)
-    Net_model = supredictor(perd_model, super_model, channel_num=in_dim).to(Device)
+    Net_model = supredictor_list_windows(perd_model, super_model, channel_num=in_dim).to(Device)
     # # 损失函数
     Loss_func = nn.MSELoss()
     # Loss_func = PakBWeightLoss(weighted_cof=0, shreshold_cof=50, x_norm=x_normalizer)
@@ -202,13 +202,13 @@ if __name__ == "__main__":
     for epoch in range(epochs):
 
         Net_model.train()
+        log_loss['train_step_loss_1'].append(
+            train_supercondition(train_loader, Net_model, Device, Loss_func, Optimizer_2, Scheduler_2,
+                                 x_norm=x_normalizer,
+                                 super_num=1, channel_num=in_dim))
         log_loss['train_step_loss'].append(
             train_supercondition(train_loader, Net_model, Device, Loss_func, Optimizer, Scheduler, x_norm=x_normalizer,
                                  super_num=0, channel_num=in_dim))
-        log_loss['train_step_loss_1'].append(
-            train_supercondition(train_loader, Net_model, Device, Loss_func, Optimizer_2, Scheduler_2, x_norm=x_normalizer,
-                                 super_num=1, channel_num=in_dim))
-
         Net_model.eval()
         log_loss['valid_step_loss'].append(valid(valid_loader, Net_model, Device, Loss_func_valid))
         log_loss['valid_step_loss_1'].append(valid_supercondition(valid_loader, Net_model, Device, Loss_func_valid, x_norm=x_normalizer,
