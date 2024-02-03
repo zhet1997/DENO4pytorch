@@ -13,8 +13,8 @@ import torch
 import torch.nn as nn
 from Utilizes.geometrics import gen_uniform_grid
 import yaml
-from basic.basic_layers import FcnSingle
-from transformer.Transformers import SimpleTransformer, FourierTransformer
+from Models.basic.basic_layers import FcnSingle
+from Models.transformer.Transformers import SimpleTransformer, FourierTransformer
 
 
 class TransBasedNeuralOperator(nn.Module):

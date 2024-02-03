@@ -4,15 +4,16 @@ import torch
 import os
 import numpy as np
 from post_data import Post_2d
-from run_MLP import get_grid, get_origin, valid
-from train_model.model_whole_life import WorkPrj
+# from run_MLP import get_grid, get_origin, valid
+from Demo.TwoLPT_2d.utilizes_GVRB import get_origin
+from Demo.TwoLPT_2d.train_model_GVRB.model_whole_life import WorkPrj
 from load_model import loaddata, rebuild_model, get_true_pred, build_model_yml
 import yaml
 
 if __name__ == "__main__":
     # name = 'MLP'
     filenameList =[
-        "work_train",
+        "work",
      # 'work_2700_MSELoss',
      # 'work_FNO_mode_L1smoothLoss',
      # 'work_FNO_mode_MSELoss',
@@ -21,9 +22,9 @@ if __name__ == "__main__":
     ]
 
     for filename in filenameList:
-        work_load_path = os.path.join("../../Demo/Rotor37_2d", filename)
-        out_dim = 5
-        for name in ['FNO_0']:#workList:#['MLP','deepONet','FNO','UNet','Transformer']:
+        work_load_path = os.path.join("../../Demo/TwoLPT_2d", filename)
+        out_dim = 8
+        for name in ['TNO_0']:#workList:#['MLP','deepONet','FNO','UNet','Transformer']:
             nameReal = name.split("_")[0]
             mode = None
             if len(name.split("_"))==2:
@@ -42,7 +43,7 @@ if __name__ == "__main__":
                 isExist = os.path.exists(work.pth)
                 if isExist:
                     checkpoint = torch.load(work.pth, map_location=Device)
-                    Net_model.load_state_dict(checkpoint['net_model'])
+                    Net_model.load_state_dict(checkpoint['final_model'])
             else:
                 if mode is not None:
                     Net_model, inference = rebuild_model(work_path, Device, name=nameReal, mode=mode)
@@ -52,7 +53,7 @@ if __name__ == "__main__":
 
             if Net_model is not None:
                 # load data
-                train_loader, valid_loader, x_normalizer, y_normalizer = loaddata(nameReal, 2500, 400, shuffled=True)
+                train_loader, valid_loader, x_normalizer, y_normalizer = loaddata(nameReal, 1500, 450, shuffled=True)
 
                 train_true, train_pred = get_true_pred(train_loader, Net_model, inference, Device, name=nameReal)
                 valid_true, valid_pred = get_true_pred(valid_loader, Net_model, inference, Device, name=nameReal)

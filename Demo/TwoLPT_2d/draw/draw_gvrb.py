@@ -15,13 +15,13 @@ from Tools.model_define.define_TNO_1 import predictor
 
 if __name__ == '__main__':
     os.chdir(r'E:\\WQN\\CODE\\DENO4pytorch/')
-    name = 'TNO_9'
-    input_dim = 100
+    name = 'TNO_0'
+    input_dim = 76
     output_dim = 8
     type = 'valid'
     stage_name = 'stage'
     print(os.getcwd())
-    work_load_path = os.path.join('Demo', 'GVRB_2d', 'work')
+    work_load_path = os.path.join('Demo', 'TwoLPT_2d', 'work')
     work = WorkPrj(os.path.join(work_load_path, name))
     save_path = os.path.join(work.root, 'save_figure_new')
     if not os.path.exists(save_path):
@@ -58,8 +58,8 @@ if __name__ == '__main__':
 
     ## get the train or valid data
 
-    # if not os.path.exists(work.valid_sim):
-    #     work.save_pred()
+    if not os.path.exists(work.valid):
+        work.save_pred()
     if type=='train':
         data = np.load(work.train)
     elif type=='valid':

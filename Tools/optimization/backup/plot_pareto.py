@@ -1,5 +1,5 @@
 # 将优化预测结果与CFD验证结果对比
-from CFD_verify import load_CFD_mat, load_CFD_mat_train
+from Tools.optimization.backup.CFD_verify import load_CFD_mat, load_CFD_mat_train
 from Tools.draw_figure.backup.draw_sensitive import predicter_loader
 # from draw_figure.utilizes_draw import plot_span_curve_marker
 # from train_model.model_whole_life import WorkPrj
@@ -42,7 +42,7 @@ def get_predict(work_path, input, name, Device, parameterList):
         "W2": 3,
         "DensityFlow": 4,
     }
-    grid = get_grid(real_path=os.path.join("../../Demo/Rotor37_2d", "data"))
+    grid = get_grid(real_path=os.path.join("../../../Demo/Rotor37_2d", "data"))
     post_pred = Post_2d(pred.detach().cpu().numpy(), grid,
                         inputDict=input_para,
                         )
@@ -73,7 +73,7 @@ def find_closest_row(A, B):
 
 
 if __name__ == "__main__":
-    work_path = os.path.join("../../Demo/Rotor37_2d", "work_train_FNO2", "FNO_1") #当前效果最好的模型
+    work_path = os.path.join("../../../Demo/Rotor37_2d", "work_train_FNO2", "FNO_1") #当前效果最好的模型
     name_opt = "EPM_optimization_tasks"
     name = "FNO"
 
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     else:
         Device = torch.device('cpu')
 
-    data_path = os.path.join("../../Demo/Rotor37_2d", "data", "opt_data")
+    data_path = os.path.join("../../../Demo/Rotor37_2d", "data", "opt_data")
     npz_path = os.path.join(data_path, name_opt + ".npz")
     yml_path = os.path.join(data_path, name_opt + ".yml")
     txt_path = os.path.join(data_path, name_opt + ".txt")
@@ -104,7 +104,7 @@ if __name__ == "__main__":
             "MachIsentropic", "Load", "MassFlow"]
 
         dict_true = load_CFD_mat(mat_path, parameterList)
-        dict_base = load_CFD_mat(os.path.join("../../Demo/Rotor37_2d", "data", "sampleRstZip_57"), parameterList)
+        dict_base = load_CFD_mat(os.path.join("../../../Demo/Rotor37_2d", "data", "sampleRstZip_57"), parameterList)
 
         dict_true_train = load_CFD_mat_train(parameterList)
 
@@ -181,7 +181,7 @@ if __name__ == "__main__":
         # axs.axis('off')
         # plt.show()
 
-        save_path = os.path.join("../../Demo/Rotor37_2d", "data", "final_fig")
+        save_path = os.path.join("../../../Demo/Rotor37_2d", "data", "final_fig")
         jpg_path = os.path.join(save_path, "multi_opt_task_" + str(task_num) + '.jpg')
 
         fig.savefig(jpg_path)

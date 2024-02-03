@@ -40,7 +40,8 @@ class Turbo_UQLab(object):
             self.evaluate.update({'names': [f'x{i}' for i in range(self.num_input)]})
         self.names_input = self.evaluate['names']
         self.output_shape = self.evaluate['output_shape']
-        self.evaluate_func = self.evaluate['evaluate_func']
+        if 'evaluate_func' in self.evaluate.keys():
+            self.evaluate_func = self.evaluate['evaluate_func']
         if 'reference' not in self.evaluate:
             self.evaluate.update({'reference': [0.5]*self.num_input})
         self.reference = self.evaluate['reference']
@@ -115,20 +116,21 @@ class Turbo_UQLab(object):
     def moment_calculate(self, data,
                          type='mean',# 'mean':1, 'var':2, 'skew':3, 'kurt':4
                          squeeze=True,
+                         opera_axis=0,
                          ):
         if type=='mean' or type==1:
-            rst =  mean(data, axis=0, keepdims=True)
+            rst =  mean(data, axis=opera_axis, keepdims=True)
         elif type == 'var' or type == 2:
-            rst = var(data, axis=0, keepdims=True)
+            rst = var(data, axis=opera_axis, keepdims=True)
         elif type == 'skew' or type == 3:
-            rst = skew(data, axis=0, keepdims=True)
+            rst = skew(data, axis=opera_axis, keepdims=True)
         elif type == 'kurt' or type == 4:
-            rst = kurtosis(data, axis=0, keepdims=True)
+            rst = kurtosis(data, axis=opera_axis, keepdims=True)
         else:
             assert False
 
         if squeeze:
-            return rst.squeeze(axis=0)
+            return rst.squeeze(axis=opera_axis)
         return rst
 
     def moment_convergence(self,

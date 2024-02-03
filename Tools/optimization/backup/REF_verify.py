@@ -9,7 +9,7 @@ from CFD_verify import load_CFD_mat, get_pred_rst
 
 
 if __name__ == "__main__":
-    work_path = os.path.join("../../Demo/Rotor37_2d", "work_train_FNO2", "FNO_1") #当前效果最好的模型
+    work_path = os.path.join("../../../Demo/Rotor37_2d", "work_train_FNO2", "FNO_1") #当前效果最好的模型
     name_opt = "EPM_optimization_tasks"
     name = "FNO"
 
@@ -19,7 +19,7 @@ if __name__ == "__main__":
         Device = torch.device('cpu')
 
 
-    mat_path = os.path.join("../../Demo/Rotor37_2d", "data", "sampleRstZip_57.mat")
+    mat_path = os.path.join("../../../Demo/Rotor37_2d", "data", "sampleRstZip_57.mat")
 
     #加载CFD结果
     parameterList = [
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     for ii, parameter in enumerate(parameterList):
         ref_data[ii] = dict_true[parameter][0]
 
-    save_path = os.path.join("../../Demo/Rotor37_2d", "data", "final_fig", 'ref_rst.csv')
+    save_path = os.path.join("../../../Demo/Rotor37_2d", "data", "final_fig", 'ref_rst.csv')
     np.savetxt(save_path, ref_data, delimiter=',')
 
 

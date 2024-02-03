@@ -83,11 +83,6 @@ if __name__ == "__main__":
         Loss_func_train = PakBAntiNormLoss(weighted_cof=0, shreshold_cof=-10, x_norm=x_normalizer, y_norm=y_normalizer)
         Loss_func_valid = PakBAntiNormLoss(weighted_cof=0, shreshold_cof=0, x_norm=x_normalizer, y_norm=y_normalizer)
         # # 优化算法
-        Optimizer = torch.optim.Adam(Net_model.parameters(), lr=learning_rate, betas=(0.7, 0.9), )  # weight_decay=1e-7)
-        Scheduler = torch.optim.lr_scheduler.StepLR(Optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
-        Visual = MatplotlibVision(work_path, input_name=('x', 'y'), field_name=('T',))
-
-        # # 优化算法
         Optimizer_0 = torch.optim.Adam(Net_model.pred_net.parameters(), lr=learning_rate, betas=(0.7, 0.9))#, weight_decay=1e-7)
         Optimizer_1 = torch.optim.Adam([
             {'params': Net_model.pred_net.parameters(), 'lr': learning_rate * 0.1},  # 学习率为默认的
@@ -125,7 +120,7 @@ if __name__ == "__main__":
             Net_model.train()
             log_loss['train_loss'].append(
                 train_supercondition(train_loader, Net_model, Device, Loss_func_train, Optimizer_0, Scheduler_0,
-                                        x_norm=x_normalizer, super_num=1, channel_num=in_dim)
+                                        x_norm=x_normalizer, super_num=0, channel_num=in_dim)
                                             )
             log_super_loss['train_super_loss'].append(
                 train_supercondition(train_loader, Net_model, Device, Loss_func_train, Optimizer_1, Scheduler_1,
@@ -163,7 +158,7 @@ if __name__ == "__main__":
                 fig.savefig(work.svg)
                 plt.close(fig)
                 torch.save(
-                    {'log_loss': log_loss, 'net_model': Net_model.state_dict(), 'optimizer': Optimizer.state_dict()},
+                    {'log_loss': log_loss, 'net_model': Net_model.state_dict(), 'optimizer': Optimizer_0.state_dict()},
                     work.pth)
                 torch.save(Net_model, work.fpth)
             print('epoch: {:6d}, '
@@ -172,7 +167,7 @@ if __name__ == "__main__":
                   'train_step_loss: {:.3e}, '
                   'cost: {:.2f}'.
                   format(epoch,
-                         Optimizer.state_dict()['param_groups'][0]['lr'],
+                         Optimizer_0.state_dict()['param_groups'][0]['lr'],
                          log_loss['train_loss'][-1],
                          log_super_loss['train_super_loss'][-1],
                          time.time() - star_time)

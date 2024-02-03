@@ -8,19 +8,6 @@ from Tools.train_model.train_task_construct import WorkPrj
 from Demo.Rotor37_2d.utilizes_rotor37 import get_grid
 from Utilizes.process_data import DataNormer
 from Tools.post_process.post_CFD import cfdPost_2d
-from Tools.uncertainty.GVRB_setting import MaxOrMIn_gvrb
-
-def apply_opt(func):
-    def wrapper(instance, *args, **kwargs):
-        rst = func(instance, *args, **kwargs)
-        if kwargs['setOpt']:
-            if 'soft_constraint' not in kwargs.keys():
-                kwargs['soft_constraint'] = []
-            for ii, parameter_Name in enumerate(kwargs['parameterList']):
-                if parameter_Name not in kwargs['soft_constraint']:  # 如果默认输出最优值 #如果是约束项就不用修改了
-                    rst[:,ii] = rst[:,ii] * MaxOrMIn_gvrb(parameter_Name)
-        return rst
-    return wrapper
 
 def predictor_establish(name, work_load_path, is_predictor=True):
 
@@ -253,14 +240,12 @@ class DLModelPost(object):
         return np.concatenate(Rst, axis=1)
 
 
-    @apply_opt
     def predictor_cfd_value(self, input,
                         input_para=None,
                         parameterList=None,
                         input_norm=False,
                         grid = None,
                         space = None, # 0,1,2
-                        setOpt=False,
                         ):
         if parameterList is None:
             parameterList = [
@@ -286,7 +271,7 @@ class DLModelPost(object):
                          'Absolute Total Temperature': 7,
                          }
         if grid is None:
-            grid = get_grid(real_path='E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\TestData', GV_RB=True)
+            grid = get_grid(real_path='E:\WQN\CODE\DENO4pytorch\Demo\GV_RB\TestData', GV_RB=True)
         post_pred = cfdPost_2d(data=pred_2d, grid=grid)
         Rst = []
         for parameter_Name in parameterList:

@@ -16,7 +16,7 @@ def load_CFD_mat(sample_file, parameterList):
     quanlityList = ["Static Pressure", "Static Temperature",
                     'V2', 'W2', "DensityFlow"]
 
-    grid = get_grid(real_path=os.path.join("../../Demo/Rotor37_2d", "data"))
+    grid = get_grid(real_path=os.path.join("../../../Demo/Rotor37_2d", "data"))
     design, fields = get_quanlity_from_mat(sample_file, quanlityList)
     post_true = Post_2d(fields, grid,
                         inputDict=None,
@@ -39,8 +39,8 @@ def load_CFD_mat_train(parameterList):
     quanlityList = ["Static Pressure", "Static Temperature",
                     'V2', 'W2', "DensityFlow"]
 
-    grid = get_grid(real_path=os.path.join("../../Demo/Rotor37_2d", "data"))
-    design, fields = get_origin(realpath=os.path.join("../../Demo/Rotor37_2d", "data"))
+    grid = get_grid(real_path=os.path.join("../../../Demo/Rotor37_2d", "data"))
+    design, fields = get_origin(realpath=os.path.join("../../../Demo/Rotor37_2d", "data"))
     design = design[:2500]
     fields = fields[:2500]
     # design, fields = get_quanlity_from_mat(sample_file, quanlityList)
@@ -92,7 +92,7 @@ def get_pred_rst(work_path, name, x, Device):
 
 
 if __name__ == "__main__":
-    work_path = os.path.join("../../Demo/Rotor37_2d", "work_train_FNO2", "FNO_1") #当前效果最好的模型
+    work_path = os.path.join("../../../Demo/Rotor37_2d", "work_train_FNO2", "FNO_1") #当前效果最好的模型
     name_opt = "EPM_optimization_tasks"
     name = "FNO"
 
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     else:
         Device = torch.device('cpu')
 
-    data_path = os.path.join("../../Demo/Rotor37_2d", "data", "opt_data")
+    data_path = os.path.join("../../../Demo/Rotor37_2d", "data", "opt_data")
     npz_path = os.path.join(data_path, name_opt + ".npz")
     yml_path = os.path.join(data_path, name_opt + ".yml")
     txt_path = os.path.join(data_path, name_opt + ".txt")
