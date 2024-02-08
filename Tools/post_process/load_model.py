@@ -8,8 +8,6 @@ import yaml
 # from utilizes_rotor37 import get_origin_GVRB
 from Demo.GVRB_2d.utilizes_GVRB import get_grid, get_origin
 from Demo.Rotor37_2d.utilizes_rotor37 import get_grid1
-from fno.FNOs import FNO2d
-
 
 
 
@@ -147,7 +145,7 @@ def loaddata(name,
              noise_scale=None,
              batch_size=32):
 
-    design, fields = get_origin(realpath=os.path.join("../../Demo/Rotor37_2d", "data"), shuffled=shuffled)  # 获取原始数据
+    design, fields = get_origin(realpath=os.path.join("../../Demo/TwoLPT_2d", "data"), shuffled=shuffled)  # 获取原始数据
 
     if name in ("FNO", "FNM", "UNet"):
         input = np.tile(design[:, None, None, :], (1, 64, 64, 1))

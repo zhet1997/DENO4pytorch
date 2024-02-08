@@ -214,8 +214,8 @@ if __name__ == "__main__":
 
     # 建立网络
     Tra_model = FourierTransformer(**config).to(Device)
-    MLP_model = FcnSingle(planes=(in_dim, 64, 64, config['n_targets']), last_activation=True).to(Device)
-    Share_model = FcnSingle(planes=(config['n_targets'], 64, out_dim), last_activation=False).to(Device)
+    MLP_model = FcnSingle(planes=(in_dim, 128, 128, config['n_targets']), last_activation=True).to(Device)
+    Share_model = FcnSingle(planes=(config['n_targets'], 64, 64, out_dim), last_activation=False).to(Device)
     Net_model = predictor(trunc=Tra_model, branch=MLP_model, share=Share_model, field_dim=out_dim).to(Device)
 
     isExist = os.path.exists(work.pth)

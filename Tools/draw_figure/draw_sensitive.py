@@ -3,61 +3,11 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import torch
 torch.cuda.is_available()
 from Tools.post_process.model_predict import predictor_establish
-from Tools.Uncertainty.SensitivityUncertainty import Turbo_UQLab
+from Tools.uncertainty.SensitivityUncertainty import Turbo_UQLab
 from Tools.post_process.post_CFD import cfdPost_2d
 from draw_compare import *
+from Tools.uncertainty.GVRB_setting import get_evaluate_set, get_problem_set, get_match_dict
 
-
-def get_match_dict():
-    varlist = [15, 15, 15, 3, 15, 15, 15, 3]
-    startlist = [0] + np.cumsum(varlist)[:-1].tolist()
-    var_idx = lambda id: range(startlist[id], varlist[id] + startlist[id])
-    match_dict = {
-        'S1_hub': var_idx(0),
-        'S1_pitch': var_idx(1),
-        'S1_tip': var_idx(2),
-        'S1_3d': var_idx(3),
-        'R1_hub': var_idx(4),
-        'R1_pitch': var_idx(5),
-        'R1_tip': var_idx(6),
-        'R1_3d': var_idx(7),
-        'tangle': [96],
-        'ttem': [97],
-        'tpre': [98],
-        'rotate': [99],
-    }
-    return match_dict
-
-
-def get_problem_set(name):
-    match_dict = get_match_dict()
-    range_dict = {
-                'tangle': [-0.1, 0.1],
-                'ttem': [699, 739],  # 719
-                'tpre': [310000, 380000],  # 344740
-                'rotate': [7500, 9100],  # 8279
-                }
-
-    problem = {
-        'num_vars': len(match_dict[name]),  # 参数数量
-        'names': [f'x{i}' for i in match_dict[name]],  # 参数名称
-    }
-    if name not in range_dict.keys():
-        problem.update({'bounds': [[0, 1]] * len(match_dict[name])})
-    else:
-        problem.update({'bounds': [range_dict[name]]})
-
-    return problem
-
-def get_evaluate_set():
-    evaulate = {
-        'input_shape': [100, ],
-        'names': [f'x{i}' for i in range(input_dim)],
-        'output_shape': [64, 128, 1],
-        # 'evaluate_func': evaluater,
-        'reference': [0.5] * (input_dim - 4) + [0, 719, 344740, 8279],
-    }
-    return evaulate
 def draw_sensitive_0d(predictor, work=None):
     evaluater = lambda x: predictor.predictor_cfd_value(x, input_norm=False, parameterList=parameterList, grid=grid,
                                                         space=0)
@@ -149,7 +99,7 @@ def draw_sensitive_2d(predictor, work=None):
 # draw figures include true and pred
 if __name__ == '__main__':
 
-    name = 'TNO_7'
+    name = 'TNO_5'
     input_dim = 100
     output_dim = 8
     type = 'valid'
@@ -188,7 +138,7 @@ if __name__ == '__main__':
 
     ## get the train or valid data
     print(os.getcwd())
-    work_load_path = os.path.join("E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d", 'work1')
+    work_load_path = os.path.join("E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d", 'work_opt')
     work = WorkPrj(os.path.join(work_load_path, name))
     predictor = predictor_establish(name, work.root, is_predictor=True)
     grid = get_grid_interp(grid_num_s=64, grid_num_z=128)

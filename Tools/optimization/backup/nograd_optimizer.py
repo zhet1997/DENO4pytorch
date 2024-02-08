@@ -1,11 +1,12 @@
 import nevergrad as ng
+import numpy as np
 import torch
 import os
 from Tools.post_process.model_predict import DLModelPost
 from Tools.post_process.load_model import rebuild_model, build_model_yml
 from Utilizes.process_data import DataNormer
 from train_model.model_whole_life import WorkPrj
-
+import matplotlib.pyplot as plt
 
 def fake_training(learning_rate: float, batch_size: int, architecture: str) -> float:
     # optimal for learning_rate=0.2, batch_size=4, architecture="conv"
@@ -18,7 +19,7 @@ if __name__ == "__main__":
     name = 'FNO'
     input_dim = 28
     output_dim = 5
-    work_load_path = os.path.join("../../Demo/Rotor37_2d", "work")
+    work_load_path = os.path.join("../../../Demo/Rotor37_2d", "work")
     work_path = os.path.join(work_load_path, name)
     work = WorkPrj(work_path)
 
@@ -31,8 +32,8 @@ if __name__ == "__main__":
         norm_save_x = work.x_norm
         norm_save_y = work.y_norm
     else:
-        norm_save_x = os.path.join("../../Demo/Rotor37_2d", "data", "x_norm_1250.pkl")
-        norm_save_y = os.path.join("../../Demo/Rotor37_2d", "data", "y_norm_1250.pkl")
+        norm_save_x = os.path.join("../../../Demo/Rotor37_2d", "data", "x_norm_1250.pkl")
+        norm_save_y = os.path.join("../../../Demo/Rotor37_2d", "data", "y_norm_1250.pkl")
 
     x_normlizer = DataNormer([1, 1], method="mean-std", axis=0)
     x_normlizer.load(norm_save_x)
@@ -62,8 +63,8 @@ if __name__ == "__main__":
     para = ng.p.Array(shape=(1, 28), lower=0, upper=1)
 
     #选择并设置优化器
-    optimizer = ng.optimizers.NSGA2(parametrization=para, budget=200, num_workers=10)
-    # optimizer = ng.optimizers.LhsDE(parametrization=para, budget=200)
+    # optimizer = ng.optimizers.NGOpt10(parametrization=para, budget=200, num_workers=10)
+    optimizer = ng.optimizers.LhsDE(parametrization=para, budget=200, num_workers=10)
 
     #获得优化结果
     recommendation = optimizer.minimize(targetFunc)
@@ -76,19 +77,19 @@ if __name__ == "__main__":
     #     optimizer.provide_recommendation()
     #     print(optimizer.current_bests["minimum"])
     #     # optimizer.watch(watch = "x", note = "iteration " + str(i))
-    # loss_values = []
-    # for _ in range(200):
-    #     # 提取当前参数
-    #     x = optimizer.ask()
-    #     # 计算损失函数值
-    #     loss = targetFunc(x.value)
-    #     # 将损失函数值添加到列表中
-    #     loss_values.append(loss)
-    #     # 提供损失函数值给优化器
-    #     optimizer.tell(x, loss)
-    #
-    # # 绘制优化收敛曲线
-    # plt.plot(np.arange(len(loss_values)), np.concatenate(loss_values, axis=0))
-    # plt.xlabel('Iteration')
-    # plt.ylabel('Loss')
-    # plt.show()
+    loss_values = []
+    for _ in range(200):
+        # 提取当前参数
+        x = optimizer.ask()
+        # 计算损失函数值
+        loss = targetFunc(x.value)
+        # 将损失函数值添加到列表中
+        loss_values.append(loss)
+        # 提供损失函数值给优化器
+        optimizer.tell(x, loss)
+
+    # 绘制优化收敛曲线
+    plt.plot(np.arange(len(loss_values)), np.concatenate(loss_values, axis=0))
+    plt.xlabel('Iteration')
+    plt.ylabel('Loss')
+    plt.show()

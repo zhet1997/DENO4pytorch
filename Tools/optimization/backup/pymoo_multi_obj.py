@@ -25,7 +25,7 @@ if __name__ == "__main__":
     name = 'FNO_1'
     input_dim = 28
     output_dim = 5
-    work_load_path = os.path.join("../../Demo/Rotor37_2d", "work_train_FNO2")
+    work_load_path = os.path.join("../../../Demo/Rotor37_2d", "work_train_FNO2")
     # work_load_path = os.path.join("..", "work")
 
     model_all = predictor_establish(name, work_load_path)
@@ -72,4 +72,4 @@ if __name__ == "__main__":
             dict["task_" + str(task_id + ii*8) + "_value"] = res.F
 
         # 保存数据
-        np.savez(os.path.join("../../Demo/Rotor37_2d", "data", "opt_data", 'EPM_optmization_tasks_20230703.npz'), **dict)
+        np.savez(os.path.join("../../../Demo/Rotor37_2d", "data", "opt_data", 'EPM_optmization_tasks_20230703.npz'), **dict)

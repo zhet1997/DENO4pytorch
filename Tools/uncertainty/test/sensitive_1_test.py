@@ -4,7 +4,7 @@ import torch
 torch.cuda.is_available()
 import numpy as np
 import matplotlib.pyplot as plt
-from Tools.Uncertainty.SensitivityUncertainty import Turbo_UQLab
+from Tools.uncertainty.SensitivityUncertainty import Turbo_UQLab
 from Utilizes.visual_data import MatplotlibVision
 from Tools.post_process.model_predict import predictor_establish
 from utilizes_rotor37 import get_grid, get_origin_GVRB
