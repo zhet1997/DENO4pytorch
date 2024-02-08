@@ -81,7 +81,7 @@ def pakB_data_files(real_path=None, type=None, hole_num=1):
         if os.path.exists(basic + '.mat'):
             sample_files.append(basic)
 
-        gather = os.path.join(real_path, 'gather_struct_'+str(hole_num)+'_hole_1000')
+        gather = os.path.join(real_path, 'gather_struct_'+str(hole_num)+'_hole_300')
         if os.path.exists(gather + '.mat'):
             sample_files.append(gather)
 

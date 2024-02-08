@@ -91,8 +91,8 @@ def get_setting():
         'width': 64,
         'depth': 2,
         'steps': 1,
-        'padding': 8,
-        'dropout': 0.0,
+        'padding': 0,
+        'dropout': 0.1,
     }
     with open(os.path.join('data', 'configs', 'transformer_config_pakb.yml')) as f:
         config = yaml.full_load(f)

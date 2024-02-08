@@ -2,7 +2,7 @@ import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import torch
 torch.cuda.is_available()
-from Tools.post_process.model_predict import predictor_establish1
+from Tools.post_process.model_predict import predictor_establish
 from Tools.Uncertainty.SensitivityUncertainty import Turbo_UQLab
 from Tools.post_process.post_CFD import cfdPost_2d
 from draw_compare import *
@@ -190,7 +190,7 @@ if __name__ == '__main__':
     print(os.getcwd())
     work_load_path = os.path.join("E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d", 'work1')
     work = WorkPrj(os.path.join(work_load_path, name))
-    predictor = predictor_establish1(name, work.root, is_predictor=True)
+    predictor = predictor_establish(name, work.root, is_predictor=True)
     grid = get_grid_interp(grid_num_s=64, grid_num_z=128)
 
     draw_sensitive_1d(predictor, work=work)

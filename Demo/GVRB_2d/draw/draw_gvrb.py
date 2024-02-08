@@ -58,8 +58,8 @@ if __name__ == '__main__':
 
     ## get the train or valid data
 
-    # if not os.path.exists(work.valid_sim):
-    #     work.save_pred()
+    if not os.path.exists(work.valid_sim):
+        work.save_pred()
     if type=='train':
         data = np.load(work.train)
     elif type=='valid':
