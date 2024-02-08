@@ -17,9 +17,6 @@ if __name__ == "__main__":
     uq_number = 5
     model_all = predictor_establish(name, work_load_path)
     adapter_gvrb = UQTransformer(var_name, uq_name=uq_name, uq_number=uq_number)
-
-    # 单个对象优化
-    dict = {}
     problem = TurboPredictor(model=model_all,
                              adapter=adapter_gvrb,
                              is_uq_opt=True,

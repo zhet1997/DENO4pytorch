@@ -2,12 +2,11 @@ import torch
 import os
 import numpy as np
 from torch.utils.data import DataLoader
-from Demo.Rotor37_2d.utilizes_rotor37 import get_grid, get_origin,get_origin_GVRB
 from Utilizes.process_data import DataNormer
 import yaml
 # from utilizes_rotor37 import get_origin_GVRB
-from Demo.GVRB_2d.utilizes_GVRB import get_grid, get_origin
-from Demo.Rotor37_2d.utilizes_rotor37 import get_grid1
+from Demo.TwoLPT_2d.utilizes_GVRB import get_grid, get_origin
+
 
 
 
@@ -28,7 +27,7 @@ def loaddata_Sql(name,
             norm_y=None,
             norm_method='mean-std',
                  ):
-    design, fields, grids = get_origin(type='struct', realpath='E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data/',
+    design, fields, grids = get_origin(type='struct', realpath=r'E:\WQN\CODE\DENO4pytorch\Demo\TwoLPT_2d\data',
                                        quanlityList=["Static Pressure", "Static Temperature", "Density",
                                                      "Vx", "Vy", "Vz",
                                                      'Relative Total Temperature',
@@ -301,7 +300,8 @@ def import_model_by_name(name):
     elif 'TNO' in name:
         from Tools.model_define.define_TNO import TransBasedNeuralOperator
         from Tools.model_define.define_TNO import inference, train, valid
-        model_func = TransBasedNeuralOperator
+        model_func = TransBasedNeuralOperator(in_dim=76, out_dim=8,n_hidden_b=64,num_layers_b=2,n_hidden_s=64,num_layers_s=1,
+                 )
 
     return model_func, inference, train, valid
 
@@ -312,7 +312,7 @@ def build_model_yml(yml_path, device, name=None):
     # load the yml file
     with open(yml_path) as f:
         config = yaml.full_load(f)
-        config = config[name + '_config'] #字典里面有字典
+        config = config['TwoLPT_2d'] #字典里面有字典
     # build the model
     model_func, inference, train, valid = import_model_by_name(name)
     # yml_path_gvrb = r"E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data\configs\transformer_config_gvrb.yml"

@@ -124,9 +124,9 @@ class cfdPost_2d(similarity, field, performance):
             self.inputDict = inputdict
 
         if boundarycondition is not None and boundarydict=={}:
-            self.boundaryDict = {'Flow Angle': 0,
+            self.boundaryDict = {'Absolute Total Pressure': 0,
                               'Absolute Total Temperature': 1,
-                              'Absolute Total Pressure': 2,
+                              'Absolute Static Pressure': 2,
                               'Rotational_speed': 3,
                               }
         else:
@@ -247,7 +247,7 @@ class cfdPost_2d(similarity, field, performance):
         self.RSInterface = float(RSInterface)
 
     def get_hub_shroud(self):
-        self.hub = self.grid[0,:]
+        self.hub = self.grid[0, :]
         self.shroud = self.grid[-1, :]
 
     def set_change_rotateSpeed(self):
@@ -334,7 +334,7 @@ class cfdPost_2d(similarity, field, performance):
 
         # select the performance type
         if type == 'averaged':
-            rst = self.calculate_performance_averaged(performance, z1=z1, z2=z2)
+            rst = self.calculate_performance_averaged(performance, z1=z1, z2=z2, z_middle=int((z1+z2)/2))
         elif type == 'spanwised':
             rst = self.calculate_performance_spanwised(performance, z1=z1, z2=z2)
         elif type == 'axiswised':

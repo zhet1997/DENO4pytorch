@@ -136,7 +136,7 @@ class WorkPrj(object):
         Net_model, inference, Device, x_normalizer, y_normalizer = \
             predictor_establish(self.name, self.root, is_predictor=False)
 
-        train_loader, valid_loader, _, _ = loaddata_Sql(self.name, 500, 900, shuffled=True,
+        train_loader, valid_loader, _, _ = loaddata_Sql(self.name, 1500, 450, shuffled=False,
                                                         norm_x=x_normalizer, norm_y=y_normalizer)
 
 
@@ -149,7 +149,7 @@ class WorkPrj(object):
                 path_save = self.valid
 
             x, true, pred = get_true_pred(loader, Net_model, inference, Device,
-                                       self.name, iters=0, alldata=True, out_dim=8, in_dim=100, x_output=True)
+                                       self.name, iters=0, alldata=True, out_dim=8, in_dim=76, x_output=True)
             x = x_normalizer.back(x)
             true = y_normalizer.back(true)
             pred = y_normalizer.back(pred)

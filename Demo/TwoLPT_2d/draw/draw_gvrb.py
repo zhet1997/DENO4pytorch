@@ -7,10 +7,11 @@ import matplotlib.pyplot as plt
 from Utilizes.visual_data import MatplotlibVision
 from Tools.train_model.train_task_construct import WorkPrj
 from Tools.post_process.post_CFD import cfdPost_2d
-from Demo.GVRB_2d.utilizes_GVRB import get_grid_interp
+from Demo.TwoLPT_2d.utilizes_GVRB import get_grid_interp
 from Tools.draw_figure.draw_compare import draw_diagnal, draw_span_all, draw_meridian
 # from Tools.model_define.define_STNO import predictor
 from Tools.model_define.define_TNO_1 import predictor
+
 
 
 if __name__ == '__main__':
@@ -27,6 +28,8 @@ if __name__ == '__main__':
     if not os.path.exists(save_path):
         os.mkdir(save_path)
 
+
+
     # parameterList = [
     #      # 'Absolute_nozzle_pressure_ratio',
     #      # 'Relative_nozzle_pressure_ratio',
@@ -36,25 +39,21 @@ if __name__ == '__main__':
     #      # 'Relative_Enthalpy',
     # ]
 
-    # parameterList = ['Static_pressure_ratio',
-    #                  'Total_total_efficiency',
-    #                  'Total_static_efficiency',
-    #                  'Degree_reaction',
-    #                  ]
+    parameterList = ['Static_pressure_ratio',
+                     'Total_total_efficiency',
+                     'Total_static_efficiency',
+                     'Degree_reaction',
+                     ]
+
+    # parameterList = [
+    #                  # 'Relative Total Pressure',
+    #                  'Absolute Total Pressure',
+    #                  'Static Enthalpy',
+    #                  'Absolute Mach Number',
+    #                  'Relative Mach Number',
     #                  'atan(Vx/Vz)',
     #                  'atan(Wx/Wz)',
-    # 'Mass_flow',
     #                  ]
-
-    parameterList = [
-                     # 'Relative Total Pressure',
-                     'Absolute Total Pressure',
-                     'Static Enthalpy',
-                     'Absolute Mach Number',
-                     'Relative Mach Number',
-                     'atan(Vx/Vz)',
-                     'atan(Wx/Wz)',
-                     ]
 
     ## get the train or valid data
 
@@ -79,6 +78,6 @@ if __name__ == '__main__':
 
 
 
-    # draw_diagnal(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList)
+    draw_diagnal(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList)
     # draw_span_all(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList)
-    draw_meridian(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList)
+    # draw_meridian(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList)

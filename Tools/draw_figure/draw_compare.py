@@ -10,12 +10,17 @@ from Tools.post_process.post_CFD import cfdPost_2d
 from Demo.GVRB_2d.utilizes_GVRB import get_grid_interp,get_origin
 from Tools.post_process.model_predict import predictor_establish
 from Tools.post_process.load_model import loaddata_Sql, get_true_pred
+from sklearn.metrics import r2_score
 
 def stage_define(name=None):
     stage_dict={
-        'S1': [0,78],
-        'R1': [75,127],
-        'stage': [0,127]
+        'S1': [0, 63],
+        'R1': [64, 127],
+        'S2': [128, 191],
+        'R2': [192, 256],
+        'stage': [0, 255],
+        'stage1': [0, 127],
+        'stage2': [128, 255],
     }
     if name is not None:
         idx = stage_dict[name]
@@ -28,7 +33,7 @@ def stage_define(name=None):
         return {}
 
 
-def draw_span_curve(Visual, rst, label=None, xlim=None, fig=None, axs=None):
+def draw_span_curve(Visual, rst, label=None, xlim=None, ylim=None, fig=None, axs=None):
     # colorList = ['steelblue', 'darkslateblue']
     colorList = ['brown', 'chocolate']
     # colorList = ['g', 'lawngreen']
@@ -36,7 +41,7 @@ def draw_span_curve(Visual, rst, label=None, xlim=None, fig=None, axs=None):
     shape = rst.shape
     Visual.plot_curve_scatter(fig, axs, rst,
                               np.tile(np.linspace(0, 1, shape[1]), (shape[0], 1)), labelList=label,
-                              colorList=colorList, markerList=markerList, xlim=xlim,
+                              colorList=colorList, markerList=markerList, xlim=xlim, ylim=ylim,
                               xylabels=('value', "span"))
 
 def draw_range_dict(key):
@@ -97,12 +102,12 @@ def draw_span_all(post_true, post_pred,
     for j in range(len(parameterList)):
         rst_true = post_true.get_field_performance(parameterList[j], type='spanwised', **stage_define(name=stage_name))
         rst_pred = post_pred.get_field_performance(parameterList[j], type='spanwised', **stage_define(name=stage_name))
-        for i in range(100, 120):
+        for i in range(100, 110):
             fig, axs = plt.subplots(1, 1, figsize=(7, 9))
             plt.cla()
             rst = np.concatenate((rst_true[i:i+1], rst_pred[i:i+1]), axis=0)
             # draw_span_curve(Visual, rst, label=['true', 'pred'], xlim=draw_range_dict(parameterList[j]), fig=fig, axs=axs)
-            draw_span_curve(Visual, rst, label=['true', 'pred'], fig=fig, axs=axs)
+            draw_span_curve(Visual, rst, label=['true', 'pred'], fig=fig, axs=axs, xlim=draw_range_dict(parameterList[j]))
             fig.savefig(os.path.join(save_path, parameterList[j].replace('/','') + '_' + str(i) +'.jpg'))
 def draw_diagnal(post_true, post_pred,
                  work=None,

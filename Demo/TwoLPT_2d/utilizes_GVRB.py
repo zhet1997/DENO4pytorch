@@ -360,6 +360,42 @@ class GVRBWeightLoss(torch.nn.Module):
         loss = self.lossfunc(predicted * weighted_mat, target * weighted_mat)
         return loss
 
+class GVRBWeightLoss_s(torch.nn.Module):
+    def __init__(self, weighted_lines, weighted_cof, RS_position):
+        super(GVRBWeightLoss_s, self).__init__()
+
+        self.lossfunc = torch.nn.MSELoss()
+
+        self.weighted_lines = weighted_lines
+        self.weighted_cof = weighted_cof
+        self.RS_position = RS_position
+
+    def forward(self, predicted, target):
+        # 自定义损失计算逻辑
+        device = target.device
+        if target.shape[1] > 4000:
+            target = torch.reshape(target, (target.shape[0], 64, 64, -1))
+            predicted = torch.reshape(predicted, (target.shape[0], 64, 64, -1))
+
+        if len(target.shape)==3:
+            predicted = predicted.unsqueeze(0)
+        if len(target.shape)==2:
+            predicted = predicted.unsqueeze(0).unsqueeze(-1) #加一个维度
+
+        grid_size_1 = target.shape[1]
+        grid_size_2 = target.shape[2]
+
+        temp_LT = torch.ones((grid_size_1, self.weighted_lines), dtype=torch.float32, device=device) * self.weighted_cof
+        temp_S = torch.ones((grid_size_1, int(self.RS_position-self.weighted_lines*2)), dtype=torch.float32, device=device)
+
+        weighted_mat = torch.cat((temp_LT, temp_S, temp_LT), dim=1)
+        weighted_mat = weighted_mat.unsqueeze(0).unsqueeze(-1).expand_as(target)
+        weighted_mat = weighted_mat * grid_size_2 /(self.weighted_cof * (self.weighted_lines *2)
+                                                    + grid_size_2 - (self.weighted_lines *2))
+
+        loss = self.lossfunc(predicted * weighted_mat, target * weighted_mat)
+        return loss
+
 class SelfSuperviseLoss(torch.nn.Module):
     def __init__(self,):
         super(SelfSuperviseLoss, self).__init__()

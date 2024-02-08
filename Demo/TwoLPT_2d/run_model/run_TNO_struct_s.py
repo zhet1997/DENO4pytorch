@@ -8,6 +8,7 @@
 # @File    : run_Trans.py
 """
 import os
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 import numpy as np
 import torch
 import torch.nn as nn
@@ -17,7 +18,7 @@ from Models.basic.basic_layers import FcnSingle
 from Models.transformer.Transformers import FourierTransformer
 from Utilizes.geometrics import gen_uniform_grid
 from Utilizes.visual_data import MatplotlibVision, TextLogger
-from Demo.TwoLPT_2d.utilizes_GVRB import GVRBWeightLoss
+from Demo.TwoLPT_2d.utilizes_GVRB import GVRBWeightLoss_s
 
 import matplotlib.pyplot as plt
 import time
@@ -64,7 +65,7 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
         optimizer: optimizer
         scheduler: scheduler
     """
-    grid = gen_uniform_grid(torch.tensor(np.zeros([1, 64, 256, 8]))).to(device)
+    grid = gen_uniform_grid(torch.tensor(np.zeros([1, 64, 64, 32]))).to(device)
     train_loss = 0
     for batch, (xx, yy) in enumerate(dataloader):
         xx = xx.to(device)
@@ -91,7 +92,7 @@ def valid(dataloader, netmodel, device, lossfunc):
         model: Network
         lossfunc: Loss function
     """
-    grid = gen_uniform_grid(torch.tensor(np.zeros([1, 64, 256, 8]))).to(device)
+    grid = gen_uniform_grid(torch.tensor(np.zeros([1, 64, 64, 32]))).to(device)
     valid_loss = 0
     with torch.no_grad():
         for batch, (xx, yy) in enumerate(dataloader):
@@ -113,7 +114,7 @@ def inference(dataloader, netmodel, device):
     Returns:
         out_pred: predicted fields
     """
-    grid = gen_uniform_grid(torch.tensor(np.zeros([1, 64, 256, 8]))).to(device)
+    grid = gen_uniform_grid(torch.tensor(np.zeros([1, 64, 64, 32]))).to(device)
     with torch.no_grad():
         xx, yy = next(iter(dataloader))
         xx = xx.to(device)
@@ -130,7 +131,7 @@ if __name__ == "__main__":
 
 
     name = 'TNO'
-    work_path = os.path.join('../work', name + '_' + str(2))
+    work_path = os.path.join('../work_s', name + '_' + str(1))
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     if not isCreated:
@@ -155,8 +156,10 @@ if __name__ == "__main__":
                                        getridbad=True
                                        )  # 获取原始数据取原始数据
 
+    # fields_s = fields.reshape(fields.shape[0], fields.shape[1], int(fields.shape[2]/4), int(fields.shape[3]*4))
+    # fields_s = np.concatenate((fields[:,:,:64,:], fields[:,:,64:128,:], fields[:,:,128:192,:], fields[:,:,192:,:]), axis=3)
     in_dim = 76
-    out_dim = 8
+    out_dim = 32
     ntrain = 1500
     nvalid = 450
 
@@ -189,15 +192,19 @@ if __name__ == "__main__":
     valid_x = input[-nvalid:]
     valid_y = output[-nvalid:]
 
-    x_normalizer = DataNormer(train_x.numpy(), method='min-max')
+    x_normalizer = DataNormer(train_x.numpy(), method='mean-std')
     x_normalizer.save(work.x_norm)
     train_x = x_normalizer.norm(train_x)
-    y_normalizer = DataNormer(train_y.numpy(), method='min-max')
+    y_normalizer = DataNormer(train_y.numpy(), method='mean-std')
     valid_x = x_normalizer.norm(valid_x)
 
     y_normalizer.save(work.y_norm)
     train_y = y_normalizer.norm(train_y)
     valid_y = y_normalizer.norm(valid_y)
+
+    train_y = torch.cat((train_y[:, :, :64, :], train_y[:, :, 64:128, :], train_y[:, :, 128:192, :], train_y[:, :, 192:, :]), dim=3)
+    valid_y = torch.cat((valid_y[:, :, :64, :], valid_y[:, :, 64:128, :], valid_y[:, :, 128:192, :], valid_y[:, :, 192:, :]), dim=3)
+
 
     train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(train_x, train_y),
                                                batch_size=batch_size, shuffle=True, drop_last=True)
@@ -233,7 +240,7 @@ if __name__ == "__main__":
     #
     # # 损失函数
     # Loss_func = nn.MSELoss()
-    Loss_func = GVRBWeightLoss(3, 10, 64)
+    Loss_func = GVRBWeightLoss_s(3, 10, 64)
     # # Loss_func = nn.SmoothL1Loss()
     # # 优化算法
     Optimizer = torch.optim.Adam(Net_model.parameters(), lr=learning_rate, betas=(0.7, 0.9))#, weight_decay=1e-7)
@@ -281,19 +288,28 @@ if __name__ == "__main__":
         if epoch % 100 == 0:
             train_source, train_true, train_pred = inference(train_loader, Net_model, Device)
             valid_source, valid_true, valid_pred = inference(valid_loader, Net_model, Device)
+            train_true = np.concatenate((train_true[:,:,:,:8], train_true[:,:,:,8:16], train_true[:,:,:,16:24],
+                                         train_true[:,:,:,24:32]), axis=2)
+            train_pred = np.concatenate((train_pred[:, :, :, :8], train_pred[:, :, :, 8:16], train_pred[:, :, :, 16:24],
+                                         train_pred[:, :, :, 24:32]), axis=2)
+            valid_true = np.concatenate((valid_true[:, :, :, :8], valid_true[:, :, :, 8:16], valid_true[:, :, :, 16:24],
+                                         valid_true[:, :, :, 24:32]), axis=2)
+            valid_pred = np.concatenate((valid_pred[:, :, :, :8], valid_pred[:, :, :, 8:16], valid_pred[:, :, :, 16:24],
+                                         valid_pred[:, :, :, 24:32]), axis=2)
+
 
             torch.save(
                 {'log_loss': log_loss, 'net_model': Net_model.state_dict(), 'optimizer': Optimizer.state_dict()},
                 os.path.join(work_path, 'latest_model.pth'))
 
             for fig_id in range(5):
-                fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20), num=2)
+                fig, axs = plt.subplots(8, 3, figsize=(18, 20), num=2)
                 Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], grids)
                 fig.savefig(os.path.join(work_path, 'train_solution_' + str(fig_id) + '.jpg'))
                 plt.close(fig)
 
             for fig_id in range(5):
-                fig, axs = plt.subplots(out_dim, 3, figsize=(18, 20), num=3)
+                fig, axs = plt.subplots(8, 3, figsize=(18, 20), num=3)
                 Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], grids)
                 fig.savefig(os.path.join(work_path, 'valid_solution_' + str(fig_id) + '.jpg'))
                 plt.close(fig)

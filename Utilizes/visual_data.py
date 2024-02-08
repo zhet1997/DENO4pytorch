@@ -21,7 +21,7 @@ import matplotlib.cm as cm
 from matplotlib import ticker, rcParams
 from matplotlib.ticker import MultipleLocator
 import matplotlib as mpl
-
+from sklearn.metrics import r2_score
 
 def adjacent_values(vals, q1, q3):
     """
@@ -184,7 +184,7 @@ class MatplotlibVision(object):
                            colorList=None, markerList=None,
                            msList = None, mfcList = None, mecList = None,
                            xlim=None,
-                           ylim=0.2
+                           ylim=0
                            ):
         if colorList is not None:
             assert (len(colorList)==x.shape[0])
@@ -422,6 +422,7 @@ class MatplotlibVision(object):
         # 所有功率预测误差与真实结果的回归直线
         # sbn.set(color_codes=True)
 
+        r2 = r2_score(true, pred)
         max_value = max(true)  # math.ceil(max(true)/100)*100
         min_value = min(true)  # math.floor(min(true)/100)*100
         split_value = np.linspace(min_value, max_value, 11)
@@ -442,6 +443,7 @@ class MatplotlibVision(object):
         axs.fill_between([0.995 * min_value, 1.005 * max_value], [0.995**2 * min_value, 0.995*1.005 * max_value],
                          [1.005*0.995 * min_value, 1.005**2 * max_value],
                          alpha=0.2, color='darkcyan')
+        axs.text(x=1.01 * min_value, y=0.96 * max_value, s='$R^2$ = {}'.format(round(r2, 3)), fontdict=self.font)
 
         # plt.ylim((min_value, max_value))
         axs.set_xlim((0.995 * min_value, 1.005 * max_value))

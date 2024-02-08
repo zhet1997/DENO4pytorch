@@ -48,7 +48,6 @@ def predictor_establish(name, work_load_path, is_predictor=True):
     y_normlizer = DataNormer(np.array([1, 1]), method="mean-std", axis=0)
     y_normlizer.load(norm_save_y)
 
-
     Net_model, inference, _, _ = build_model_yml(work.yml, work.device, name=nameReal)
     isExist = os.path.exists(work.pth)
     if isExist:
@@ -62,7 +61,7 @@ def predictor_establish(name, work_load_path, is_predictor=True):
         # checkpoint = torch.load(work.fpth, map_location=work.device)
         # Net_model = checkpoint['net_model']
         # from Tools.model_define.define_STNO import inference
-        from Tools.model_define.define_STNO import inference
+        from Tools.model_define.define_TNO import inference
         # inference = None
     else:
         assert os.path.exists(work.yml), print('The yml file is not exist')
