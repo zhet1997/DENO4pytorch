@@ -88,8 +88,6 @@ if __name__ == '__main__':
     data_pred = data['pred']
     data_grid = data['grid']
 
-
-
     if not os.path.exists(save_path):
         os.mkdir(save_path)
 

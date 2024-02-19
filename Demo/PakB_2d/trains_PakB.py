@@ -194,3 +194,29 @@ def inference_detail(dataloader, netmodel, device,
 
     # equation = model.equation(u_var, y_var, out_pred)
     return xx.cpu().numpy(), yy.numpy(), pred.cpu().numpy()
+
+
+def inference_draw(dataloader, netmodel, device,
+                     x_norm=None, y_norm=None,
+                     shuffle=False,
+                     super_num=1, channel_num=16, hole_num=1, split_num=0,
+                     ):
+    input_all = []
+    pred_all = []
+    true_all = []
+    for batch, (xx, yy) in enumerate(dataloader):
+        xx = xx.to(device)
+        yy = yy.to(device)
+        xx = fill_channels(xx, x_norm=x_norm, channel_num=channel_num * (2 ** super_num), shuffle=True)
+        gd = feature_transform(xx)
+        gd = gd.to(device)
+
+        pred = netmodel(xx, gd)
+
+        pred_all.append(y_norm.back(pred).cpu().numpy())
+        true_all.append(y_norm.back(yy).cpu().numpy())
+        input_all.append(x_norm.back(xx).cpu().numpy())
+
+
+
+    return np.concatenate(input_all, axis=0), np.concatenate(true_all, axis=0), np.concatenate(pred_all, axis=0)

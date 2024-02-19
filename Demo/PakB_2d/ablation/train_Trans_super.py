@@ -21,6 +21,8 @@ if __name__ == "__main__":
     ################################################################
     # configs
     ################################################################
+    wandb_run = True
+    patch_num = 1
     dataset_train_list = [
         # [1],
         [1, 2],
@@ -31,9 +33,9 @@ if __name__ == "__main__":
     basic_dict, train_dict, pred_model_dict, _ = get_setting()
     for save_number, dataset_train in enumerate(dataset_train_list):
         dataset_valid = [1, 2, 3, 5, 10, 15, 20]
-        wandb_run = True
+
         name = 'Trans'
-        work_path = os.path.join('work_ablation', name + '_super_' + str(save_number))
+        work_path = os.path.join('work_ablation', name + '_patch_' + str(patch_num) + '_super_' + str(save_number))
         work = WorkPrj(work_path)
         Logger = TextLogger(os.path.join(work_path, 'train.log'))
         Device = work.device
@@ -50,7 +52,7 @@ if __name__ == "__main__":
                 project="pak_B_film_cooling_ablation_500",  # 写自己的
                 entity="turbo-1997",
                 notes="const=350",
-                name='Super_patch_1_' + str(dataset_train),
+                name='Super_patch_'+str(patch_num)+'_' + str(dataset_train),
                 config={
                     **basic_dict,
                     **train_dict,
@@ -78,15 +80,15 @@ if __name__ == "__main__":
         # # 建立网络
         perd_model = FourierTransformer(**pred_model_dict).to(Device)
         super_model = FNO2d(in_dim=2, out_dim=1, **super_model_dict).to(Device)
-        Net_model = supredictor_list_windows(perd_model, super_model, channel_num=in_dim).to(Device)
+        Net_model = supredictor_list_windows(perd_model, super_model, channel_num=in_dim, win_split=patch_num).to(Device)
         # # 损失函数
-        Loss_func_train = PakBAntiNormLoss(weighted_cof=0, shreshold_cof=-10, x_norm=x_normalizer, y_norm=y_normalizer)
+        Loss_func_train = PakBAntiNormLoss(weighted_cof=0, shreshold_cof=-100, x_norm=x_normalizer, y_norm=y_normalizer)
         Loss_func_valid = PakBAntiNormLoss(weighted_cof=0, shreshold_cof=0, x_norm=x_normalizer, y_norm=y_normalizer)
         # # 优化算法
-        Optimizer_0 = torch.optim.Adam(Net_model.pred_net.parameters(), lr=learning_rate, betas=(0.7, 0.9))#, weight_decay=1e-7)
+        Optimizer_0 = torch.optim.Adam(Net_model.pred_net.parameters(), lr=learning_rate, betas=(0.7, 0.9), weight_decay=1e-7)
         Optimizer_1 = torch.optim.Adam([
             {'params': Net_model.pred_net.parameters(), 'lr': learning_rate * 0.1},  # 学习率为默认的
-            {'params': Net_model.super_net.parameters()}], lr=learning_rate, betas=(0.7, 0.9))#, weight_decay=1e-7)
+            {'params': Net_model.super_net.parameters()}], lr=learning_rate, betas=(0.7, 0.9), weight_decay=1e-7)
         # # 下降策略
         Scheduler_0 = torch.optim.lr_scheduler.StepLR(Optimizer_0, step_size=scheduler_step, gamma=scheduler_gamma)
         Scheduler_1 = torch.optim.lr_scheduler.StepLR(Optimizer_1, step_size=scheduler_step, gamma=scheduler_gamma)

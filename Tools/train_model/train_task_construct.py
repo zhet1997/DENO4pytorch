@@ -106,6 +106,7 @@ class WorkPrj(object):
         self.valid = os.path.join(self.root, 'valid.npz')
         self.valid_sim = os.path.join(self.root, 'valid_sim.npz')
         self.grid = os.path.join(self.root, 'grid.npz')
+        # self.rst = os.path.join(self.root, 'rst.npz')
 
         if torch.cuda.is_available():
             device = torch.device('cuda:0')
