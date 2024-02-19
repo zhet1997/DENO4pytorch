@@ -131,7 +131,7 @@ if __name__ == "__main__":
 
 
     name = 'TNO'
-    work_path = os.path.join('../work_s', name + '_' + str(1))
+    work_path = os.path.join('../work_s', name + '_' + str(3))
     train_path = os.path.join(work_path)
     isCreated = os.path.exists(work_path)
     if not isCreated:
@@ -156,8 +156,6 @@ if __name__ == "__main__":
                                        getridbad=True
                                        )  # 获取原始数据取原始数据
 
-    # fields_s = fields.reshape(fields.shape[0], fields.shape[1], int(fields.shape[2]/4), int(fields.shape[3]*4))
-    # fields_s = np.concatenate((fields[:,:,:64,:], fields[:,:,64:128,:], fields[:,:,128:192,:], fields[:,:,192:,:]), axis=3)
     in_dim = 76
     out_dim = 32
     ntrain = 1500
@@ -172,8 +170,7 @@ if __name__ == "__main__":
     print(epochs, learning_rate, scheduler_step, scheduler_gamma)
     # #这部分应该是重采样
     # #不进行稀疏采样
-    #
-    #
+
     # ################################################################
     # # load data
     # ################################################################
@@ -215,13 +212,16 @@ if __name__ == "__main__":
     # ################################################################
     # #  Neural Networks
     # ################################################################
-    with open(os.path.join('../data/configs/transformer_config_gvrb.yml')) as f:
+    # with open(os.path.join('../data/configs/transformer_config_gvrb.yml')) as f:
+    #     config = yaml.full_load(f)
+    #     config = config['TwoLPT_2d']
+    with open(os.path.join('E:\WQN\CODE\DENO4pytorch\Demo\TwoLPT_2d\work_s\configs/transformer_config_gvrb.yml')) as f:
         config = yaml.full_load(f)
         config = config['TwoLPT_2d']
 
     # 建立网络
     Tra_model = FourierTransformer(**config).to(Device)
-    MLP_model = FcnSingle(planes=(in_dim, 64, 64, config['n_targets']), last_activation=True).to(Device)
+    MLP_model = FcnSingle(planes=(in_dim, 128, 128, config['n_targets']), last_activation=True).to(Device)
     Share_model = FcnSingle(planes=(config['n_targets'], 64, 64, out_dim), last_activation=False).to(Device)
     Net_model = predictor(trunc=Tra_model, branch=MLP_model, share=Share_model, field_dim=out_dim).to(Device)
 

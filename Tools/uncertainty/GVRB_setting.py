@@ -33,7 +33,7 @@ class InputTransformer(object):
             slice_index.append(self.names_input.index(problem['names'][ii]))
         return slice_index
 
-    def input_transformer(self, x_var, is_norm=True):
+    def input_transformer(self, x_var, is_norm=True, **kwargs):
         assert self.num_var==x_var.shape[-1]
         if is_norm:
             range = np.array(self.range_var)
@@ -61,13 +61,29 @@ class UQTransformer(InputTransformer):
             uqList = ['mean','var']
         self.uqList = uqList
 
-    def get_monte_carlo_group(self, number):
-        data = self.uq_input.sample_generate(number, dist='uniform', generate='lhs', paradict=None)
+    def get_monte_carlo_group(self, number, type='norm'):
+        if type=='norm':
+            data = self.uq_input.sample_generate(number, dist='norm', generate='random', paradict={'mu':0.5, 'sigma':0.2})
+        elif type=='uniform':
+            data = self.uq_input.sample_generate(number, dist='uniform', generate='lhs', paradict=None)
+        elif type=='linear':
+            data = np.linspace(0.2,0.8, number)
+        else:
+            assert False
+        if len(data.shape)==1:
+            data = data[..., np.newaxis]
         return data
 
-    def input_transformer(self, x_var, is_norm=True):
+    def get_bc_change_group(self, x_var, is_norm=True, bc_number=1):
+        uq_input = self.get_monte_carlo_group(number=bc_number, type='linear')
+        if is_norm:
+            range = np.array(self.uq_problem['bounds'])
+            uq_input = uq_input * (range[np.newaxis, :, 1] - range[np.newaxis, :, 0]) + range[np.newaxis, :, 0]
+        return uq_input
+
+    def input_transformer(self, x_var, is_norm=True, type='norm'):
         x_input = super().input_transformer(x_var, is_norm=is_norm)
-        uq_input = self.get_monte_carlo_group(number=self.uq_number)
+        uq_input = self.get_monte_carlo_group(number=self.uq_number, type=type)
         if is_norm:
             range = np.array(self.uq_problem['bounds'])
             uq_input = uq_input * (range[np.newaxis, :,1] - range[np.newaxis, :,0]) + range[np.newaxis, :,0]

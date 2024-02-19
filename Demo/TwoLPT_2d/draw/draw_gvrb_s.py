@@ -75,7 +75,7 @@ if __name__ == "__main__":
     # configs
     ################################################################
     os.chdir(r'E:\\WQN\\CODE\\DENO4pytorch/')
-    name = 'TNO_1'
+    name = 'TNO_2'
     input_dim = 76
     output_dim = 32
     type = 'valid'
@@ -133,17 +133,20 @@ if __name__ == "__main__":
     # ################################################################
     # #  Neural Networks
     # ################################################################
-    with open(os.path.join('E:\WQN\CODE\DENO4pytorch\Demo\TwoLPT_2d\data\configs/transformer_config_gvrb.yml')) as f:
+    with open(os.path.join('E:\WQN\CODE\DENO4pytorch\Demo\TwoLPT_2d\work_s\configs/transformer_config_gvrb.yml')) as f:
         config = yaml.full_load(f)
         config = config['TwoLPT_2d']
 
+
     # 建立网络
     Tra_model = FourierTransformer(**config).to(Device)
-    MLP_model = FcnSingle(planes=(in_dim, 64, 64, config['n_targets']), last_activation=True).to(Device)
-    Share_model = FcnSingle(planes=(config['n_targets'], 64, 64, out_dim), last_activation=False).to(Device)
+    MLP_model = FcnSingle(planes=(in_dim, 128, 128, config['n_targets']), last_activation=True).to(Device)
+    Share_model = FcnSingle(planes=(config['n_targets'], 64, out_dim), last_activation=False).to(Device)
     Net_model = predictor(trunc=Tra_model, branch=MLP_model, share=Share_model, field_dim=out_dim).to(Device)
 
     checkpoint = torch.load(work.pth, map_location=work.device)
+    # print(checkpoint['net_model'])
+    # print(checkpoint['net_model']['field_net.layers.2.weight'].shape)
     Net_model.load_state_dict(checkpoint['net_model'])
     Net_model.eval()
 
@@ -171,7 +174,7 @@ if __name__ == "__main__":
     #                  'Total_static_efficiency',
     #                  'Mass_flow',
     #                  ]
-
+    #
     parameterList = ['Degree_reaction',
                      ]
 
@@ -218,6 +221,6 @@ if __name__ == "__main__":
     post_true = cfdPost_2d(data=data_true, grid=grid, boundarycondition=data_x[:,-4:])
     post_pred = cfdPost_2d(data=data_pred, grid=grid, boundarycondition=data_x[:,-4:])
 
-    # draw_diagnal(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList, stage_name='stage2',)
+    draw_diagnal(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList, stage_name='stage2',)
     # draw_span_all(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList)
-    draw_meridian(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList)
+    # draw_meridian(post_true, post_pred, work=work, save_path=save_path, parameterList=parameterList)

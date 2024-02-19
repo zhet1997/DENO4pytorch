@@ -110,10 +110,15 @@ class Turbo_UQLab(object):
     def value_evaluate(self, x_var):
         return self.evaluate_func(self.input_transformer(x_var))
 
+
+    def value_pure_evaluate(self, x_var):
+        return self.evaluate_func(x_var)
+
     # ===============================================================================#
     # =========================moment calculate and cvpe=============================#
     # ===============================================================================#
-    def moment_calculate(self, data,
+    def \
+            moment_calculate(self, data,
                          type='mean',# 'mean':1, 'var':2, 'skew':3, 'kurt':4
                          squeeze=True,
                          opera_axis=0,
@@ -133,7 +138,8 @@ class Turbo_UQLab(object):
             return rst.squeeze(axis=opera_axis)
         return rst
 
-    def moment_convergence(self,
+    def \
+            moment_convergence(self,
                            number_ini=1000,
                            number_iter=100,
                            max_iter=20,

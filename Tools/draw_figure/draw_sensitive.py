@@ -8,8 +8,40 @@ from Tools.post_process.post_CFD import cfdPost_2d
 from draw_compare import *
 from Tools.uncertainty.GVRB_setting import get_evaluate_set, get_problem_set, get_match_dict
 
-def draw_sensitive_0d(predictor, work=None):
-    evaluater = lambda x: predictor.predictor_cfd_value(x, input_norm=False, parameterList=parameterList, grid=grid,
+
+def get_sensitivite_0d(predictor,
+                      work=None,
+                      parameterList=None,
+                      grid=None,
+                      evaluater=None,
+                      **kwargs
+                      ):
+    if evaluater is None:
+        evaluater = lambda x: predictor.predictor_cfd_value(x, input_norm=False, parameterList=parameterList, grid=grid,
+                                                        space=0)
+    match_dict = get_match_dict()
+    # temp = [x for x in match_dict.keys() if not '_' in x]
+    rst_dict = {}
+    for var_name in match_dict.keys():
+        ## get the draw data
+        problem = get_problem_set(var_name)
+        evaluate = get_evaluate_set()
+        evaluate.update({'evaluate_func': evaluater})
+        SA = Turbo_UQLab(problem, evaluate)
+        data = SA.sample_generate(1280, dist='uniform', generate='lhs', paradict=None)
+        rst_dict.update({var_name : SA.value_evaluate(data)})
+
+    return rst_dict
+
+def draw_sensitive_0d(predictor,
+                      work=None,
+                      parameterList=None,
+                      grid=None,
+                      evaluater=None,
+                      **kwargs
+                      ):
+    if evaluater is None:
+        evaluater = lambda x: predictor.predictor_cfd_value(x, input_norm=False, parameterList=parameterList, grid=grid,
                                                         space=0)
     match_dict = get_match_dict()
     # temp = [x for x in match_dict.keys() if not '_' in x]
@@ -34,7 +66,7 @@ def draw_sensitive_0d(predictor, work=None):
             fig.savefig(os.path.join(save_path, 'hist_' + var_name + '_' + parameterList[j] + '.jpg'))
             plt.close(fig)
 
-def draw_sensitive_1d(predictor, work=None):
+def draw_sensitive_1d(predictor, work=None, parameterList=None, grid=None):
     evaluater = lambda x: predictor.predictor_cfd_value(x, input_norm=False, parameterList=parameterList, grid=grid,
                                                         space=1)
     match_dict = get_match_dict()

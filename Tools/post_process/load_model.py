@@ -300,8 +300,9 @@ def import_model_by_name(name):
     elif 'TNO' in name:
         from Tools.model_define.define_TNO import TransBasedNeuralOperator
         from Tools.model_define.define_TNO import inference, train, valid
-        model_func = TransBasedNeuralOperator(in_dim=76, out_dim=8,n_hidden_b=64,num_layers_b=2,n_hidden_s=64,num_layers_s=1,
-                 )
+        model_func = TransBasedNeuralOperator
+        # model_func = TransBasedNeuralOperator(in_dim=76, out_dim=8,n_hidden_b=64,num_layers_b=2,n_hidden_s=64,num_layers_s=1,
+        #          )
 
     return model_func, inference, train, valid
 
@@ -312,7 +313,8 @@ def build_model_yml(yml_path, device, name=None):
     # load the yml file
     with open(yml_path) as f:
         config = yaml.full_load(f)
-        config = config['TwoLPT_2d'] #字典里面有字典
+        # config = config['TwoLPT_2d'] #字典里面有字典
+        config = config[name + '_config']
     # build the model
     model_func, inference, train, valid = import_model_by_name(name)
     # yml_path_gvrb = r"E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\data\configs\transformer_config_gvrb.yml"

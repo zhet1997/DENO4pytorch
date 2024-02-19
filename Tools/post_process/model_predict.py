@@ -136,7 +136,7 @@ class DLModelPost(object):
         return pred.detach().cpu().numpy()
 
 
-    def predicter_loader(self, input_all, input_norm=False,):
+    def predicter_loader(self, input_all, input_norm=False, batch_size=32):
         """
         加载完整的模型预测输入的坐标
         Net_model 训练完成的模型
@@ -152,42 +152,55 @@ class DLModelPost(object):
         input_all = torch.tensor(input_all, dtype=torch.float)
 
         loader = torch.utils.data.DataLoader(input_all,
-                                             batch_size=32,
+                                             batch_size=batch_size,
                                              shuffle=False,
                                              drop_last=False)
         pred = []
 
+        del input_all
+        torch.cuda.empty_cache()
+        from Utilizes.geometrics import gen_uniform_grid
+        grid = gen_uniform_grid(torch.tensor(np.zeros([1, self.grid_size_r, self.grid_size_z, 1]))).to(
+            self.Device)
+
+        with torch.no_grad():
+            iter = 0
+            for input in loader:
+                iter += 1
+                if self.name in ("FNO", "UNet", "Transformer"):
+                        input = torch.tensor(np.tile(input[:, None, None, :], (1,self.grid_size_r, self.grid_size_z, 1)),dtype=torch.float32)
+                        input = input.to(self.Device)
+                        grid = feature_transform(input)
+                        temp = self.netmodel(input, grid)
+                        pred.append(temp.clone())
+                        temp = None
+                elif self.name in ("TNO"):
+                        input = input.to(self.Device)
+                        temp = self.netmodel(input, grid)
+                        pred.append(temp.clone().detach().cpu().numpy())
+                        temp = None
+                else:
+                    with torch.no_grad():
+                        input = input.to(self.Device)
+                        temp = self.netmodel(input)
+                        pred.append(temp.clone())
+                        temp = None
+
+                if iter>=1:
+                    del temp
+                    torch.cuda.empty_cache()
+                    iter=0
 
 
-        for input in loader:
-            if self.name in ("FNO", "UNet", "Transformer"):
-                with torch.no_grad():
-                    input = torch.tensor(np.tile(input[:, None, None, :], (1,self.grid_size_r, self.grid_size_z, 1)),dtype=torch.float32)
-                    input = input.to(self.Device)
-                    grid = feature_transform(input)
-                    temp = self.netmodel(input, grid)
-                    pred.append(temp.clone())
-                    temp = None
-            elif self.name in ("TNO"):
-                    from Utilizes.geometrics import gen_uniform_grid
-                    input = input.to(self.Device)
-                    grid = gen_uniform_grid(torch.tensor(np.zeros([1, self.grid_size_r, self.grid_size_z, 1]))).to(
-                        self.Device)
-                    temp = self.netmodel(input, grid)
-                    pred.append(temp.clone())
-                    temp = None
-            else:
-                with torch.no_grad():
-                    input = input.to(self.Device)
-                    temp = self.netmodel(input)
-                    pred.append(temp.clone())
-                    temp = None
-
-        pred = torch.cat(pred, dim=0)
+        # pred = torch.cat(pred, dim=0)
+        pred = np.concatenate(pred, axis=0)
         pred = pred.reshape([pred.shape[0], self.grid_size_r, self.grid_size_z, -1])
         pred = self.out_norm.back(pred)
+        rst = pred#.detach().cpu().numpy()
+        del pred, loader, grid
+        torch.cuda.empty_cache()
 
-        return pred.detach().cpu().numpy()
+        return rst
 
 
     def predictor_value(self, input,
@@ -269,10 +282,10 @@ class DLModelPost(object):
         if not isinstance(parameterList, list):
             parameterList = [parameterList]
 
-        if len(input)<32:
+        if len(input)<=128:
             pred_2d = self.predicter_2d(input, input_norm=input_norm)
         else:
-            pred_2d = self.predicter_loader(input, input_norm=input_norm)
+            pred_2d = self.predicter_loader(input, input_norm=input_norm, batch_size=128)
 
         if input_para is None:
             input_para = {'Static Pressure': 0,

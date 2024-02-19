@@ -65,6 +65,7 @@ def predictor_establish(name, work_load_path):
     work_path = os.path.join(work_load_path, name)
     work = WorkPrj(work_path)
     Device = work.device
+    print(Device)
     if os.path.exists(work.x_norm):
         norm_save_x = work.x_norm
         norm_save_y = work.y_norm
