@@ -117,8 +117,7 @@ class Turbo_UQLab(object):
     # ===============================================================================#
     # =========================moment calculate and cvpe=============================#
     # ===============================================================================#
-    def \
-            moment_calculate(self, data,
+    def moment_calculate(self, data,
                          type='mean',# 'mean':1, 'var':2, 'skew':3, 'kurt':4
                          squeeze=True,
                          opera_axis=0,
@@ -138,8 +137,7 @@ class Turbo_UQLab(object):
             return rst.squeeze(axis=opera_axis)
         return rst
 
-    def \
-            moment_convergence(self,
+    def moment_convergence(self,
                            number_ini=1000,
                            number_iter=100,
                            max_iter=20,
@@ -149,6 +147,7 @@ class Turbo_UQLab(object):
         samples = self.sample_generate(number_ini, dist='uniform', generate='lhs')
         result = self.value_evaluate(samples)
         target = self.moment_calculate(result)
+        target_new = target
 
         for _ in range(max_iter):
             samples_add = self.sample_generate(number_iter, dist='uniform', generate='random')

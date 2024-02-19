@@ -1,1 +1,0 @@
-{"train_step_loss": 0.03223834263208585, "valid_step_loss": 0.036885023958260016, "train_abs_loss": null, "train_rel_loss": null, "valid_abs_loss": null, "valid_rel_loss": null, "_timestamp": 1704719098.2157726, "_runtime": 126.70465064048767, "_step": 15, "_wandb": {"runtime": 124}}

@@ -92,6 +92,8 @@ class optiaml_predicter(object):
         self.parameterList = parameterList
 
     def evaluate_with_bc_change(self, x, type='linear'):
+        if len(x.shape)==1:
+            x = x[np.newaxis,:]
         rst = self.model.predictor_cfd_value(
                 self.adapter.input_transformer(x, type=type),
                 parameterList=self.parameterList,

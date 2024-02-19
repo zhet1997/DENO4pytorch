@@ -1,11 +1,15 @@
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import torch
+import numpy as np
 torch.cuda.is_available()
-from Tools.draw_figure.draw_sensitive import *
+from Tools.draw_figure.draw_uncetainty import draw_uq_0d, draw_uq_0d_multi_bc
+from Tools.optimization.pymoo_optimizer import predictor_establish
 from Tools.post_process.model_predict import DLModelPost
 from Tools.uncertainty.GVRB_setting import InputTransformer, UQTransformer
 from Tools.draw_figure.draw_opt_rst import optiaml_predicter
+import matplotlib.pyplot as plt
+
 
 # draw figures include true and pred
 if __name__ == '__main__':
@@ -15,27 +19,40 @@ if __name__ == '__main__':
     output_dim = 8
     work_load_path = os.path.join('Demo', 'GVRB_2d', 'work_opt')
     var_name = 'S1'
-    work = WorkPrj(os.path.join(work_load_path, name))
-    predictor = predictor_establish(name, work.root, is_predictor=True)
-    grid = get_grid_interp(grid_num_s=64, grid_num_z=128)
-
-    parameterList = ['Static_pressure_ratio',
+    parameterList = [
+                     # 'Static_pressure_ratio',
                      'Total_total_efficiency',
                      'Total_static_efficiency',
                      'Degree_reaction',
-                     'atan(Vx/Vz)',
-                     'atan(Wx/Wz)',
+                     'Mass_flow'
+                     # 'atan(Vx/Vz)',
+                     # 'atan(Wx/Wz)',
                      ]
 
     uqList = ['tangle', 'ttem', 'tpre', 'rotate']
+    cmap = plt.cm.get_cmap('tab10')
+    colorList = cmap.colors
+    X = np.array([0.5] * 48)
 
     model_all = predictor_establish(name, work_load_path)
-    adapter_gvrb = UQTransformer(var_name, uq_name=['tangle'], uq_number=1280)
-    P = optiaml_predicter(model=model_all,
-                          adapter=adapter_gvrb,
-                          parameterList=parameterList,
-                          )
-    evaluater = lambda X:P.evaluate_with_bc_change(X, type='norm')
 
-    draw_sensitive_0d(predictor, work=work, parameterList=parameterList)
+    draw_uq_0d_multi_bc(X, model_all=model_all,
+                        save_path=os.path.join(work_load_path, 'save_figure'),
+                        parameterList=parameterList, uqList=uqList, colorList=colorList, var_name=var_name)
+
+    # for uq in uqList:
+    #     adapter_gvrb = UQTransformer(var_name, uq_name=uq, uq_number=10000)
+    #     P = optiaml_predicter(model=model_all,
+    #                           adapter=adapter_gvrb,
+    #                           parameterList=parameterList,
+    #                           )
+    #     evaluater = lambda X:P.evaluate_with_bc_change(X, type='norm')
+    #
+    #
+    #     draw_uq_0d(X,
+    #                evaluater=evaluater,
+    #                save_path=os.path.join(work_load_path,'save_figure'),
+    #                parameterList=parameterList,
+    #                uq_name=uq,
+    #                )
 

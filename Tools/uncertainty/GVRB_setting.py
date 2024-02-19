@@ -63,7 +63,7 @@ class UQTransformer(InputTransformer):
 
     def get_monte_carlo_group(self, number, type='norm'):
         if type=='norm':
-            data = self.uq_input.sample_generate(number, dist='norm', generate='random', paradict={'mu':0.5, 'sigma':0.2})
+            data = self.uq_input.sample_generate(number, dist='norm', generate='random', paradict={'mu':0.5, 'sigma':0.1})
         elif type=='uniform':
             data = self.uq_input.sample_generate(number, dist='uniform', generate='lhs', paradict=None)
         elif type=='linear':
@@ -81,13 +81,22 @@ class UQTransformer(InputTransformer):
             uq_input = uq_input * (range[np.newaxis, :, 1] - range[np.newaxis, :, 0]) + range[np.newaxis, :, 0]
         return uq_input
 
-    def input_transformer(self, x_var, is_norm=True, type='norm'):
+    def input_transformer(self, x_var, is_norm=True, type='norm',perturb=True):
         x_input = super().input_transformer(x_var, is_norm=is_norm)
         uq_input = self.get_monte_carlo_group(number=self.uq_number, type=type)
         if is_norm:
             range = np.array(self.uq_problem['bounds'])
             uq_input = uq_input * (range[np.newaxis, :,1] - range[np.newaxis, :,0]) + range[np.newaxis, :,0]
         x_input = np.tile(x_input, [uq_input.shape[0], 1])
+
+
+        if perturb:
+            set_problem = get_problem_set( ['tangle', 'ttem', 'tpre', 'rotate'], expand=True)
+            range_p = np.repeat(np.array(set_problem['bounds'])[np.newaxis,...], x_input.shape[0], axis=0)
+            perturb_input = np.random.normal(loc=0.5, scale=0.02, size=[x_input.shape[0],4])
+            perturb_input = perturb_input * (range_p[:, :, 1] - range_p[:, :, 0]) + range_p[:, :, 0]
+            x_input[:, -4:] = perturb_input
+
         x_input[:, self.uq_slice_index] = np.repeat(uq_input, x_var.shape[0], axis=0)
 
         return x_input
@@ -132,8 +141,8 @@ def get_range_dict():
     range_dict = {
         'x96': [-0.1, 0.1],
         'x97': [699, 739],  # 719
-        'x98': [310000, 380000],  # 344740
-        'x99': [7500, 9100],  # 8279
+        'x98': [314740, 374740],  # 344740
+        'x99': [7979, 8579],  # 8279
         'default': [0.3, 0.7],
     }
     return range_dict

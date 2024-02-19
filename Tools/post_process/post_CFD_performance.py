@@ -161,11 +161,12 @@ class cfdPost_2d(object):
         return rst1
     def _get_Total_total_efficiency(self, t1, p1, t2, p2):
         rst1 = (1 - (t2 / t1)) / (1 - np.power(p2 / p1, (self.kappa - 1) / self.kappa))# turbins
-        rst2 = ((np.power(p2 / p1, (self.kappa - 1) / self.kappa) )- 1) / (1 - (t2 / t1))# compressors
-        idx = np.array([1 if x in np.where(p2 < p1)[0].tolist() else 0 for x in range(self.num)])
-        if len(rst1.shape)==2:
-            idx = np.tile(idx[:,np.newaxis], [1, rst1.shape[1]])
-        return rst1 * idx + rst2 * (1-idx)
+        # rst2 = ((np.power(p2 / p1, (self.kappa - 1) / self.kappa) )- 1) / (1 - (t2 / t1))# compressors
+        # idx = np.array([1 if x in np.where(p2 < p1)[0].tolist() else 0 for x in range(self.num)])
+        # if len(rst1.shape)==2:
+        #     idx = np.tile(idx[:,np.newaxis], [1, rst1.shape[1]])
+        # return rst1 * idx + rst2 * (1-idx)
+        return rst1
 
     def _get_Total_static_efficiency(self, t1, tp1, sp1, t2, tp2, sp2):
         rst1 = (1 - (t2 / t1)) / (1 - np.power(sp2 / tp1, (self.kappa - 1) / self.kappa))# turbins

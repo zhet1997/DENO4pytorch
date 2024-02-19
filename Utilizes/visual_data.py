@@ -22,6 +22,7 @@ from matplotlib import ticker, rcParams
 from matplotlib.ticker import MultipleLocator
 import matplotlib as mpl
 from sklearn.metrics import r2_score
+import scipy
 
 def adjacent_values(vals, q1, q3):
     """
@@ -553,7 +554,7 @@ class MatplotlibVision(object):
         ax.set_xlabel(xlabel)
         set_axis_style(ax, xticks, x_pos)
 
-    def plot_histogram(self, fig, axs, data, bins=10, range=None, color='blue', alpha=1.0):
+    def plot_histogram(self, fig, axs, data, bins=10, rangeList=None, color='blue', alpha=1.0, label=None):
         """
         Plot histogram on specified figure and axes.
 
@@ -567,12 +568,31 @@ class MatplotlibVision(object):
         - axs: matplotlib.axes._axes.Axes, optional, axes to use for plotting.
         """
         # Plot histogram
-        axs.hist(data, bins=bins, range=range, color=color, alpha=alpha)
+        # weights = np.ones_like(data[0]) / float(len(data[0]))
+        # weights = [weights] * 4
+        # freq, bins, _ = axs.hist(data, bins=bins, range=range, color=color, alpha=alpha, label=label, histtype='bar',
+        #          # log=True,
+        #          weights=weights,
+        #          # density=True,
+        #          )
+        # # xx = np.linspace(range[0], range[1], 100)
+        # bins = (bins[1:] + bins[:-1]) / 2
+        for ii in range(len(data)):
+            sbn.distplot(data[ii], color=color[ii], bins=30, kde=True, label=label[ii],norm_hist=True, ax=axs)
+        # import matplotlib.mlab as mlab
+        # for ii, feature in enumerate(data):
+        #     # mu = np.mean(feature)  # 计算均值
+        #     # sigma = np.std(feature) # 计算标准差
+        #     fit = np.polyfit(bins, freq[ii,:], deg=2)
+        #     fitted = np.poly1d(fit)
+        #     axs.plot(bins, fitted(bins), color[ii])
+
 
         # Set labels and title
         axs.set_xlabel('Value')
         axs.set_ylabel('Frequency')
         axs.set_title('Histogram')
+        axs.legend(loc="best", prop=self.font)
 
     def plot_fields1d(self, fig, axs, real, pred, coord=None,
                       title=None, xylabels=('x coordinate', 'field'), legends=None,
