@@ -201,7 +201,7 @@ class MatplotlibVision(object):
                     axs.scatter(x[ii], y[ii], label=labelList[ii], color=color, marker=marker, linewidth=1,
                                 s=120, facecolor=color, edgecolor=None, alpha=0.7)
             else:
-                axs.plot(x[ii], y[ii], label=labelList[ii], color=color, linewidth=2)
+                axs.plot(x[ii], y[ii], label=labelList[ii], color=color, linewidth=2, alpha=0.7)
         # axs.grid(True)  # 添加网格
         axs.legend(loc="best", prop=self.font, framealpha=1)
         axs.set_xlabel(xylabels[0], fontdict=self.font)
@@ -555,44 +555,69 @@ class MatplotlibVision(object):
         set_axis_style(ax, xticks, x_pos)
 
     def plot_histogram(self, fig, axs, data, bins=10, rangeList=None, color='blue', alpha=1.0, label=None):
-        """
-        Plot histogram on specified figure and axes.
-
-        Parameters:
-        - data: 1D array-like, input data for histogram.
-        - bins: int or array_like, number of bins or bin edges.
-        - range: tuple, optional, the lower and upper range of the bins.
-        - color: str, optional, color of the bars.
-        - alpha: float, optional, transparency of the bars.
-        - fig: matplotlib.figure.Figure, optional, figure to use for plotting.
-        - axs: matplotlib.axes._axes.Axes, optional, axes to use for plotting.
-        """
-        # Plot histogram
-        # weights = np.ones_like(data[0]) / float(len(data[0]))
-        # weights = [weights] * 4
-        # freq, bins, _ = axs.hist(data, bins=bins, range=range, color=color, alpha=alpha, label=label, histtype='bar',
-        #          # log=True,
-        #          weights=weights,
-        #          # density=True,
-        #          )
-        # # xx = np.linspace(range[0], range[1], 100)
-        # bins = (bins[1:] + bins[:-1]) / 2
         for ii in range(len(data)):
-            sbn.distplot(data[ii], color=color[ii], bins=30, kde=True, label=label[ii],norm_hist=True, ax=axs)
-        # import matplotlib.mlab as mlab
-        # for ii, feature in enumerate(data):
-        #     # mu = np.mean(feature)  # 计算均值
-        #     # sigma = np.std(feature) # 计算标准差
-        #     fit = np.polyfit(bins, freq[ii,:], deg=2)
-        #     fitted = np.poly1d(fit)
-        #     axs.plot(bins, fitted(bins), color[ii])
-
-
-        # Set labels and title
+            sbn.distplot(data[ii], color=color[ii], bins=30, kde=True, label=label[ii], norm_hist=False, ax=axs)
         axs.set_xlabel('Value')
         axs.set_ylabel('Frequency')
         axs.set_title('Histogram')
         axs.legend(loc="best", prop=self.font)
+
+    def plot_kde(self, fig, axs, data, bins=10, rangeList=None, color='blue', alpha=1.0, label=None, xlabel=None):
+        # 计算所有数据的整体最小值和最大值
+        from scipy.stats import gaussian_kde
+        overall_min = min([d.min() for d in data])
+        overall_max = max([d.max() for d in data])
+
+        # 添加一定的边距以适当缩小范围
+        margin = 0.05 * (overall_max - overall_min)
+        data_range = (overall_min + margin, overall_max - margin)
+
+        # 计算所有数据集中的最大密度值
+        max_density = 0
+        kde_list = []
+        for d in data:
+            kde = gaussian_kde(d)
+            x = np.linspace(data_range[0], data_range[1], 1000)
+            y = kde(x)
+            kde_list.append((x, y))
+            max_density = max(max_density, y.max())
+
+        for ii in range(len(data)):
+            x, y = kde_list[ii]
+            # 统一归一化密度值
+            y /= max_density
+
+            # 绘制核密度估计曲线
+            axs.plot(x, y, color=color[ii], label=label[ii])
+            axs.fill_between(x, y, color=color[ii], alpha=alpha)
+
+        axs.set_xlabel(xlabel)
+        axs.set_ylabel('Normalized Density')
+        axs.set_xlim(data_range)  # 设置x轴范围
+        axs.set_ylim(0.01, 1.05)  # 设置y轴范围
+        axs.legend(loc="best", prop=self.font)
+
+    def plot_3d_slices_histogram(self, data, hist_bins=30, slice_orientation='z', ax=None):
+        slices = data.shape[-1]
+        # 计算切片的边界
+        min_val = np.min(data)
+        max_val = np.max(data)
+        hist_edges = np.linspace(min_val, max_val, hist_bins)
+        slice_edges = np.linspace(0, 1, slices + 1)
+        # 对每个切片绘制直方图
+        for i in range(slices):
+            # 绘制直方图
+            hist, bins = np.histogram(data[:, i],
+                                      bins=hist_bins)
+            ax.bar(bins[:-1], np.log(hist+1), zs=slice_edges[i], zdir=slice_orientation, width=(max_val - min_val) / hist_bins,
+                   alpha=0.5)
+
+        ax.set_xlabel('X axis')
+        ax.set_ylabel('Y axis')
+        ax.set_zlabel('Z axis')
+        ax.set_box_aspect([3, 1, 1])
+        plt.show()
+        print(0)
 
     def plot_fields1d(self, fig, axs, real, pred, coord=None,
                       title=None, xylabels=('x coordinate', 'field'), legends=None,

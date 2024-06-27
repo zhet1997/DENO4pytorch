@@ -22,19 +22,20 @@ if __name__ == "__main__":
     input_dim = 100
     output_dim = 5
     work_load_path = os.path.join('Demo', 'GVRB_2d', 'work_opt')
-    var_name = ['R1']
+    var_name = ['S1', 'R1']
     uq_name = ['tangle',
         'ttem',
         'tpre',
         'rotate',]
-    uq_number = 5000
+    uq_number = 2000
     model_all = predictor_establish(name, work_load_path)
-    adapter_gvrb = UQTransformer(var_name, uq_name=uq_name, uq_number=uq_number)
+    adapter_gvrb = UQTransformer(var_name, uq_name=uq_name, uq_number=uq_number, uq_idx=[0,1])
     problem = TurboPredictor(model=model_all,
                              adapter=adapter_gvrb,
                              is_uq_opt=True,
                              n_var=adapter_gvrb.num_var,
-                             parameterList=["Total_total_efficiency"],
+                             # parameterList=["Total_total_efficiency"],
+                             parameterList=['Total_static_efficiency', 'Mass_flow'],
                             # softconstrList=[],
                             # hardConstrList=["MassFlow"],
                             # hardConstrIneqList=[],
@@ -44,14 +45,12 @@ if __name__ == "__main__":
     # algorithm = GA(pop_size=20)
     # 进行优化
     start_time = time.time()
-
     res = minimize(problem,
                    algorithm,
                    termination=('n_gen', 100),
                    verbose=True,
                    save_history=True
                    )  # 打印最优解
-
     end_time = time.time()
     print("最优解：", res.X)
     print("最优目标函数值：", res.F)
@@ -61,7 +60,7 @@ if __name__ == "__main__":
     for name in ('X', 'F'):
         dict_rst.update({name: np.array(get_history_value(res.history, name))})
     dict_rst.update({'time': end_time - start_time})
-    save_path = os.path.join(work_load_path, 'opt_rst_R1')
+    save_path = os.path.join(work_load_path, 'opt_rst_tsmf_S1R1')
     if not os.path.exists(save_path) : os.mkdir(save_path)
     np.savez(os.path.join(save_path, 'uq_opt.npz'), **dict_rst)
 

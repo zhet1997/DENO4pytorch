@@ -29,7 +29,7 @@ class TurboPredictor(Problem):
         self.hardConstrIneqList = hardConstrIneqList
         n_obj = len(parameterList)
         if is_uq_opt:
-            n_obj = len(adapter.uqList)
+            n_obj = len(adapter.uq_type)
 
         super().__init__(n_var=n_var,
                          n_obj=n_obj,
@@ -54,8 +54,26 @@ class TurboPredictor(Problem):
             if  len(self.hardConstrIneqList) != 0:
                 out["G"] = self.model.predictor_hardConstraint(self.adapter.input_transformer(x), hardconstrList=self.hardConstrIneqList)
 
+    def direct_output(self, x, space=0,
+                      z1=None,
+                      z2=None,
+                      ):
+        out= self.adapter.output_transformer(
+            self.model.predictor_cfd_value(
+                self.adapter.input_transformer(x),
+                parameterList=self.parameterList,
+                setOpt=False,
+                space=space,
+                z1=z1,
+                z2=z2,
+            ),
+            setOpt=False,
+        )  # 注意 这里修改过了。
 
-def predictor_establish(name, work_load_path):
+        return out
+
+
+def predictor_establish(name, work_load_path, device_set=None):
 
     nameReal = name.split("_")[0]
     id = None
@@ -64,7 +82,10 @@ def predictor_establish(name, work_load_path):
 
     work_path = os.path.join(work_load_path, name)
     work = WorkPrj(work_path)
-    Device = work.device
+    if device_set is None:
+        Device = work.device
+    else:
+        Device = device_set
     print(Device)
     if os.path.exists(work.x_norm):
         norm_save_x = work.x_norm

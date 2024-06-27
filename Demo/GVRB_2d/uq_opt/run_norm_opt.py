@@ -11,9 +11,8 @@ if __name__ == "__main__":
     os.chdir(r'E:\\WQN\\CODE\\DENO4pytorch/')
     name = 'TNO'
     input_dim = 100
-    output_dim = 5
     work_load_path = os.path.join('Demo', 'GVRB_2d', 'work_opt')
-    var_name = ['S1','R1']
+    var_name = ['R1']
     model_all = predictor_establish(name, work_load_path)
     adapter_gvrb = InputTransformer(var_name)
 
@@ -50,6 +49,6 @@ if __name__ == "__main__":
     for name in ('X', 'F'):
         dict_rst.update({name: np.array(get_history_value(res.history, name))})
     dict_rst.update({'time': end_time - start_time})
-    save_path = os.path.join(work_load_path, 'opt_norm_rst_S1R1')
+    save_path = os.path.join(work_load_path, 'opt_norm_rst_R1')
     if not os.path.exists(save_path): os.mkdir(save_path)
     np.savez(os.path.join(save_path, 'norm_opt.npz'), **dict_rst)

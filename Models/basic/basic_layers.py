@@ -66,6 +66,7 @@ class FcnSingle(nn.Module):
         return out_var
 
 
+
 class FcnMulti(nn.Module):
     def __init__(self, planes: list, activation="gelu"):
         # =============================================================================

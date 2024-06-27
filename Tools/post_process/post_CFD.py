@@ -302,6 +302,7 @@ class cfdPost_2d(similarity, field, performance):
         if name in self.fieldSaveDict.keys():
             if type=='averaged':
                 values = self.get_mass_weight_radial_averaged_field(name)
+                values = values.mean(axis=-1)
             elif type=='spanwised':
                 values = self.get_field(name)  # with 3 dim
                 values = self.get_bar_value(values, z2)

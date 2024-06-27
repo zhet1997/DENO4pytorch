@@ -24,6 +24,8 @@ class cfdPost_2d(object):
                                 'Absolute_Enthalpy',
                                 'Relative_Enthalpy',
                                 'Mass_flow',
+                                'Total_pressure_loss_coefficient',
+                                'Total_pressure_recover_coefficient',
                                 ]
         self.performanceSaveDict = {}
         for performance in self.performanceList:
@@ -54,9 +56,21 @@ class cfdPost_2d(object):
         self.performanceCalculateDict['Static_temperature_ratio'] = lambda x1, x2: x1 / x2
         self.performanceParaDict['Static_temperature_ratio'] = [('Static Temperature',) for _ in range(2)]
 
-        self.performanceCalculateDict['Absolute_total_temperature_ratio'] = lambda x1, x2: x1 / x2
-        self.performanceParaDict['Absolute_total_temperature_ratio'] = [('Absolute Total Temperature',) for _ in
-                                                                        range(2)]
+        # self.performanceCalculateDict['Total_pressure_loss_coefficient'] = lambda p1, u1, rho1, p2, u2, rho2: (p1-p2)/rho1/u1/u1*2
+        # self.performanceParaDict['Total_pressure_loss_coefficient'] = [('Absolute Total Pressure','Vz', 'Density') for _ in
+        #                                                                 range(2)]
+
+        self.performanceCalculateDict['Total_pressure_loss_coefficient'] = lambda p1, p2: (p1 - p2) / p1
+        self.performanceParaDict['Total_pressure_loss_coefficient'] = [('Absolute Total Pressure',) for _ in
+                                                                      range(2)]
+
+        # self.performanceCalculateDict['Total_pressure_loss_coefficient'] = lambda pt1, p1, pt2, p2: (pt1 - pt2) / (pt1 - p1)
+        # self.performanceParaDict['Total_pressure_loss_coefficient'] = [('Absolute Total Pressure', 'Static Pressure') for _ in
+        #                                                                   range(2)]
+
+        self.performanceCalculateDict['Total_pressure_recover_coefficient'] = lambda pt1, pt2, p1, p2: (pt2 - p2) / (pt1 - p2)
+        self.performanceParaDict['Total_pressure_recover_coefficient'] = [('Absolute Total Pressure','Static Pressure') for _ in
+                                                                       range(2)]
 
         self.performanceCalculateDict['Static_Enthalpy'] = lambda x1, x2: self.Cp * x1 - self.Cp * x2
         self.performanceParaDict['Static_Enthalpy'] = [('Static Temperature',) for _ in range(2)]
@@ -67,6 +81,8 @@ class cfdPost_2d(object):
         self.performanceCalculateDict['Relative_Enthalpy'] = lambda x1, x2: self.Cp * x1 - self.Cp * x2
         self.performanceParaDict['Relative_Enthalpy'] = [('Relative Total Temperature',) for _ in range(2)]
 
+        # self.performanceCalculateDict['Total_pressure_loss_coefficient'] = lambda x1, x2: self.Cp * x1 - self.Cp * x2
+        # self.performanceParaDict['Total_pressure_loss_coefficient'] = [('Absolute Total Pressure',) for _ in range(2)]
         # self.performanceCalculateDict['Power'] = lambda x1, x2: x1 / x2
         # self.performanceParaDict['Absolute_total_temperature_ratio'] = [('Absolute Total Pressure Temperature',) for _ in range(2)]
 
@@ -105,7 +121,6 @@ class cfdPost_2d(object):
             zlist = [z1, z_middle, z2]
         else:
             zlist = [z1, z2]
-
         for ii in range(computing_station):
             for name in para[ii]:
                 # get all needed values in the whole axis wise

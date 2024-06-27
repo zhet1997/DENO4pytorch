@@ -31,7 +31,7 @@ def get_grid(real_path=None):
 
     return np.concatenate([xx[:,:,np.newaxis],yy[:,:,np.newaxis]],axis=2)
 
-def get_grid_interp(grid_num_s=128,
+def get_grid_interp(grid_num_s=64,
                     grid_num_z=128,
                     z_inlet=-0.059,
                     z_outlet=0.119,

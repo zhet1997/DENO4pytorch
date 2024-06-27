@@ -4,7 +4,7 @@ def apply_opt(func):
     def wrapper(instance, *args, **kwargs):
         rst = func(instance, *args, **kwargs)
         if kwargs['setOpt']:
-            for ii, parameter_Name in enumerate(instance.uqList):
+            for ii, parameter_Name in enumerate(instance.uq_type):
                 rst[:,ii] = rst[:,ii] * MaxOrMIn_uq(parameter_Name)
         return rst
     return wrapper
@@ -49,7 +49,12 @@ class InputTransformer(object):
 
 
 class UQTransformer(InputTransformer):
-    def __init__(self, var_name, uq_name=None, uq_number=None, uqList=None):
+    def __init__(self, var_name,
+                 uq_name=None,
+                 uq_number=None,
+                 uq_type=None,
+                 uq_idx=None,
+                 ):
         super(UQTransformer, self).__init__(var_name)
         self.uq_number = uq_number
         uq_problem = get_problem_set(uq_name, expand=True)
@@ -57,13 +62,17 @@ class UQTransformer(InputTransformer):
         self.uq_slice_index = self.get_problem_slice(uq_problem)
         self.uq_problem = uq_problem
 
-        if uqList is None:
-            uqList = ['mean','var']
-        self.uqList = uqList
+        if uq_type is None:
+            uq_type = ['mean','var']
+        self.uq_type = uq_type
+
+        if uq_idx is None:
+            uq_idx = [0,] * len(uq_type)
+        self.uq_idx = uq_idx
 
     def get_monte_carlo_group(self, number, type='norm'):
         if type=='norm':
-            data = self.uq_input.sample_generate(number, dist='norm', generate='random', paradict={'mu':0.5, 'sigma':0.1})
+            data = self.uq_input.sample_generate(number, dist='norm', generate='random', paradict={'mu':0.5, 'sigma':0.2})
         elif type=='uniform':
             data = self.uq_input.sample_generate(number, dist='uniform', generate='lhs', paradict=None)
         elif type=='linear':
@@ -105,8 +114,9 @@ class UQTransformer(InputTransformer):
     def output_transformer(self, output, setOpt=True):
         rst = []
         output = output.reshape([self.uq_number, -1, output.shape[-1]])  #
-        for uq in self.uqList:
-            rst.append(self.uq_input.moment_calculate(output, type=uq, opera_axis=0, squeeze=True))
+        assert len(self.uq_idx) == len(self.uq_type)
+        for idx, typ in zip(self.uq_idx, self.uq_type):
+            rst.append(self.uq_input.moment_calculate(output[...,int(idx):int(idx+1)], type=typ, opera_axis=0, squeeze=True))
         return np.concatenate(rst, axis=1)
 
 def get_match_dict():

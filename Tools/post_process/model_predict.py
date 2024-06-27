@@ -6,6 +6,7 @@ from Tools.post_process.load_model import build_model_yml
 from Tools.train_model.train_task_construct import WorkPrj
 # from run_FNO import feature_transform
 from Demo.Rotor37_2d.utilizes_rotor37 import get_grid
+from Demo.GVRB_2d.utilizes_GVRB import get_grid_interp as get_grid_GVRB
 from Utilizes.process_data import DataNormer
 from Tools.post_process.post_CFD import cfdPost_2d
 from Tools.uncertainty.GVRB_setting import MaxOrMIn_gvrb
@@ -271,8 +272,9 @@ class DLModelPost(object):
                         input_para=None,
                         parameterList=None,
                         input_norm=False,
-                        grid = None,
-                        space = None, # 0,1,2
+                        grid=None,
+                        space=None, # 0,1,2
+                        z1=None, z2=None,
                         setOpt=False,
                         ):
         if parameterList is None:
@@ -283,10 +285,10 @@ class DLModelPost(object):
         if not isinstance(parameterList, list):
             parameterList = [parameterList]
 
-        if len(input)<=128:
+        if len(input)<=256:
             pred_2d = self.predicter_2d(input, input_norm=input_norm)
         else:
-            pred_2d = self.predicter_loader(input, input_norm=input_norm, batch_size=128)
+            pred_2d = self.predicter_loader(input, input_norm=input_norm, batch_size=512)
 
         if input_para is None:
             input_para = {'Static Pressure': 0,
@@ -299,14 +301,15 @@ class DLModelPost(object):
                          'Absolute Total Temperature': 7,
                          }
         if grid is None:
-            grid = get_grid(real_path='E:\WQN\CODE\DENO4pytorch\Demo\GVRB_2d\TestData', GV_RB=True)
+            grid = get_grid_GVRB()
         post_pred = cfdPost_2d(data=pred_2d, grid=grid)
         Rst = []
         for parameter_Name in parameterList:
             if space==0:
-                value = post_pred.get_performance(parameter_Name, type='averaged')
+                # value = post_pred.get_performance(parameter_Name, type='averaged')
+                value = post_pred.get_field_performance(parameter_Name, type='averaged', z1=z1, z2=z2)
             elif space==1:
-                value = post_pred.get_field_performance(parameter_Name, type='spanwised')
+                value = post_pred.get_field_performance(parameter_Name, type='spanwised', z1=z1, z2=z2)
             elif space==2:
                 value = post_pred.get_field(parameter_Name)
             else:
