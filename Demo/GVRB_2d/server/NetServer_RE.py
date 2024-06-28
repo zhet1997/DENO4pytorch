@@ -3,7 +3,7 @@ import os
 import socketserver
 import time
 from threading import Lock, BoundedSemaphore
-from set_predictor import build_preducter, run_predicter, s2n
+from set_predictor import build_predicter, run_predicter, s2n
 import numpy as np
 
 class MyServer(socketserver.StreamRequestHandler):
@@ -12,7 +12,7 @@ class MyServer(socketserver.StreamRequestHandler):
 
         print("conn is :", self.request)  # conn
         print("addr is :", self.client_address)  # addr
-        model = build_preducter()
+        model = build_predicter()
         while True:
             try:
                 time.sleep(0.1)

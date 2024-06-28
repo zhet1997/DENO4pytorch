@@ -4,7 +4,7 @@ import pyDOE
 from Tools.optimization.pymoo_optimizer import TurboPredictor, predictor_establish, InputTransformer
 
 
-def build_preducter():
+def build_predicter():
     os.chdir(r'E:\\WQN\\CODE\\DENO4pytorch/')
     # 定义设计空间
     name = 'TNO'
@@ -13,7 +13,7 @@ def build_preducter():
 
     return model_all
 
-def run_predicter(X, model=None):
+def run_predicter(X, model=None, parameter=("Mass_flow",)):
 
     var_name = ['S1_hub',
                 'S1_pitch',
@@ -23,20 +23,13 @@ def run_predicter(X, model=None):
                 'R1_pitch',
                 'R1_tip', ]
     # 生成评估模型
-
     adapter_gvrb = InputTransformer(var_name)
     problem = TurboPredictor(model=model,
                              adapter=adapter_gvrb,
                              n_var=adapter_gvrb.num_var,
-                             parameterList=["Mass_flow",
-                                            ],
+                             parameterList=parameter,
                              )
-    # 生成评估样本
-
-
     Y=problem.direct_output(X, space=0)
-    # 保存评估样本
-
     return Y
 
 def s2n(s):
@@ -59,7 +52,7 @@ def n2s(x):
 
 if __name__ == "__main__":
     X = pyDOE.lhs(93, samples=32, criterion='maximin')
-    model = build_preducter()
+    model = build_predicter()
 
 
     for ii in range(32):
