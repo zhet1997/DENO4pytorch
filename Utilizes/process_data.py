@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-# @Copyright (c) 2022 Baidu.com, Inc. All Rights Reserved
 # @Time    : 2022/11/27 0:27
-# @Author  : Liu Tianyuan (liutianyuan02@baidu.com)
 # @Site    : 
 # @File    : process_data.py
 """

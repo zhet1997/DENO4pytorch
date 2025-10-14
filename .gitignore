@@ -7,6 +7,12 @@ __pycache__/
 # C extensions
 *.so
 
+# Model checkpoint files
+*.pth
+*.pdparams
+checkpoint/
+checkpoints/
+
 # Distribution / packaging
 .Python
 build/
@@ -131,10 +137,17 @@ venv/
 .idea
 .idea/
 data/
+test_data/
+data_stats/
 wandb/
+
+# Training output directories
+work/
+work_*/
 */work/
+*/work_*/
 */*/work/
-*/*/work*/
+*/*/work_*/
 */*/data/
 */*/data*/
 */*/wandb/
@@ -142,6 +155,22 @@ wandb/
 *.npz
 *.npy
 *.mat
+*.h5
+*.hdf5
+
+# Visualization outputs
+*.svg
+*.jpg
+*.jpeg
+*.png
+*.pdf
+*.eps
+
+# Model cache files
+*_orthogonal_basis.npy
+*_cache.npy
+*.cache
+
 # Spyder project settings
 .spyderproject
 .spyproject

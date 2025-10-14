@@ -19,7 +19,7 @@ def get_origin(quanlityList=None,
         quanlityList_o = ["Temperature",
                           ]
     if realpath is None:
-        realpath = os.path.join('Demo', 'PakB_2d', 'data')
+        realpath = os.path.join('data')
     sample_files = pakB_data_files(real_path=realpath, type=type, hole_num=hole_num)
 
     if existcheck:
@@ -174,6 +174,60 @@ def clear_value_in_hole(pred, xx_mask, x_norm=None):
     weight = (xx_mask > 0)
     pred[~weight] = np.nan
     return np.ma.masked_invalid(pred)
+
+class DistillationLoss(torch.nn.Module):
+    """
+    物理场蒸馏损失函数：直接比较温度场数值
+    核心思想：让C网络学习S∘C在复杂案例上的物理场输出
+    使用MSE损失直接比较物理场，而非概率分布
+    """
+    def __init__(self, alpha=0.7, base_loss_weight=0.3, 
+                 x_norm=None, y_norm=None, shreshold_cof=0):
+        super(DistillationLoss, self).__init__()
+        
+        # alpha: 蒸馏损失权重，控制软目标的重要性
+        # base_loss_weight: 硬目标损失权重，保持基础拟合能力
+        self.alpha = alpha
+        self.base_loss_weight = base_loss_weight
+        self.x_norm = x_norm
+        self.y_norm = y_norm
+        self.shreshold_cof = shreshold_cof
+        self.mse_loss = torch.nn.MSELoss()
+        
+    def forward(self, student_pred, teacher_pred, ground_truth, input_mask):
+        """
+        蒸馏损失计算
+        Args:
+            student_pred: (batch, H, W, 1) C网络直接预测的温度场
+            teacher_pred: (batch, H, W, 1) S∘C组合预测的温度场（软目标）
+            ground_truth: (batch, H, W, 1) 真实温度场（硬目标）
+            input_mask: (batch, H, W, channels) SDF掩码，用于确定有效区域
+        Returns:
+            loss: scalar 总蒸馏损失
+        """
+        device = student_pred.device
+        
+        # 处理掩码，确定有效计算区域（避免孔洞区域干扰）
+        if input_mask.shape[-1] > 1:
+            input_mask = input_mask.min(dim=-1, keepdim=True).values
+        mask_denorm = self.x_norm.back(input_mask)
+        weight = (mask_denorm > self.shreshold_cof).float()
+        
+        # 反归一化到物理空间进行比较
+        student_physical = self.y_norm.back(student_pred)
+        teacher_physical = self.y_norm.back(teacher_pred)
+        ground_truth_physical = self.y_norm.back(ground_truth)
+        
+        # 软目标损失：学习S∘C的输出分布
+        soft_target_loss = self.mse_loss(student_physical * weight, teacher_physical * weight)
+        
+        # 硬目标损失：保持对真实标签的拟合能力
+        hard_target_loss = self.mse_loss(student_physical * weight, ground_truth_physical * weight)
+        
+        # 总损失：加权组合软目标和硬目标
+        total_loss = self.alpha * soft_target_loss + self.base_loss_weight * hard_target_loss
+        
+        return total_loss
 
 if __name__ == "__main__":
     os.chdir(r'E:\WQN\CODE\DENO4pytorch')

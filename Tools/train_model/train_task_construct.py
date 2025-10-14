@@ -91,7 +91,7 @@ class WorkPrj(object):
         isExist = os.path.exists(self.root)
 
         if not isExist:
-            os.mkdir(self.root)
+            os.makedirs(self.root, exist_ok=True)
         name = os.path.basename(self.root)
         name = name.split("_")[0]
         self.name = name

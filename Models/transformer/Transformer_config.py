@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-# @Copyright (c) 2022 Baidu.com, Inc. All Rights Reserved
 # @Time    : 2022/11/9 0:13
-# @Author  : Liu Tianyuan (liutianyuan02@baidu.com)
 # @Site    : 
 # @File    : Model_all.py
 """

@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-# @Copyright (c) 2022 Baidu.com, Inc. All Rights Reserved
 # @Time    : 2022/12/11 12:55
-# @Author  : Liu Tianyuan (liutianyuan02@baidu.com)
 # @Site    :
 # @File    : PointNets.py
 """

@@ -1,9 +1,7 @@
 
 # -*- coding: utf-8 -*-
 """
-# @copyright (c) 2023 Baidu.com, Inc. Allrights Reserved
 @Time ： 2023/4/17 22:06
-@Author ： Liu Tianyuan (liutianyuan02@baidu.com)
 @Site ：run_FNO.py
 @File ：run_FNO.py
 """

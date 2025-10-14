@@ -76,15 +76,15 @@ def get_setting():
     basic_dict = {
         'in_dim': 10,
         'out_dim': 1,
-        'ntrain': 500,
-        'nvalid': 100,
+        'ntrain': 500,   # 减少训练样本数以节省GPU内存
+        'nvalid': 100,   # 减少验证样本数
     }
     train_dict = {
-        'batch_size': 32,
+        'batch_size': 16,  # 减少批次大小以节省GPU内存
         'epochs': 801,
         'learning_rate': 0.001,
-        'scheduler_step': 700,
-        'scheduler_gamma': 0.1,
+        'scheduler_step': 100,
+        'scheduler_gamma': 0.5,
     }
     super_model_dict = {
         'modes': (16, 16),
@@ -94,12 +94,23 @@ def get_setting():
         'padding': 0,
         'dropout': 0.1,
     }
+    
+    # 三阶段蒸馏训练配置
+    distill_dict = {
+        'alpha': 0.7,                # 蒸馏损失权重
+        'base_loss_weight': 0.3,     # 硬目标损失权重
+        'c_only_steps': 3,           # 只训练C的批次数
+        'cs_joint_steps': 5,         # 联合训练C+S的批次数
+        'distill_steps': 4,          # 蒸馏训练的批次数
+        'complexity_factor': 2,      # 数据复杂度倍增因子
+    }
+    
     with open(os.path.join('data', 'configs', 'transformer_config_pakb.yml')) as f:
         config = yaml.full_load(f)
         pred_model_dict = config['PakB_2d']
         pred_model_dict['node_feats'] = basic_dict['in_dim']
 
-    return basic_dict, train_dict, pred_model_dict, super_model_dict
+    return basic_dict, train_dict, pred_model_dict, super_model_dict, distill_dict
 
 
 # def calculate_per_0(n):

@@ -1,7 +1,16 @@
 import os
+import sys
 import numpy as np
 import torch
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '4'
+
 import torch.nn as nn
+
+# 添加项目根目录到Python路径
+sys.path.append('/data/wqn/DENO4pytorch')
+sys.path.append('/data/wqn/DENO4pytorch/Models')
+sys.path.append('/data/wqn/DENO4pytorch/Utilizes')
 from Utilizes.visual_data import MatplotlibVision, TextLogger
 import matplotlib.pyplot as plt
 import time
@@ -13,29 +22,29 @@ from transformer.Transformers import FourierTransformer
 from Tools.model_define.define_FNO import train, valid, inference, train_random, train_mask
 from Demo.PakB_2d.ablation.ablation_PakB import get_loaders, get_setting, calculate_per
 from Demo.PakB_2d.trains_PakB import train_supercondition, valid_supercondition, valid_detail, supredictor_list_windows
-import wandb
-os.chdir('E:\WQN\CODE\DENO4pytorch\Demo\PakB_2d/')
+# import wandb
+# os.chdir('/data/wqn/DENO4pytorch/Demo/PakB_2d')  # 注释掉工作目录切换
 
 
 if __name__ == "__main__":
     ################################################################
     # configs
     ################################################################
-    wandb_run = True
+    wandb_run = False  # 禁用wandb
     patch_num = 1
     dataset_train_list = [
-        # [1],
+        [1],
         [1, 2],
-        [1, 2, 3],
-        [1, 2, 3, 5],
-        [1, 2, 3, 5, 10],
+        # [1, 2, 3],
+        # [1, 2, 3, 5],
+        # [1, 2, 3, 5, 10],
     ]
     basic_dict, train_dict, pred_model_dict, _ = get_setting()
     for save_number, dataset_train in enumerate(dataset_train_list):
-        dataset_valid = [1, 2, 3, 5, 10, 15, 20]
+        dataset_valid = [1, 2, 3]  # 只使用有数据文件的孔数
 
         name = 'Trans'
-        work_path = os.path.join('work_ablation', name + '_patch_' + str(patch_num) + '_super_' + str(save_number))
+        work_path = os.path.join('work_ablation', name + '_patch_' + str(patch_num) + '_super_' + str(save_number)) + 'test'
         work = WorkPrj(work_path)
         Logger = TextLogger(os.path.join(work_path, 'train.log'))
         Device = work.device

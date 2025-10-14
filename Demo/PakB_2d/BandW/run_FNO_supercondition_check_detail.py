@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-# @Copyright (c) 2022 Baidu.com, Inc. All Rights Reserved
 # @Time    : 2023/2/11 2:35
-# @Author  : Liu Tianyuan (liutianyuan02@baidu.com)
 # @Site    :
 # @File    : run_Trans.py
 """
@@ -238,7 +236,7 @@ if __name__ == "__main__":
     valid_output_list = []
 
     for kk, hole_num in enumerate(dataset):
-        design, fields, grids = get_origin(type='struct', hole_num=hole_num, realpath=os.path.join('data'))  # 获取原始数据取原始数据
+        design, fields, grids = get_origin(type='struct', hole_num=hole_num, realpath=os.path.join('..', '..', '..', 'data'))  # 获取原始数据取原始数据
         input = data_padding(design, const=350, channel_num=16)
         output = fields
         # print(input.shape, output.shape)
