@@ -53,7 +53,6 @@ from .data_utils import (
     DataNormer, BaseDataset, AugmentSimilar,
     create_dataloader, create_dataloader_similar,
     dimension_scaling, get_mat_inorder,
-    generate_dim_scale_coef
 )
 
 
@@ -72,12 +71,15 @@ def load_satellite_data(data_path: str = "./data_post/heat_dataset_new.h5", samp
                输出：形状为[N, 256, 256, 1] (temperature)
                
     数据结构：
-        - inputs通道0: 元件SDF (signed distance field)
+        
         - inputs通道1: 元件功率密度 (W/m²)
         - inputs通道2: 散热窗SDF 
         - inputs通道3: 散热窗温度 (K)
         - inputs通道4: 坐标X (m) - 以中心为原点
         - inputs通道5: 坐标Y (m) - 以中心为原点
+        - inputs通道6: 元件SDF (signed distance field)
+        
+        
         - outputs通道0: 温度场 (K)
     """
     try:
@@ -116,143 +118,6 @@ def load_satellite_data(data_path: str = "./data_post/heat_dataset_new.h5", samp
             
     except Exception as e:
         raise RuntimeError(f"加载卫星数据失败: {e}")
-
-
-def get_bc_dict_satellite() -> Tuple[OrderedDict, OrderedDict]:
-    """
-    获取卫星数据集的量纲分析字典
-    
-    基于白金汉π定理进行量纲分析，用于物理相似性变换。
-    每个物理量用4个基本量纲的指数表示：[M, L, T, Θ]
-    - M: 质量量纲 (Mass)
-    - L: 长度量纲 (Length) 
-    - T: 时间量纲 (Time)
-    - Θ: 温度量纲 (Temperature)
-    
-    Returns:
-        tuple: (输入量纲字典, 输出量纲字典)
-    """
-    # 输入参数的量纲矩阵（所有6个通道都参与变换，保持物理一致性）
-    input_dict = OrderedDict([
-        ("component_sdf", [0, 1, 0, 0]),      # 长度 [L] - SDF以米为单位
-        ("component_power", [1, 0, -3, 0]),   # 功率密度 [M T⁻³] - W/m² = kg/s³
-        ("cooling_sdf", [0, 1, 0, 0]),        # 长度 [L] - SDF以米为单位
-        ("cooling_temp", [0, 0, 0, 1]),       # 温度 [Θ] - K
-        ("coord_x", [0, 1, 0, 0]),            # 长度 [L] - X坐标以米为单位
-        ("coord_y", [0, 1, 0, 0]),            # 长度 [L] - Y坐标以米为单位
-    ])
-    
-    # 输出变量的量纲矩阵
-    output_dict = OrderedDict([
-        ("temperature", [0, 0, 0, 1]),         # 温度 [Θ] - K
-    ])
-    
-    return input_dict, output_dict
-
-
-def get_physical_bounds_satellite() -> Dict[str, Tuple[float, float]]:
-    """
-    获取卫星数据集各物理量q0基准值的合理取值范围
-    
-    注意：这里的边界是针对q0基准值的约束，不是原始数据分布
-    - SDF类型：使用最大值作为q0，边界反映"最大值"的可能范围  
-    - 其他类型：使用均值作为q0，边界反映"均值"的可能范围
-    - 所有边界必须为正数（用于对数约束）
-    
-    Returns:
-        Dict: 物理量名称 -> (下界, 上界) 的映射
-    """
-    return {
-        # component_sdf最大值：SDF最大值通常在0.01~0.20范围（距离物体最远点）
-        "component_sdf": (0.01, 0.20),        
-        
-        # component_power均值：基于统计mean=279, std=582，均值通常在50~1500范围
-        "component_power": (100.0, 1500.0),     
-        
-        # cooling_sdf最大值：散热SDF最大值通常在0.01~1.5范围  
-        "cooling_sdf": (0.01, 1.00),          
-        
-        # cooling_temp均值：基于统计mean=274, std=31，均值通常在200~350K范围
-        "cooling_temp": (250.0, 300.0),
-        
-        # coord_x均值：坐标范围通常在-0.5~0.5m（以中心为原点），均值接近0但要为正
-        "coord_x": (0.25, 0.6),
-        
-        # coord_y均值：坐标范围通常在-0.5~0.5m（以中心为原点），均值接近0但要为正  
-        "coord_y": (0.25, 0.6),
-    }
-
-
-def find_orthogonal_basis_satellite(cache_file="./satellite_orthogonal_basis.npy") -> List[np.ndarray]:
-    """
-    计算卫星数据集的量纲零空间正交基（带文件缓存功能）
-    
-    基于导热率量纲约束：κ [M L² T⁻³ Θ⁻¹] = constant (二维导热问题)
-    使用SVD分解寻找满足约束的3个自由度基向量
-    
-    Args:
-        cache_file (str): 缓存文件路径，存储计算好的正交基以供复用
-    
-    Returns:
-        List[np.ndarray]: 3个正交基向量，每个为[α_M, α_L, α_t, α_T]
-        
-    物理意义：
-        - 基向量定义了在保持导热率不变前提下的相似变换自由度
-        - 3个自由度对应3种独立的物理相似变换模式
-    """
-    # 检查缓存文件是否存在
-    if os.path.exists(cache_file):
-        try:
-            cached_basis = np.load(cache_file, allow_pickle=True)
-            if len(cached_basis) == 3 and all(vec.shape == (4,) for vec in cached_basis):
-                print(f"✅ 从缓存文件加载正交基: {cache_file}")
-                # 仍然打印基向量信息
-                dim_labels = ["α_M（质量）", "α_L（长度）", "α_t（时间）", "α_T（温度）"]
-                for i, vec in enumerate(cached_basis):
-                    rounded = [float(x) for x in vec.round(4)]
-                    print(f"基{i+1}: {rounded} → {dict(zip(dim_labels, rounded))}")
-                return cached_basis.tolist()
-        except Exception as e:
-            print(f"⚠️  缓存文件读取失败: {e}，重新计算正交基")
-    
-    # 重新计算正交基
-    # 二维导热率的量纲向量：κ = [M¹ L² T⁻³ Θ⁻¹]
-    kappa_dim = np.array([1, 2, -3, -1], dtype=np.float32)
-    
-    A = kappa_dim.reshape(1, -1)
-    _, _, Vh = np.linalg.svd(A)
-    null_space = Vh[1:].T
-
-    alpha1, alpha2, alpha3 = null_space[:, 0], null_space[:, 1], null_space[:, 2]
-
-    # 验证正交性
-    assert np.isclose(np.dot(alpha1, kappa_dim), 0, atol=1e-5), f"基1不满足κ约束：点积={np.dot(alpha1, kappa_dim):.6f}"
-    assert np.isclose(np.dot(alpha2, kappa_dim), 0, atol=1e-5), f"基2不满足κ约束：点积={np.dot(alpha2, kappa_dim):.6f}"
-    assert np.isclose(np.dot(alpha3, kappa_dim), 0, atol=1e-5), f"基3不满足κ约束：点积={np.dot(alpha3, kappa_dim):.6f}"
-
-    # 正交化+归一化
-    alpha2 = alpha2 - (np.dot(alpha2, alpha1) / np.dot(alpha1, alpha1)) * alpha1
-    alpha3 = alpha3 - (np.dot(alpha3, alpha1) / np.dot(alpha1, alpha1)) * alpha1 - \
-             (np.dot(alpha3, alpha2) / np.dot(alpha2, alpha2)) * alpha2
-    alpha1, alpha2, alpha3 = [vec / np.linalg.norm(vec) for vec in [alpha1, alpha2, alpha3]]
-
-    # 保存到缓存文件
-    try:
-        basis_array = np.array([alpha1, alpha2, alpha3])
-        np.save(cache_file, basis_array)
-        print(f"✅ 正交基已保存到缓存文件: {cache_file}")
-    except Exception as e:
-        print(f"⚠️  缓存文件保存失败: {e}")
-
-    # 打印基向量（控制台）
-    print("✅ 正交基生成完成（二维导热问题，确保κ不变）：")
-    dim_labels = ["α_M（质量）", "α_L（长度）", "α_t（时间）", "α_T（温度）"]
-    for vec, name in zip([alpha1, alpha2, alpha3], ["基1", "基2", "基3"]):
-        rounded = [float(x) for x in vec.round(4)]
-        print(f"{name}: {rounded} → {dict(zip(dim_labels, rounded))}")
-    return [alpha1, alpha2, alpha3]
-
-
 
 
 def load_satellite_dataset(config: DictConfig, shuffle=True, sample_limit: Optional[int] = None) -> Tuple[DataLoader, List[DataLoader]]:

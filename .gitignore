@@ -7,6 +7,9 @@ __pycache__/
 # C extensions
 *.so
 
+# Runtime output files
+*.out
+
 # Model checkpoint files
 *.pth
 *.pdparams
@@ -16,6 +19,7 @@ checkpoints/
 # Distribution / packaging
 .Python
 build/
+backup/
 develop-eggs/
 dist/
 downloads/
@@ -157,6 +161,7 @@ work_*/
 *.mat
 *.h5
 *.hdf5
+*.csv
 
 # Visualization outputs
 *.svg
@@ -207,8 +212,8 @@ cython_debug/
 #data storage
 outputs/
 output/
-# hydra
-logs/
+# hydra and runtime logs
+log*/
 debug/
 
 # draw.io

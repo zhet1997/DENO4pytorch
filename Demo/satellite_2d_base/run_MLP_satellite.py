@@ -2,6 +2,8 @@ import os
 import sys
 import argparse
 import time
+import logging
+import yaml
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -11,24 +13,16 @@ from torch.utils.data import DataLoader, TensorDataset
 # 路径注入，支持绝对路径运行
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, os.pardir, os.pardir))
+MODELS_DIR = os.path.join(PROJECT_ROOT, "Models")
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
+if MODELS_DIR not in sys.path:
+    sys.path.insert(0, MODELS_DIR)
 
-from Utilizes.process_data import DataNormer
 from collections import OrderedDict
-
-# 数据加载
-try:
-    from Demo.satellite_2d_base.dataset_satellite import load_satellite_data
-except ModuleNotFoundError:
-    try:
-        from satellite_2d_base.dataset_satellite import load_satellite_data
-    except ModuleNotFoundError:
-        DEMO_DIR = os.path.abspath(os.path.join(CURRENT_DIR, os.pardir))
-        if DEMO_DIR not in sys.path:
-            sys.path.insert(0, DEMO_DIR)
-        from satellite_2d_base.dataset_satellite import load_satellite_data
-
+from Utilizes.process_data import DataNormer
+from Demo.satellite_2d_base.dataset_satellite import load_satellite_data
+from Utilizes.visual_data import MatplotlibVision
 
 class MLP(nn.Module):
     def __init__(self, layer_mat=None, is_BatchNorm=False):
@@ -52,13 +46,15 @@ class MLP(nn.Module):
         return self.layers(x)
 
 
+
 def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
-    train_loss = 0.0
-    for batch, (inp, out) in enumerate(dataloader):
-        inp = inp.to(device)
-        out = out.to(device)
-        pred = netmodel(inp)
-        loss = lossfunc(pred, out)
+    train_loss = 0
+    for batch, (xx, yy) in enumerate(dataloader):
+        xx = xx.to(device)
+        yy = yy.to(device)
+
+        pred = netmodel(xx)
+        loss = lossfunc(pred, yy)
 
         optimizer.zero_grad()
         loss.backward()
@@ -71,28 +67,60 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
 
 
 def valid(dataloader, netmodel, device, lossfunc):
-    valid_loss = 0.0
+    valid_loss = 0
     with torch.no_grad():
-        for batch, (inp, out) in enumerate(dataloader):
-            inp = inp.to(device)
-            out = out.to(device)
-            pred = netmodel(inp)
-            loss = lossfunc(pred, out)
+        for batch, (xx, yy) in enumerate(dataloader):
+            xx = xx.to(device)
+            yy = yy.to(device)
+
+            pred = netmodel(xx)
+            loss = lossfunc(pred, yy)
             valid_loss += loss.item()
     return valid_loss / (batch + 1)
 
+def inference(dataloader, netmodel, device, down=4):
+    """
+    Args:
+        dataloader: input coordinates
+        netmodel: Network
+        device: 设备
+        down: 下采样倍数
+    Returns:
+        coords, grid, true_fields, pred_fields (所有形状为 N,H,W,C)
+    """
+    with torch.no_grad():
+        xx, yy = next(iter(dataloader))
+        xx = xx.to(device)
+        pred = netmodel(xx)
+    
+    # 计算reshape后的空间尺寸
+    s = 256 // down
+    batch_size = xx.shape[0]
+    
+    # Reshape回2D格式: (B, s*s*C) -> (B, s, s, C)
+    xx_reshaped = xx.cpu().numpy().reshape(batch_size, s, s, 6)
+    yy_reshaped = yy.numpy().reshape(batch_size, s, s, 1)
+    pred_reshaped = pred.cpu().numpy().reshape(batch_size, s, s, 1)
+    
+    # 生成虚拟的grid（为了保持接口一致）
+    gridx = np.linspace(0, 1, s).reshape(1, s, 1, 1).repeat(batch_size, axis=0).repeat(s, axis=2)
+    gridy = np.linspace(0, 1, s).reshape(1, 1, s, 1).repeat(batch_size, axis=0).repeat(s, axis=1)
+    grid = np.concatenate([gridx, gridy], axis=-1)
+    
+    return xx_reshaped, grid, yy_reshaped, pred_reshaped
 
-def main():
-    parser = argparse.ArgumentParser(description='MLP 卫星热数据训练脚本（支持下采样）')
-    parser.add_argument('--data_path', type=str, default='/data/wqn/turbine_uq/data_post/heat_dataset_780.h5')
-    parser.add_argument('--ntrain', type=int, default=None, help='训练样本数；默认按9:1自动分割')
-    parser.add_argument('--nvalid', type=int, default=None, help='验证样本数；默认按9:1自动分割')
-    parser.add_argument('--batch_size', type=int, default=8)
-    parser.add_argument('--epochs', type=int, default=20)
-    parser.add_argument('--lr', type=float, default=1e-3)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='MLP 卫星热数据训练脚本')
+    parser.add_argument('--data_path', type=str, default='/data/wqn/datasets/packaged_dataset20251017_6c/heat_dataset.h5')
+    parser.add_argument('--ntrain', type=int, default=8000)
+    parser.add_argument('--nvalid', type=int, default=100)
+    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--epochs', type=int, default=1000)
+    parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--device', type=str, default='cuda')
-    parser.add_argument('--cuda_index', type=int, default=0)
-    parser.add_argument('--down', type=int, default=8, help='空间下采样倍数，256/down，建议 4/8')
+    parser.add_argument('--cuda_index', type=int, default=7)
+    parser.add_argument('--down', type=int, default=4, help='空间下采样倍数，256/down，建议 4/8')
     parser.add_argument('--hidden', type=int, default=1024, help='MLP隐藏层宽度')
     parser.add_argument('--layers', type=int, default=4, help='总层数（含输入输出）最少3')
     parser.add_argument('--work_dir', type=str, default=os.path.join('work_satellite'))
@@ -100,143 +128,149 @@ def main():
 
     net_name = 'MLP'
     timestamp = time.strftime('%Y%m%d_%H%M%S')
-    work_path = os.path.join(args.work_dir, f'{net_name}_{timestamp}')
+    work_path = os.path.join(args.work_dir, f'{net_name}_n{args.ntrain}_{timestamp}')
     os.makedirs(work_path, exist_ok=True)
+    
+    # 配置日志
+    logging.basicConfig(
+        level=logging.INFO,
+        format='[%(asctime)s] %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[
+            logging.FileHandler(os.path.join(work_path, 'training.log'), mode='w', encoding='utf-8'),
+            logging.StreamHandler()
+        ]
+    )
+    logger = logging.getLogger(__name__)
+    logger.info(f'工作路径: {work_path}')
+    logger.info(f'训练样本数: {args.ntrain}, 验证样本数: {args.nvalid}')
 
     # 设备
-    if args.device.startswith('cuda') and torch.cuda.is_available():
-        device = torch.device(f'cuda:{args.cuda_index}')
-        try:
-            torch.cuda.set_device(device)
-        except Exception:
-            pass
+    if torch.cuda.is_available():
+        Device = torch.device(f'cuda:{args.cuda_index}')
     else:
-        device = torch.device('cpu')
-    print(f'设备: {device}')
+        Device = torch.device('cpu')
 
-    # 数据加载
+    # 加载数据（inputs: N,256,256,6; outputs: N,256,256,1）
     inputs, outputs = load_satellite_data(args.data_path)
     N = inputs.shape[0]
 
-    # 切分
-    if args.ntrain is None or args.nvalid is None:
-        ntrain = int(N * 0.9)
-        nvalid = N - ntrain
-    else:
-        ntrain = args.ntrain
-        nvalid = args.nvalid
-        assert ntrain + nvalid <= N, f'ntrain({ntrain}) + nvalid({nvalid}) 超过数据规模 {N}'
-
-    # 下采样
-    assert 256 % args.down == 0, 'down 必须整除 256'
+    ntrain = args.ntrain
+    nvalid = args.nvalid
+    assert ntrain + nvalid <= N, f'ntrain({ntrain}) + nvalid({nvalid}) 超过数据规模 {N}'
+    
+    # 合并下采样与展平为向量
     s = 256 // args.down
-    train_x = inputs[:ntrain][:, ::args.down, ::args.down, :]          # (ntrain, s, s, 6)
-    train_y = outputs[:ntrain][:, ::args.down, ::args.down, :]         # (ntrain, s, s, 1)
-    valid_x = inputs[N - nvalid:][:, ::args.down, ::args.down, :]
-    valid_y = outputs[N - nvalid:][:, ::args.down, ::args.down, :]
-
-    # 展平为向量
     in_dim = s * s * 6
     out_dim = s * s * 1
-    train_x = torch.tensor(train_x.reshape(ntrain, in_dim), dtype=torch.float32)
-    train_y = torch.tensor(train_y.reshape(ntrain, out_dim), dtype=torch.float32)
-    valid_x = torch.tensor(valid_x.reshape(nvalid, in_dim), dtype=torch.float32)
-    valid_y = torch.tensor(valid_y.reshape(nvalid, out_dim), dtype=torch.float32)
 
-    # 归一化
+    train_x = torch.tensor(
+        inputs[:ntrain][:, ::args.down, ::args.down, :].reshape(ntrain, in_dim),
+        dtype=torch.float32
+    )
+    train_y = torch.tensor(
+        outputs[:ntrain][:, ::args.down, ::args.down, :].reshape(ntrain, out_dim),
+        dtype=torch.float32
+    )
+    valid_x = torch.tensor(
+        inputs[N - nvalid:][:, ::args.down, ::args.down, :].reshape(nvalid, in_dim),
+        dtype=torch.float32
+    )
+    valid_y = torch.tensor(
+        outputs[N - nvalid:][:, ::args.down, ::args.down, :].reshape(nvalid, out_dim),
+        dtype=torch.float32
+    )
+
+    # 归一化（主程序）
     x_normalizer = DataNormer(train_x.numpy(), method='mean-std')
     y_normalizer = DataNormer(train_y.numpy(), method='mean-std')
     train_x = x_normalizer.norm(train_x)
     valid_x = x_normalizer.norm(valid_x)
     train_y = y_normalizer.norm(train_y)
     valid_y = y_normalizer.norm(valid_y)
+    
+    # 保存归一化器信息
+    normalizer_info = {
+        'x_mean': x_normalizer.mean.tolist(),
+        'x_std': x_normalizer.std.tolist(),
+        'y_mean': y_normalizer.mean.tolist(),
+        'y_std': y_normalizer.std.tolist(),
+        'method': 'mean-std'
+    }
+    with open(os.path.join(work_path, 'normalizers.yaml'), 'w', encoding='utf-8') as f:
+        yaml.dump(normalizer_info, f, allow_unicode=True)
+    logger.info(f'归一化器已保存: x_mean.shape={x_normalizer.mean.shape}, y_mean.shape={y_normalizer.mean.shape}')
 
-    # DataLoader
-    train_loader = DataLoader(TensorDataset(train_x, train_y), batch_size=args.batch_size, shuffle=True, drop_last=True)
-    valid_loader = DataLoader(TensorDataset(valid_x, valid_y), batch_size=args.batch_size, shuffle=False, drop_last=True)
+    train_loader = DataLoader(TensorDataset(train_x, train_y), batch_size=args.batch_size, shuffle=False, drop_last=False)
+    valid_loader = DataLoader(TensorDataset(valid_x, valid_y), batch_size=args.batch_size, shuffle=False, drop_last=False)
 
-    # 网络层定义
     layers = [in_dim]
     for _ in range(max(args.layers - 2, 1)):
         layers.append(args.hidden)
     layers.append(out_dim)
-    net = MLP(layer_mat=layers, is_BatchNorm=False).to(device)
+    Net_model = MLP(layer_mat=layers, is_BatchNorm=False).to(Device)
 
-    # 训练组件
-    loss_fn = nn.MSELoss()
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr, betas=(0.7, 0.9), weight_decay=1e-4)
-    sched = torch.optim.lr_scheduler.StepLR(optim, step_size=max(args.epochs // 2, 1), gamma=0.1)
+    # 训练要素
+    Loss_func = nn.MSELoss()
+    Optimizer = torch.optim.Adam(Net_model.parameters(), lr=args.lr, betas=(0.7, 0.9), weight_decay=1e-4)
+    Scheduler = torch.optim.lr_scheduler.StepLR(Optimizer, step_size=int(args.epochs*0.8), gamma=0.1)
     # 初始化日志与可视化（epoch 0 前）
     log_loss = {'train': [], 'valid': []}
     start_time = time.time()
+    
+    Visual = MatplotlibVision(work_path, input_name=('1', '2', '3', '4', '5', '6'), field_name=('T',))
 
-    s = 256 // args.down
-    def _plot_compare(true2d, pred2d, path):
-        plt.figure(figsize=(10,4))
-        plt.subplot(1,2,1); plt.imshow(true2d, cmap='jet'); plt.title('True'); plt.colorbar(fraction=0.046, pad=0.04)
-        plt.subplot(1,2,2); plt.imshow(pred2d, cmap='jet'); plt.title('Pred'); plt.colorbar(fraction=0.046, pad=0.04)
-        plt.tight_layout(); plt.savefig(path); plt.close()
 
-    # 初始可视化与保存
-    net.eval()
-    with torch.no_grad():
-        bx, by = next(iter(train_loader))
-        bx = bx.to(device)
-        pred0 = net(bx).cpu().numpy()
-        by_np = by.numpy()
-        pred0_den = y_normalizer.back(pred0)
-        by_den = y_normalizer.back(by_np)
-        _plot_compare(by_den[0].reshape(s, s), pred0_den[0].reshape(s, s), os.path.join(work_path, 'train_solution_0.jpg'))
-        vx, vy = next(iter(valid_loader))
-        vx = vx.to(device)
-        predv0 = net(vx).cpu().numpy()
-        vy_np = vy.numpy()
-        predv0_den = y_normalizer.back(predv0)
-        vy_den = y_normalizer.back(vy_np)
-        _plot_compare(vy_den[0].reshape(s, s), predv0_den[0].reshape(s, s), os.path.join(work_path, 'valid_solution_0.jpg'))
-    torch.save({'net_model': net.state_dict(), 'optimizer': optim.state_dict(), 'epoch': -1},
-               os.path.join(work_path, 'latest_model.pth'))
-
-    # 训练循环
+    # 训练循环（与Rotor37结构一致的输出格式）
     for epoch in range(args.epochs):
-        net.train()
-        train_loss = train(train_loader, net, device, loss_fn, optim, sched)
-        net.eval()
-        valid_loss = valid(valid_loader, net, device, loss_fn)
+        Net_model.train()
+        train_loss = train(train_loader, Net_model, Device, Loss_func, Optimizer, Scheduler)
+        Net_model.eval()
+        valid_loss = valid(valid_loader, Net_model, Device, Loss_func)
         log_loss['train'].append(train_loss)
         log_loss['valid'].append(valid_loss)
         elapsed = time.time() - start_time
-        print('epoch: {:6d}, lr: {:.3e}, train_step_loss: {:.3e}, valid_step_loss: {:.3e}, cost: {:.2f}'.
-              format(epoch, optim.param_groups[0]['lr'], train_loss, valid_loss, elapsed))
+        logger.info('epoch: {:6d}, lr: {:.3e}, train_step_loss: {:.3e}, valid_step_loss: {:.3e}, cost: {:.2f}'.
+                    format(epoch, Optimizer.param_groups[0]['lr'], train_loss, valid_loss, elapsed))
         start_time = time.time()
+            
+        if epoch % 5 == 0:
+            fig, axs = plt.subplots(1, 1, figsize=(15, 8), num=1)
+            Visual.plot_loss(fig, axs, np.arange(len(log_loss['train'])), log_loss['train'], label='train_step')
+            Visual.plot_loss(fig, axs, np.arange(len(log_loss['valid'])), log_loss['valid'], label='valid_step')
+            fig.suptitle('training loss')
+            fig.savefig(os.path.join(work_path, 'log_loss.svg'))
+            plt.close(fig)
 
-        if (epoch % 5 == 0) or (epoch == args.epochs - 1) or (epoch == 0):
-            plt.figure(figsize=(8,4))
-            plt.plot(np.arange(len(log_loss['train'])), log_loss['train'], label='train_step')
-            plt.plot(np.arange(len(log_loss['valid'])), log_loss['valid'], label='valid_step')
-            plt.yscale('log')
-            plt.legend(); plt.title('training loss'); plt.tight_layout()
-            plt.savefig(os.path.join(work_path, 'loss.svg')); plt.close()
+        ################################################################
+        # Visualization
+        ################################################################
 
-        if (epoch % 100 == 0) or (epoch == args.epochs - 1):
-            with torch.no_grad():
-                bx, by = next(iter(train_loader))
-                bx = bx.to(device)
-                pred_b = net(bx).cpu().numpy()
-                pred_b_den = y_normalizer.back(pred_b)
-                _plot_compare(by_den[0].reshape(s, s), pred_b_den[0].reshape(s, s), os.path.join(work_path, f'train_solution_{epoch}.jpg'))
-                vx, vy = next(iter(valid_loader))
-                vx = vx.to(device)
-                pred_v = net(vx).cpu().numpy()
-                pred_v_den = y_normalizer.back(pred_v)
-                _plot_compare(vy_den[0].reshape(s, s), pred_v_den[0].reshape(s, s), os.path.join(work_path, f'valid_solution_{epoch}.jpg'))
+        if epoch % 50 == 0:
+            train_coord, train_grid, train_true, train_pred = inference(train_loader, Net_model, Device, down=args.down)
+            valid_coord, valid_grid, valid_true, valid_pred = inference(valid_loader, Net_model, Device, down=args.down)
 
-        if (epoch % 10 == 0) or (epoch == args.epochs - 1):
-            torch.save({'net_model': net.state_dict(), 'optimizer': optim.state_dict(),
-                        'epoch': epoch, 'log_loss': log_loss}, os.path.join(work_path, 'latest_model.pth'))
+            train_true = y_normalizer.back(train_true)
+            train_pred = y_normalizer.back(train_pred)
+            valid_true = y_normalizer.back(valid_true)
+            valid_pred = y_normalizer.back(valid_pred)
+            
+            torch.save({'log_loss': log_loss, 'net_model': Net_model.state_dict(), 'optimizer': Optimizer.state_dict()},
+                       os.path.join(work_path, 'latest_model.pth'))
+            np.save(os.path.join(work_path, 'loss_history.npy'), log_loss)
 
+            for fig_id in range(5):
+                fig, axs = plt.subplots(1, 3, figsize=(18, 20), num=2)
+                Visual.plot_fields_ms(fig, axs, train_true[fig_id], train_pred[fig_id], None)
+                fig.savefig(os.path.join(work_path, f'train_solution_{str(fig_id)}_{str(epoch)}.jpg'))
+                plt.close(fig)
 
-if __name__ == '__main__':
-    main()
-
-
+            for fig_id in range(5):
+                fig, axs = plt.subplots(1, 3, figsize=(18, 20), num=3)
+                Visual.plot_fields_ms(fig, axs, valid_true[fig_id], valid_pred[fig_id], None)
+                fig.savefig(os.path.join(work_path, f'valid_solution_{str(fig_id)}_{str(epoch)}.jpg'))
+                plt.close(fig)
+    
+    # 训练完成
+    logger.info('训练完成!')
+    logger.info(f'最终 train_loss: {log_loss["train"][-1]:.6e}, valid_loss: {log_loss["valid"][-1]:.6e}')

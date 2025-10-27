@@ -5,6 +5,7 @@
 使用单个FourierTransformer网络直接预测卫星温度场（无叠加机制）
 """
 import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '7'
 import sys
 import time
 import numpy as np
@@ -64,7 +65,8 @@ if __name__ == "__main__":
     if args.nvalid: basic_dict['nvalid'] = args.nvalid
 
     # 工作路径
-    work_path = os.path.join('work_satellite', args.work_name)
+    timestamp = time.strftime('%Y%m%d_%H%M%S')
+    work_path = os.path.join('work_satellite', args.work_name + timestamp)
     work = WorkPrj(work_path)
     Logger = TextLogger(os.path.join(work_path, 'train.log'))
     

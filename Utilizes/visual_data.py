@@ -255,7 +255,7 @@ class MatplotlibVision(object):
         axs.grid(True)  # 添加网格
         axs.set_ylim(ylim)
         # axs.set_xlim(xlim)
-        axs.tick_params(axis='both', which='both', labelsize=0)
+        axs.tick_params(axis='both', which='both')
         axs.legend(loc="best", prop=self.font)
         axs.set_xlabel(xylabels[0], fontdict=self.font)
         axs.set_ylabel(xylabels[1], fontdict=self.font)
@@ -448,7 +448,7 @@ class MatplotlibVision(object):
         # plt.ylim((min_value, max_value))
         axs.set_xlim((0.995 * min_value, 1.005 * max_value))
         axs.set_ylim((0.995 * min_value, 1.005 * max_value))
-        axs.tick_params(axis='both', which='both', labelsize=0)
+        axs.tick_params(axis='both', which='both')
         axs.grid(True)  # 添加网格
         axs.legend(loc="upper left", prop=self.font)
         axs.set_xlabel(xylabels[0], fontdict=self.font)
@@ -713,7 +713,7 @@ class MatplotlibVision(object):
                     cb.ax.set_title(name_channel[i], fontdict=self.font_EN, loc='center')
                 else:
                     f_true.set_clim(-limit, limit)
-                    cb.ax.set_title('$\mathrm{\Delta}$' + name_channel[i], fontdict=self.font_EN, loc='center')
+                    cb.ax.set_title('Δ' + name_channel[i], fontdict=self.font_EN, loc='center')
                 # 设置刻度间隔
                 axs[i][j].set_aspect(1)
                 # axs[i][j].xaxis.set_major_locator(MultipleLocator(0.1))
@@ -799,11 +799,11 @@ class MatplotlibVision(object):
                     cb.ax.set_title(name_channel[i], fontdict=self.font_EN, loc='center')
                 else:
                     f_true.set_clim(-limit, limit)
-                    cb.ax.set_title('$\mathrm{\Delta}$' + name_channel[i], fontdict=self.font_EN, loc='center')
+                    cb.ax.set_title('Δ' + name_channel[i], fontdict=self.font_EN, loc='center')
                 # 设置刻度间隔
                 axs[i][j].set_xticklabels([])
                 axs[i][j].set_yticklabels([])
-                axs[i][j].tick_params(axis='both', which='both', length=0, labelsize=0)
+                axs[i][j].tick_params(axis='both', which='both', length=0)
                 # axs[i][j].set_aspect(1)
                 # axs[i][j].set_xlabel(r'$x$/m', fontdict=self.font_EN)
                 # axs[i][j].set_ylabel(r'$y$/m', fontdict=self.font_EN)
@@ -879,11 +879,11 @@ class MatplotlibVision(object):
                 if j < 2:
                     f_true.set_clim(fmin[j][i], fmax[j][i])
                     cb.ax.set_title(name_channel[i], fontdict=self.font_EN, loc='center')
-                    # cb.ax.set_title('$\mathrm{\Delta}$' + name_channel[i], fontdict=self.font_EN, loc='center')
+                    # cb.ax.set_title('Δ' + name_channel[i], fontdict=self.font_EN, loc='center')
                 # 设置刻度间隔
                 axs[i][j].set_xticklabels([])
                 axs[i][j].set_yticklabels([])
-                axs[i][j].tick_params(axis='both', which='both', length=0, labelsize=0)
+                axs[i][j].tick_params(axis='both', which='both', length=0)
                 # axs[i][j].set_aspect(1)
                 # axs[i][j].set_xlabel(r'$x$/m', fontdict=self.font_EN)
                 # axs[i][j].set_ylabel(r'$y$/m', fontdict=self.font_EN)
@@ -958,7 +958,7 @@ class MatplotlibVision(object):
 
                 else:
                     f_true.set_clim(-limit, limit)
-                    cb.ax.set_title('$\mathrm{\Delta}$' + name_channel[j], fontdict=self.font_EN, loc='center')
+                    cb.ax.set_title('Δ' + name_channel[j], fontdict=self.font_EN, loc='center')
                 # 设置刻度间隔
                 axs[j][i].set_aspect(1)
                 # axs[i][j].set_xlabel(r'$x$/m', fontdict=self.font_EN)
@@ -1026,7 +1026,7 @@ class MatplotlibVision(object):
                     cb.ax.set_title(name_channel[i], fontdict=self.font_EN, loc='center')
                 else:
                     f_true.set_clim(-limit, limit)
-                    cb.ax.set_title('$\mathrm{\Delta}$' + name_channel[i], fontdict=self.font_EN, loc='center')
+                    cb.ax.set_title('Δ' + name_channel[i], fontdict=self.font_EN, loc='center')
                 # 设置刻度间隔
                 # axs[i][j].set_aspect(1)
                 axs[i][j].set_xlabel(r'$x$/m', fontdict=self.font_EN)
