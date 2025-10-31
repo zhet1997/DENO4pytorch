@@ -209,6 +209,7 @@ cython_debug/
 
 #linters and ...
 .vscode/
+.specstory/
 #data storage
 outputs/
 output/

@@ -10,9 +10,21 @@
 """
 
 import os
+import sys
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+
+# 路径注入，支持绝对路径运行
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, os.pardir, os.pardir))
+MODELS_DIR = os.path.join(PROJECT_ROOT, "Utilizes")
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+if MODELS_DIR not in sys.path:
+    sys.path.insert(0, MODELS_DIR)
+
+
 from Utilizes.visual_data import MatplotlibVision
 
 def load_loss_history(file_path):

@@ -17,7 +17,7 @@ if PROJECT_ROOT not in sys.path:
 if MODELS_DIR not in sys.path:
     sys.path.insert(0, MODELS_DIR)
 
-from fno.FNOs import FNO2d
+from collections import OrderedDict
 from Utilizes.process_data import DataNormer
 from Demo.satellite_2d_dssl.dataset_selfsup import (
     dimension_scaling_Tensor,
@@ -26,16 +26,45 @@ from Demo.satellite_2d_dssl.dataset_selfsup import (
 from Demo.satellite_2d_base.utils import load_yaml_config
 from Utilizes.visual_data import MatplotlibVision
 
+class MLP(nn.Module):
+    def __init__(self, layer_mat=None, is_BatchNorm=False, input_shape_2d=None, output_shape_2d=None):
+        super().__init__()
+        if layer_mat is None:
+            raise ValueError("layer_mat must be provided")
+        if input_shape_2d is None or output_shape_2d is None:
+            raise ValueError("input_shape_2d and output_shape_2d must be provided")
+        
+        self.input_shape_2d = input_shape_2d  # (H, W, C_in)
+        self.output_shape_2d = output_shape_2d  # (H, W, C_out)
+        self.depth = len(layer_mat)
+        activation = nn.GELU
 
+        layer_list = []
+        for i in range(self.depth - 2):
+            layer_list.append((f'layer_{i}', nn.Linear(layer_mat[i], layer_mat[i + 1])))
+            if is_BatchNorm:
+                layer_list.append((f'batchnorm_{i}', nn.BatchNorm1d(layer_mat[i + 1])))
+            layer_list.append((f'activation_{i}', activation()))
+        layer_list.append((f'layer_{self.depth - 2}', nn.Linear(layer_mat[-2], layer_mat[-1])))
+        self.layers = nn.Sequential(OrderedDict(layer_list))
 
-def feature_transform(x):
-    shape = x.shape
-    batchsize, size_x, size_y = shape[0], shape[1], shape[2]
-    gridx = torch.linspace(0, 1, size_x, dtype=torch.float32)
-    gridx = gridx.reshape(1, size_x, 1, 1).repeat([batchsize, 1, size_y, 1])
-    gridy = torch.linspace(0, 1, size_y, dtype=torch.float32)
-    gridy = gridy.reshape(1, 1, size_y, 1).repeat([batchsize, size_x, 1, 1])
-    return torch.cat((gridx, gridy), dim=-1).to(x.device)
+        
+    def forward(self, x):
+        """
+        Args:
+            x: (B, H, W, C_in) - 2D格式输入
+        Returns:
+            out: (B, H, W, C_out) - 2D格式输出
+        """
+        B = x.shape[0]
+        # 展平: (B, H, W, C) -> (B, H*W*C)
+        x_flat = x.reshape(B, -1)
+        # MLP处理
+        out_flat = self.layers(x_flat)
+        # 恢复2D: (B, H*W*C) -> (B, H, W, C)
+        out = out_flat.reshape(B, *self.output_shape_2d)
+        return out
+
 
 
 def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
@@ -43,9 +72,8 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
     for batch, (xx, yy) in enumerate(dataloader):
         xx = xx.to(device)
         yy = yy.to(device)
-        gd = feature_transform(xx)
 
-        pred = netmodel(xx, gd)
+        pred = netmodel(xx)
         loss = lossfunc(pred, yy)
 
         optimizer.zero_grad()
@@ -64,9 +92,8 @@ def valid(dataloader, netmodel, device, lossfunc):
         for batch, (xx, yy) in enumerate(dataloader):
             xx = xx.to(device)
             yy = yy.to(device)
-            gd = feature_transform(xx)
 
-            pred = netmodel(xx, gd)
+            pred = netmodel(xx)
             loss = lossfunc(pred, yy)
             valid_loss += loss.item()
     return valid_loss / (batch + 1)
@@ -120,10 +147,8 @@ def train_selfsup(dataloader_ss,
                   train_loss: float,
                   loss_gap: float = 0.1) -> float:
     """
-    自监督训练阶段：基于线性物理相似性
-    - 对 inputs 随机选取一组 alpha 做相似映射得到 x_far
-    - 分别预测 y_anc, y_far
-    - 将 y_far 反映射到锚点尺度，与 y_anc 计算 MSE 损失
+    自监督训练：基于线性物理相似性（MLP版本 - 简化版）
+    输入输出均为2D格式，MLP内部处理展平
     - 当 self_loss/train_loss < loss_gap 时跳过 backward（一致性已足够好）
     
     参数:
@@ -133,29 +158,28 @@ def train_selfsup(dataloader_ss,
     netmodel.train()
     epoch_loss = 0.0
     skipped_batches = 0
+    
     for batch, (xx, alpha_all) in enumerate(dataloader_ss):
-        # xx: (B,H,W,C) 已归一化的tensor, alpha_all: (B,K,4) tensor
-        xx = xx.to(device=device, dtype=torch.float32) #这个是归一化之后的数据
+        # xx: (B, s, s, 6) 已归一化的2D tensor
+        xx = xx.to(device=device, dtype=torch.float32)
         alpha_all = alpha_all.to(device=device, dtype=torch.float32)
-
-        # 反标准化到物理空间
+        
+        # 反归一化到物理空间
         x_den_anc = x_normalizer.back(xx)
 
-        # 为每个样本随机选择一组 alpha: (B,4)
+        # 随机选择alpha并进行物理映射
         alpha = _pick_random_alpha(alpha_all)
-
-        # 输入相似映射：在物理空间执行，再标准化用于网络输入
         x_den_far = dimension_scaling_Tensor(x_den_anc, bc_dim_mat=input_dim_mat, bc_dim_coef=alpha)
+        
+        # 归一化用于网络输入
         x_norm_anc = xx
         x_norm_far = x_normalizer.norm(x_den_far)
-
-        # 前向传播
-        gd_anc = feature_transform(x_norm_anc)
-        gd_far = gd_anc  # 使用相同网格
-        y_norm_anc = netmodel(x_norm_anc, gd_anc)
-        y_norm_far = netmodel(x_norm_far, gd_far)
-
-        # 回到物理空间，对齐尺度，再标准化
+        
+        # 前向传播（MLP内部处理展平）
+        y_norm_anc = netmodel(x_norm_anc)
+        y_norm_far = netmodel(x_norm_far)
+        
+        # 反归一化、物理反映射、再归一化
         y_den_far = y_normalizer.back(y_norm_far)
         y_den_far_back = dimension_scaling_Tensor(y_den_far, bc_dim_mat=output_dim_mat, bc_dim_coef=-alpha)
         y_norm_far_back = y_normalizer.norm(y_den_far_back)
@@ -183,24 +207,30 @@ def train_selfsup(dataloader_ss,
 def inference(dataloader, netmodel, device):
     """
     Args:
-        dataloader: input coordinates
-        netmodel: Network
+        dataloader: 2D格式数据
+        netmodel: Network (MLP)
+        device: 设备
     Returns:
-        out_pred: predicted fields
+        coords, grid, true_fields, pred_fields (所有形状为 B, H, W, C)
     """
-
     with torch.no_grad():
         xx, yy = next(iter(dataloader))
         xx = xx.to(device)
-        gd = feature_transform(xx)
-        pred = netmodel(xx, gd)
-
-    # equation = model.equation(u_var, y_var, out_pred)
-    return xx.cpu().numpy(), gd.cpu().numpy(), yy.numpy(), pred.cpu().numpy()
+        pred = netmodel(xx)  # MLP内部处理展平
+    
+    # 提取尺寸用于生成grid
+    B, H, W, _ = xx.shape
+    
+    # 生成grid
+    gridx = np.linspace(0, 1, H).reshape(1, H, 1, 1).repeat(B, axis=0).repeat(W, axis=2)
+    gridy = np.linspace(0, 1, W).reshape(1, 1, W, 1).repeat(B, axis=0).repeat(H, axis=1)
+    grid = np.concatenate([gridx, gridy], axis=-1)
+    
+    return xx.cpu().numpy(), grid, yy.numpy(), pred.cpu().numpy()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='FNO 卫星热数据训练脚本（监督 + 自监督：线性物理相似性）')
+    parser = argparse.ArgumentParser(description='MLP 卫星热数据训练脚本')
     parser.add_argument('--data_path', type=str, default='/data/wqn/datasets/packaged_dataset20251017_6c/heat_dataset.h5')
     parser.add_argument('--ntrain', type=int, default=5000)
     parser.add_argument('--nvalid', type=int, default=500)
@@ -208,26 +238,24 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', type=int, default=1000)
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--device', type=str, default='cuda')
-    parser.add_argument('--cuda_index', type=int, default=6)
-    parser.add_argument('--modes_x', type=int, default=10)
-    parser.add_argument('--modes_y', type=int, default=10)
-    parser.add_argument('--width', type=int, default=64)
-    parser.add_argument('--depth', type=int, default=3)
-    parser.add_argument('--steps', type=int, default=1)
-    parser.add_argument('--padding', type=int, default=8)
+    parser.add_argument('--cuda_index', type=int, default=7)
+    parser.add_argument('--down', type=int, default=4, help='空间下采样倍数，256/down，建议 4/8')
+    parser.add_argument('--hidden', type=int, default=1024, help='MLP隐藏层宽度')
+    parser.add_argument('--layers', type=int, default=5, help='总层数（含输入输出）最少3')
     parser.add_argument('--work_dir', type=str, default=os.path.join('work_satellite'))
     # 自监督参数
     parser.add_argument('--selfsup_dir', type=str, default='/data/wqn/datasets/packaged_dataset20251017_6c_sim1/')
     parser.add_argument('--self_batch_size', type=int, default=32)
     parser.add_argument('--self_lr_final', type=float, default=2e-5)
+    parser.add_argument('--self_lr_start', type=float, default=2e-6)
     parser.add_argument('--self_sample_limit', type=int, default=None)
     parser.add_argument('--noise_std', type=float, default=0.05, 
                        help='训练集输出噪声标准差（归一化空间）')
     args = parser.parse_args()
 
-    net_name = 'FNO_DSSL'
+    net_name = 'MLP_DSSL'
     timestamp = time.strftime('%Y%m%d_%H%M%S')
-    work_path = os.path.join(args.work_dir, f'{net_name}_n{args.ntrain}_{timestamp}')
+    work_path = os.path.join(args.work_dir, f'{net_name}_noise{args.noise_std}_{timestamp}')
     os.makedirs(work_path, exist_ok=True)
     
     # 配置日志
@@ -248,7 +276,6 @@ if __name__ == "__main__":
     # 设备
     if torch.cuda.is_available():
         Device = torch.device(f'cuda:{args.cuda_index}')
-        logger.info(f'使用设备: {Device}')
     else:
         Device = torch.device('cpu')
 
@@ -260,27 +287,34 @@ if __name__ == "__main__":
         nvalid=args.nvalid,
         batch_size=args.batch_size,
         self_batch_size=args.self_batch_size,
-        down=4,
+        down=args.down,
         work_path=work_path,
         self_sample_limit=args.self_sample_limit,
         noise_std=args.noise_std,
         num_workers=4,
         pin_memory=True,
-        use_cache=False
+        use_cache=True
     )
     logger.info('数据加载和预处理完成')
     logger.info(f'归一化器: x_mean.shape={x_normalizer.mean.shape}, y_mean.shape={y_normalizer.mean.shape}')
 
-    modes = (args.modes_x, args.modes_y)
-    Net_model = FNO2d(in_dim=6, out_dim=1, modes=modes, width=args.width, depth=args.depth, steps=args.steps,
-                      padding=args.padding, activation='gelu').to(Device)
+    # MLP 初始化（传入2D形状信息）
+    s = 256 // args.down
+    in_dim = s * s * 6
+    out_dim = s * s * 1
+    layers = [in_dim]
+    for _ in range(max(args.layers - 2, 1)):
+        layers.append(args.hidden)
+    layers.append(out_dim)
+    Net_model = MLP(layer_mat=layers, is_BatchNorm=False, 
+                    input_shape_2d=(s, s, 6), output_shape_2d=(s, s, 1)).to(Device)
 
     # 训练要素：监督
     Loss_func = nn.MSELoss()
     Optimizer = torch.optim.Adam(Net_model.parameters(), lr=args.lr, betas=(0.7, 0.9), weight_decay=1e-4)
     Scheduler = torch.optim.lr_scheduler.StepLR(Optimizer, step_size=int(args.epochs*0.3), gamma=0.2)
 
-    # 量纲矩阵：输入从新版本YAML，输出沿用 dataset_satellite 定义（temperature）
+    # 量纲矩阵：输入从新版本YAML，输出为temperature的量纲
     yaml_path = os.path.join(CURRENT_DIR, 'augmentation_satellite.yml')
     input_dim_mat_np = build_input_dim_matrix_from_yaml_v2(yaml_path)  # (4,C)
     input_dim_mat = torch.tensor(input_dim_mat_np, dtype=torch.float32, device=Device)
@@ -288,6 +322,7 @@ if __name__ == "__main__":
     
     output_dim_mat = torch.tensor([[0],[0],[0],[1]], dtype=torch.float32, device=Device)
     logger.info(f"输出量纲矩阵形状: {output_dim_mat.shape}")
+    
     # 自监督训练组件
     Loss_self = nn.MSELoss()
     Optimizer_self = torch.optim.Adam(Net_model.parameters(), lr=0.0, betas=(0.7, 0.9), weight_decay=1e-4)
@@ -310,7 +345,7 @@ if __name__ == "__main__":
         log_loss['valid'].append(valid_loss)
 
         # 设置自监督学习率：线性从 0 → self_lr_final（按 epoch 比例）
-        lr_self = float(args.self_lr_final) * (epoch / max(args.epochs - 1, 1))
+        lr_self = float(args.self_lr_start) + (float(args.self_lr_final) - float(args.self_lr_start)) * (epoch / max(args.epochs - 1, 1))
         for pg in Optimizer_self.param_groups:
             pg['lr'] = lr_self
 
@@ -352,12 +387,12 @@ if __name__ == "__main__":
         if epoch % 50 == 0:
             train_coord, train_grid, train_true, train_pred = inference(train_loader, Net_model, Device)
             valid_coord, valid_grid, valid_true, valid_pred = inference(valid_loader, Net_model, Device)
-            
+
             train_true = y_normalizer.back(train_true)
             train_pred = y_normalizer.back(train_pred)
             valid_true = y_normalizer.back(valid_true)
             valid_pred = y_normalizer.back(valid_pred)
-
+            
             torch.save({'log_loss': log_loss, 'net_model': Net_model.state_dict(), 
                         'optimizer': Optimizer.state_dict(), 'optimizer_self': Optimizer_self.state_dict()},
                        os.path.join(work_path, 'latest_model.pth'))

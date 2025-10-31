@@ -74,7 +74,7 @@ def _get_default_model_config(model_type: str) -> Dict[str, Any]:
         return {
             'down': 4,
             'hidden': 1024,
-            'layers': 5,
+            'layers': 4,
             's':64,
         }
     else:

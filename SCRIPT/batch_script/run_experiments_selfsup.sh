@@ -18,7 +18,7 @@ echo "自监督实验开始时间: $(date '+%Y-%m-%d %H:%M:%S')" | tee -a "$LOG_
 echo "==========================================" | tee -a "$LOG_FILE"
 
 # 定义训练样本数量列表
-NTRAIN_LIST=(100 500 1000 2000 4000 8000)
+NTRAIN_LIST=(100 500 1000 2000 4000)
 
 # 自监督数据目录（根据实际情况修改）
 SELFSUP_DIR="/data/wqn/datasets/packaged_dataset20251017_6c_sim1/"

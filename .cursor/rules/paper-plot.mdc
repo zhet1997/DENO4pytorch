@@ -1,0 +1,241 @@
+# Paper Plot Script Rules.mdc
+
+**版本**：1.0
+**适用范围**：本仓库论文绘图脚本
+**目标**：以"**单次使用、高度可调、快速迭代**"为第一优先，拒绝通用化封装。
+
+---
+
+## 0. 核心原则
+
+1. **单次使用优先**：脚本面向特定论文图表，不考虑复用性与泛化能力。
+2. **集中配置优先**：所有可调参数集中在顶部配置区，禁止分散在代码中。
+3. **直观修改优先**：任何视觉元素的调整应在 5 秒内找到对应变量。
+
+---
+
+## 1. 配置区设计（顶部集中管理）
+
+* **要求**
+
+  * 所有可调参数（路径、尺寸、颜色、字体、索引）**必须**在文件顶部配置区声明。
+  * 配置区位置：所有 `import` 之后、函数定义之前。
+  * 使用 `# ===` 分隔线标记配置区边界，内部用 `# ---` 分组。
+* **禁止**
+
+  * 在函数内部硬编码数值（如 `plt.figure(figsize=(12, 8))`）。
+  * 使用 `argparse` 或命令行参数；所有值直接写在配置区。
+
+**示例（反例 → 正例）**
+
+```python
+# 反例：参数分散
+def plot_heatmap(data):
+    fig = plt.figure(figsize=(10, 6))  # 硬编码
+    plt.imshow(data, cmap='hot', vmin=0, vmax=100)  # 魔法数字
+
+# 正例：集中配置
+# ========== 全局配置区 ==========
+# --- 画布尺寸 ---
+FIG_WIDTH = 10          # 画布宽度（英寸）
+FIG_HEIGHT = 6          # 画布高度（英寸）
+FIG_DPI = 300           # 分辨率（论文用300）
+
+# --- 色标配置 ---
+CMAP_TEMP = 'hot'       # 温度图colormap
+TEMP_VMIN = 0           # 温度下界
+TEMP_VMAX = 100         # 温度上界
+# =================================
+
+def plot_heatmap(data):
+    fig = plt.figure(figsize=(FIG_WIDTH, FIG_HEIGHT), dpi=FIG_DPI)
+    plt.imshow(data, cmap=CMAP_TEMP, vmin=TEMP_VMIN, vmax=TEMP_VMAX)
+```
+
+---
+
+## 2. 参数化要求（所有视觉元素可调）
+
+* **强制参数化项目**
+
+  * 画布尺寸（`figsize`, `dpi`）、子图布局（行列数、间距 `wspace`/`hspace`）
+  * 样本选择（索引列表，如 `SAMPLE_INDICES = [0, 5, 10]`）
+  * 色标（`vmin`/`vmax`、`cmap`）、字体大小（标题、坐标轴、legend）
+  * 线条样式（颜色、宽度、标记）、填充透明度、边框粗细
+* **命名规范**
+
+  * 配置变量**全大写**（如 `LINE_WIDTH`），表明"这是可调配置"。
+  * 每个配置项右侧**必须**有行内注释说明用途。
+
+**示例**
+
+```python
+# --- 样本选择 ---
+SAMPLE_INDICES = [0, 5, 10, 15]  # 要绘制的样本索引列表
+
+# --- 字体配置 ---
+FONT_TITLE = 16          # 主标题字体大小
+FONT_LABEL = 12          # 坐标轴标签字体大小
+FONT_TICK = 10           # 刻度字体大小
+
+# --- 线条样式 ---
+LINE_WIDTH = 2.5         # 折线宽度
+LINE_COLOR_TRAIN = '#1f77b4'  # 训练曲线颜色（蓝）
+LINE_COLOR_VALID = '#ff7f0e'  # 验证曲线颜色（橙）
+MARKER_SIZE = 6          # 标记点大小
+```
+
+---
+
+## 3. Colorbar 管理（统一范围）
+
+* **要求**
+
+  * 同类图像（如"温度真值"与"温度预测"）**必须**共享相同的 `vmin`/`vmax`。
+  * 配置区显式声明每组色标范围，禁止使用数据自动范围。
+  * Colorbar 位置与尺寸可配置（`cbar_ax` 位置、宽度、标签）。
+* **建议**
+
+  * 若 colorbar 导致子图比例失调，使用 `fig.colorbar(..., ax=axs, fraction=0.046)` 调整或完全移除。
+
+**示例**
+
+```python
+# --- 色标配置 ---
+TEMP_VMIN = 20.0         # 温度图统一下界（℃）
+TEMP_VMAX = 80.0         # 温度图统一上界（℃）
+TEMP_CMAP = 'RdYlBu_r'   # 温度colormap（红-黄-蓝反转）
+
+ERROR_VMIN = 0.0         # 误差图下界
+ERROR_VMAX = 5.0         # 误差图上界
+ERROR_CMAP = 'viridis'   # 误差colormap
+
+SHOW_COLORBAR = True     # 是否显示colorbar
+CBAR_FRACTION = 0.046    # colorbar宽度比例
+```
+
+---
+
+## 4. 坐标轴与标签控制
+
+* **默认规则**
+
+  * 论文图通常**不需要**坐标轴刻度与标签（云图、热图）；使用 `ax.axis('off')` 关闭。
+  * 若需要刻度，在配置区声明 `SHOW_TICKS = True` 并配置刻度间隔、标签内容。
+* **禁止**
+
+  * 在循环内部逐个设置 `ax.set_xlabel(...)`；应在配置区统一声明标签文本。
+
+**示例**
+
+```python
+# --- 坐标轴配置 ---
+SHOW_AXIS = False        # 是否显示坐标轴（热图通常关闭）
+SHOW_TICKS = False       # 是否显示刻度
+XLABEL_TEXT = 'X (mm)'   # X轴标签文本（如需要）
+YLABEL_TEXT = 'Y (mm)'   # Y轴标签文本
+
+# 使用
+for ax in axs.flat:
+    if not SHOW_AXIS:
+        ax.axis('off')
+```
+
+---
+
+## 5. 代码组织（固定结构）
+
+* **文件结构**（按顺序）：
+
+  1. Shebang 与编码声明
+  2. Docstring（脚本功能一句话描述）
+  3. Import 语句
+  4. **配置区**（`# ===` 包裹）
+  5. 辅助函数（如数据加载、归一化、布局绘制）
+  6. 主绘图函数（`def main():`）
+  7. 执行入口（`if __name__ == '__main__': main()`）
+* **函数职责**
+
+  * 辅助函数 ≤ 30 行；主函数 ≤ 100 行。
+  * 每个辅助函数只做一件事：加载数据 / 计算误差 / 绘制单个子图。
+
+**示例**
+
+```python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+论文样本对比云图（热图+误差图）
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# ========== 全局配置区 ==========
+DATA_PATH = '/path/to/data.h5'
+SAMPLE_INDICES = [0, 5, 10]
+# ... 更多配置
+# =================================
+
+def load_sample(idx: int) -> np.ndarray:
+    """加载指定样本数据"""
+    ...
+
+def plot_heatmap_row(ax, data, vmin, vmax, cmap):
+    """在子图上绘制热图"""
+    ...
+
+def main():
+    """主绘图逻辑"""
+    fig, axs = plt.subplots(len(SAMPLE_INDICES), 4, 
+                            figsize=(FIG_WIDTH, FIG_HEIGHT))
+    for i, idx in enumerate(SAMPLE_INDICES):
+        data = load_sample(idx)
+        plot_heatmap_row(axs[i], data, TEMP_VMIN, TEMP_VMAX, TEMP_CMAP)
+    plt.savefig(OUTPUT_PATH, dpi=FIG_DPI, bbox_inches='tight')
+
+if __name__ == '__main__':
+    main()
+```
+
+---
+
+## 6. 禁止事项（避免过度工程化）
+
+* **禁止**
+
+  * 使用命令行参数（`argparse`）；配置直接写在文件中。
+  * 封装通用绘图类（如 `class PaperPlotter`）；直接写函数。
+  * 向后兼容旧版接口；每次修改直接覆盖旧逻辑。
+  * 异常处理（除非批量生成多张图需跳过失败样本）。
+* **说明**
+
+  * 论文绘图脚本是"一次性工具"，简洁直白比通用性更重要。
+
+---
+
+## 7. 注释规范（右侧行内注释）
+
+* **要求**
+
+  * 配置区每个变量**必须**有右侧行内注释说明用途与单位。
+  * 关键计算步骤（如归一化、误差计算）用简短注释说明"为什么"。
+* **禁止**
+
+  * 逐行注释"怎么做"（如 `# 创建画布`）。
+
+**示例**
+
+```python
+# 好的注释
+TEMP_VMAX = 80.0         # 温度上界（℃），对应数据集最高温
+N_ROWS = 3               # 子图行数（对应3个样本）
+
+# 坏的注释
+fig = plt.figure()       # 创建画布
+axs = fig.subplots()     # 创建子图
+```
+
+---
+
+**注**：本规则专用于论文绘图脚本，与通用科研代码规则（`research-code.mdc`）互补；当两者冲突时，以"快速出图、易于调整"为准。
