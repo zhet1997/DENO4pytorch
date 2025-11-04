@@ -29,7 +29,7 @@ from Demo.satellite_2d_base.dataset_satellite import load_satellite_data
 # ========== 全局配置区（所有参数集中在此，方便修改） ==========
 
 # --- 数据路径配置 ---
-EVAL_DIR = '/data/wqn/DENO4pytorch/work_post_eval/work_satellite_dssl_fno_20251021/FNO_DSSL_n4000_20251025_014123'  # 评估结果目录
+EVAL_DIR = '/data/wqn/DENO4pytorch/work_post_eval/work_satellite_BASE_fno_20251024/FNO_BASE_n2000_20251025_034709'  # 评估结果目录
 DATA_PATH = '/data/wqn/datasets/packaged_dataset20251017_6c/heat_dataset.h5'  # 原始数据集路径（用于计算总样本数）
 SAMPLE_JSON_DIR = '/data/wqn/datasets/dataset20251017_6c/samples'  # sample_definition.json所在目录
 SPLIT = 'valid'  # 使用的数据集划分: 'train' 或 'valid'
@@ -39,7 +39,7 @@ NVALID = 500     # 验证集样本数（需与训练时一致）
 # --- 样本选择配置 ---
 USE_RANDOM_SAMPLES = False   # True: 随机选择 | False: 使用指定索引
 NUM_SAMPLES = 5             # 随机选择时的样本数量
-SPECIFIED_INDICES = [0, 10, 20, 30, 40]  # 指定索引（相对于当前split）
+SPECIFIED_INDICES = [0, 10, 17, 30, 40]  # 指定索引（相对于当前split）
 
 # --- 图像尺寸与分辨率 ---
 FIG_WIDTH = 16              # 图像宽度（英寸）
@@ -313,6 +313,44 @@ def select_sample_indices(total_samples: int) -> np.ndarray:
     return indices
 
 
+def save_colorbar_figures(temp_vmin: float, temp_vmax: float, error_vmax: float, 
+                          output_dir: str, split: str):
+    """
+    保存温度和误差的colorbar为独立图片
+    
+    Args:
+        temp_vmin, temp_vmax: 温度范围
+        error_vmax: 误差绝对值上限
+        output_dir: 输出目录
+        split: 数据集划分名称
+    """
+    # 温度colorbar
+    fig_temp = plt.figure(figsize=(0.5, 6))
+    ax_temp = fig_temp.add_axes([0, 0, 1, 1])
+    sm_temp = plt.cm.ScalarMappable(cmap=TEMP_CMAP, 
+                                     norm=plt.Normalize(vmin=temp_vmin, vmax=temp_vmax))
+    sm_temp.set_array([])
+    cbar_temp = plt.colorbar(sm_temp, cax=ax_temp)
+    cbar_temp.set_label('Temperature (K)', fontsize=14)
+    plt.savefig(os.path.join(output_dir, f'temp_colorbar_{split}.png'), 
+                dpi=DPI, bbox_inches='tight')
+    plt.close(fig_temp)
+    
+    # 误差colorbar
+    fig_error = plt.figure(figsize=(0.5, 6))
+    ax_error = fig_error.add_axes([0, 0, 1, 1])
+    sm_error = plt.cm.ScalarMappable(cmap=ERROR_CMAP, 
+                                     norm=mcolors.TwoSlopeNorm(vmin=-error_vmax, vcenter=0, vmax=error_vmax))
+    sm_error.set_array([])
+    cbar_error = plt.colorbar(sm_error, cax=ax_error)
+    cbar_error.set_label('Error (K)', fontsize=14)
+    plt.savefig(os.path.join(output_dir, f'error_colorbar_{split}.png'), 
+                dpi=DPI, bbox_inches='tight')
+    plt.close(fig_error)
+    
+    print(f"已保存colorbar图片: temp_colorbar_{split}.png, error_colorbar_{split}.png")
+
+
 def plot_sample_heatmaps(true_data: np.ndarray,
                          pred_data: np.ndarray,
                          sample_indices: np.ndarray,
@@ -324,6 +362,9 @@ def plot_sample_heatmaps(true_data: np.ndarray,
     """
     绘制样本对比云图：N 行 4 列
     每行：[布局图] [真实温度] [预测温度] [误差]
+    
+    Returns:
+        (temp_vmin, temp_vmax, error_vmax): 温度范围和误差范围
     """
     n_samples = len(sample_indices)
     
@@ -394,6 +435,8 @@ def plot_sample_heatmaps(true_data: np.ndarray,
     plt.close(fig)
     
     print(f"已保存图像: {save_path}")
+    
+    return temp_vmin, temp_vmax, error_vmax
 
 
 def main():
@@ -427,8 +470,11 @@ def main():
     
     # 绘制并保存
     save_path = os.path.join(EVAL_DIR, f'sample_heatmaps_{SPLIT}.png')
-    plot_sample_heatmaps(true_data, pred_data, sample_indices, 
-                        SPLIT, NTRAIN, NVALID, total_samples, save_path)
+    temp_vmin, temp_vmax, error_vmax = plot_sample_heatmaps(true_data, pred_data, sample_indices, 
+                                                              SPLIT, NTRAIN, NVALID, total_samples, save_path)
+    
+    # 保存colorbar图片
+    save_colorbar_figures(temp_vmin, temp_vmax, error_vmax, EVAL_DIR, SPLIT)
     
     print("=" * 60)
     print("绘制完成")
