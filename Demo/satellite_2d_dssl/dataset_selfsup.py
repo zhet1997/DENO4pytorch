@@ -50,28 +50,6 @@ class SelfSupDataset(Dataset):
         return x, a
 
 
-class NoisyOutputDataset(Dataset):
-    """
-    监督训练数据集（带输出噪声）：在 __getitem__ 中对 Y 动态加高斯噪声。
-    噪声在归一化后的数据空间添加，每次访问重新采样。
-    """
-    def __init__(self, inputs: torch.Tensor, outputs: torch.Tensor, noise_std: float = 0.0):
-        self.inputs = inputs
-        self.outputs = outputs
-        self.noise_std = noise_std
-        
-    def __len__(self):
-        return len(self.inputs)
-    
-    def __getitem__(self, idx):
-        x = self.inputs[idx]
-        y = self.outputs[idx]
-        if self.noise_std > 0:
-            noise = torch.randn_like(y) * self.noise_std
-            y = y + noise
-        return x, y
-
-
 def create_selfsup_dataloader(inputs: np.ndarray,
                               alphas: np.ndarray,
                               batch_size: int = 32,
@@ -123,6 +101,7 @@ def prepare_satellite_dataloaders(
     work_path: str = None,
     self_sample_limit: Optional[int] = None,
     noise_std: float = 0.0,
+    noise_type: str = 'independent',
     num_workers: int = 4,
     pin_memory: bool = True,
     use_cache: bool = True
@@ -183,13 +162,13 @@ def prepare_satellite_dataloaders(
     else:
         # 正常加载和处理
         print(f"  [数据加载] 从原始数据加载...")
-        inputs, outputs = load_satellite_data(data_path)
+        inputs, outputs = load_satellite_data(data_path, noise_scale=noise_std, noise_type=noise_type)
         N = inputs.shape[0]
         train_indices = np.zeros(N, dtype=bool)
         assert ntrain + nvalid <= N, f'ntrain({ntrain}) + nvalid({nvalid}) 超过数据规模 {N}'
         
         
-        train_indices[:ntrain-200] = True; train_indices[N - 200:] = True
+        train_indices[:ntrain] = True
         
         train_x = torch.from_numpy(inputs[train_indices, ::down, ::down, :].copy()).float()
         train_y = torch.from_numpy(outputs[train_indices, ::down, ::down, :].copy()).float()
@@ -233,10 +212,7 @@ def prepare_satellite_dataloaders(
             yaml.dump(normalizer_info, f, allow_unicode=True)
     
     # 6. 创建监督 DataLoader
-    if noise_std > 0:
-        train_dataset = NoisyOutputDataset(train_x, train_y, noise_std=noise_std)
-    else:
-        train_dataset = TensorDataset(train_x, train_y)
+    train_dataset = TensorDataset(train_x, train_y)
     
     train_loader = DataLoader(
         train_dataset,

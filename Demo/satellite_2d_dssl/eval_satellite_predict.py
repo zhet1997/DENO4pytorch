@@ -77,15 +77,28 @@ def _get_default_model_config(model_type: str) -> Dict[str, Any]:
             'layers': 4,
             's':64,
         }
+    elif model_type == 'trans':
+        return {
+            'down': 8,
+            'hidden': 96,
+            'nhead': 2,
+            'enc_layers': 2,
+            'ffn': None,
+            'decoder': 'pointwise',
+            'fourier_modes': 16,
+        }
     else:
         raise ValueError(f"未知模型类型: {model_type}")
 
 
-def _load_normalizers(ckpt_dir: str, train_x: np.ndarray, train_y: np.ndarray):
+def _load_normalizers(ckpt_dir: str, train_x: np.ndarray, train_y: np.ndarray, model_type: str = 'fno'):
     """
     从 normalizers.yaml 加载归一化器，不存在则基于数据重新计算
     
-    注意：YAML 中保存的是按通道的统计量（形状为 (C,)），需要 reshape 为 (1,1,C) 以支持广播
+    参数:
+        model_type: 'fno' 或 'mlp'，用于确定归一化器统计量的形状
+            - FNO: 统计量形状为 (6,) 或 (1,)，需要 reshape 为 (1,1,C) 以支持 (N,H,W,C) 广播
+            - MLP: 统计量形状为 (24576,) 或 (4096,)，用于展平后的数据 (N, features)
     """
     yaml_path = os.path.join(ckpt_dir, 'normalizers.yaml')
     if os.path.exists(yaml_path):
@@ -93,21 +106,62 @@ def _load_normalizers(ckpt_dir: str, train_x: np.ndarray, train_y: np.ndarray):
         with open(yaml_path, 'r', encoding='utf-8') as f:
             cfg = yaml.safe_load(f)
         
-        # 加载统计量：YAML 中保存的是每个通道的统计量 (C,)
-        # 需要 reshape 为 (1, 1, C) 以便与 (N, H, W, C) 格式广播
-        x_mean = np.array(cfg['x_mean'], dtype=np.float32).reshape(1, 1, -1)  # (1,1,6)
-        x_std = np.array(cfg['x_std'], dtype=np.float32).reshape(1, 1, -1)
-        y_mean = np.array(cfg['y_mean'], dtype=np.float32).reshape(1, 1, -1)  # (1,1,1)
-        y_std = np.array(cfg['y_std'], dtype=np.float32).reshape(1, 1, -1)
+        x_mean = np.array(cfg['x_mean'], dtype=np.float32)
+        x_std = np.array(cfg['x_std'], dtype=np.float32)
+        y_mean = np.array(cfg['y_mean'], dtype=np.float32)
+        y_std = np.array(cfg['y_std'], dtype=np.float32)
         
-        # 创建归一化器并手动设置统计量
-        x_normalizer = DataNormer(train_x, method=cfg['method'])
-        x_normalizer.mean = x_mean
-        x_normalizer.std = x_std
-        
-        y_normalizer = DataNormer(train_y, method=cfg['method'])
-        y_normalizer.mean = y_mean
-        y_normalizer.std = y_std
+        # 根据模型类型设置归一化器统计量的形状
+        if model_type in ('fno', 'trans'):
+            # FNO/Transformer: 统计量按通道保存 (C,)，需要 reshape 为 (1, 1, C) 以支持 (N, H, W, C) 广播
+            x_mean = x_mean.reshape(1, 1, -1)  # (1,1,6)
+            x_std = x_std.reshape(1, 1, -1)
+            y_mean = y_mean.reshape(1, 1, -1)  # (1,1,1)
+            y_std = y_std.reshape(1, 1, -1)
+            # 创建归一化器并手动设置统计量
+            x_normalizer = DataNormer(train_x, method=cfg['method'])
+            x_normalizer.mean = x_mean
+            x_normalizer.std = x_std
+            y_normalizer = DataNormer(train_y, method=cfg['method'])
+            y_normalizer.mean = y_mean
+            y_normalizer.std = y_std
+        elif model_type == 'mlp':
+            # MLP: 统计量可能是按展平后的特征维度保存的 (features,)，也可能是按通道保存的 (C,)
+            # 如果是从自监督训练脚本保存的，可能是按通道保存的 (6,) 或 (1,)
+            # 需要根据实际形状判断并转换
+            
+            # 检查是否是按通道保存的（自监督训练脚本保存的格式）
+            if x_mean.shape[0] == 6 and y_mean.shape[0] == 1:
+                # 这是按通道保存的2D归一化器（自监督训练脚本保存的格式）
+                # 训练时是先归一化2D数据再展平，所以评估时也应该使用2D归一化器
+                # 将统计量reshape为 (1, 1, C) 以支持 (N, H, W, C) 广播
+                print(f"检测到按通道保存的归一化器 (x_mean.shape={x_mean.shape}, y_mean.shape={y_mean.shape})")
+                print(f"使用2D归一化器（训练时先归一化2D数据再展平）")
+                
+                x_mean = x_mean.reshape(1, 1, -1)  # (1,1,6)
+                x_std = x_std.reshape(1, 1, -1)
+                y_mean = y_mean.reshape(1, 1, -1)  # (1,1,1)
+                y_std = y_std.reshape(1, 1, -1)
+                
+                # 创建归一化器并手动设置统计量（使用2D格式的训练数据初始化）
+                x_normalizer = DataNormer(train_x, method=cfg['method'])
+                x_normalizer.mean = x_mean
+                x_normalizer.std = x_std
+                y_normalizer = DataNormer(train_y, method=cfg['method'])
+                y_normalizer.mean = y_mean
+                y_normalizer.std = y_std
+            else:
+                # 已经是展平后的归一化器，直接使用
+                dummy_x = np.zeros((1, x_mean.shape[0]), dtype=np.float32)
+                dummy_y = np.zeros((1, y_mean.shape[0]), dtype=np.float32)
+                x_normalizer = DataNormer(dummy_x, method=cfg['method'])
+                x_normalizer.mean = x_mean  # 保持 (features,) 形状
+                x_normalizer.std = x_std
+                y_normalizer = DataNormer(dummy_y, method=cfg['method'])
+                y_normalizer.mean = y_mean
+                y_normalizer.std = y_std
+        else:
+            raise ValueError(f"未知模型类型: {model_type}")
     else:
         print("未找到 normalizers.yaml，基于数据重新计算归一化器")
         x_normalizer = DataNormer(train_x, method='mean-std')
@@ -147,7 +201,7 @@ def _build_mlp(device, ckpt_dir: str):
     """
     构建 MLP 模型，从检查点自动推断参数
     """
-    from Demo.satellite_2d_dssl.run_MLP_satellite_base_new import MLP
+    from Demo.satellite_2d_base.run_MLP_satellite import MLP
     
     # 从检查点推断实际参数
     config = _get_default_model_config('mlp')
@@ -168,11 +222,98 @@ def _build_mlp(device, ckpt_dir: str):
     
     net = MLP(
         layer_mat=layers, 
-        is_BatchNorm=False,
-        input_shape_2d=(s, s, 6), 
-        output_shape_2d=(s, s, 1)
+        is_BatchNorm=False
     ).to(device)
     return net, config['down']
+
+
+def _build_trans(device, ckpt_dir: str):
+    """
+    构建 Transformer 模型，尝试从检查点目录加载配置文件，否则使用默认配置
+    """
+    from transformer.Transformers import FourierTransformer
+    from Demo.satellite_2d_base.utils import load_yaml_config
+    
+    # 尝试从检查点目录加载配置文件
+    config_path = '/data/wqn/DENO4pytorch/data/configs/transformer_config_sate.yml'
+    if not os.path.exists(config_path):
+        # 尝试项目根目录的默认配置文件
+        CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+        PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, os.pardir, os.pardir))
+        default_config_path = os.path.join(PROJECT_ROOT, 'configs', 'transformer_config_sate.yml')
+        if os.path.exists(default_config_path):
+            config_path = default_config_path
+    
+    # 获取默认配置
+    config = _get_default_model_config('trans')
+    down = config['down']
+    s = 256 // down
+    
+    # 如果找到配置文件，加载它
+    if os.path.exists(config_path):
+        print(f"从 {config_path} 加载 Transformer 配置")
+        raw_cfg = load_yaml_config(config_path) or {}
+        # 兼容顶层名称
+        if isinstance(raw_cfg, dict) and len(raw_cfg) == 1:
+            cfg = list(raw_cfg.values())[0]
+        elif isinstance(raw_cfg, dict):
+            cfg = raw_cfg.get('PakB_2d', raw_cfg)
+        else:
+            cfg = {}
+        
+        # 强制覆盖关键字段
+        cfg['node_feats'] = 6
+        cfg['n_targets'] = 1
+        cfg['pos_dim'] = 2
+        cfg['spacial_dim'] = 2
+        if cfg.get('feat_extract_type', None) in [None, 'None']:
+            cfg['feat_extract_type'] = 'identity'
+        
+        # 根据下采样分辨率自动收紧 fourier_modes
+        if 'fourier_modes' in cfg:
+            safe_modes = max(1, min(int(cfg['fourier_modes']), int(s // 2 + 1)))
+            cfg['fourier_modes'] = safe_modes
+    else:
+        # 使用默认配置
+        print("使用默认 Transformer 配置")
+        cfg = dict(
+            node_feats=6,
+            n_targets=1,
+            n_hidden=config['hidden'],
+            n_head=config['nhead'],
+            num_encoder_layers=config['enc_layers'],
+            dim_feedforward=(2 * config['hidden']) if config['ffn'] is None else config['ffn'],
+            attention_type='fourier',
+            feat_extract_type='identity',
+            num_feat_layers=0,
+            graph_activation=False,
+            raw_laplacian=True,
+            pos_dim=2,
+            edge_feats=0,
+            layer_norm=True,
+            attn_norm=False,
+            batch_norm=False,
+            spacial_residual=False,
+            return_attn_weight=False,
+            seq_len=None,
+            bulk_regression=False,
+            decoder_type=config['decoder'],
+            num_regressor_layers=2,
+            fourier_modes=min(config['fourier_modes'], s // 2 + 1),
+            freq_dim=64,
+            spacial_dim=2,
+            spacial_fc=True,
+            dropout=0.0,
+            xavier_init=1e-4,
+            diagonal_weight=1e-2,
+            symmetric_init=False,
+            debug=False,
+        )
+    
+    print(f"构建 Transformer 网络: down={down}, s={s}, fourier_modes={cfg.get('fourier_modes', 'N/A')}")
+    
+    net = FourierTransformer(**cfg).to(device)
+    return net, down
 
 
 def _load_checkpoint(model: torch.nn.Module, ckpt_dir: str, device: torch.device) -> torch.nn.Module:
@@ -226,9 +367,9 @@ def _ensure_dir(path: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='卫星2D模型推理评估脚本（FNO/MLP）')
+    parser = argparse.ArgumentParser(description='卫星2D模型推理评估脚本（FNO/MLP/Transformer）')
     # 基本参数
-    parser.add_argument('--model', type=str, default='fno', choices=['fno', 'mlp'])
+    parser.add_argument('--model', type=str, default='fno', choices=['fno', 'mlp', 'trans'])
     parser.add_argument('--data_path', type=str, default='/data/wqn/datasets/packaged_dataset20251017_6c/heat_dataset.h5')
     parser.add_argument('--ckpt', type=str, required=True, help='检查点文件夹路径')
     parser.add_argument('--device', type=str, default='cuda')
@@ -259,8 +400,8 @@ def main():
     inputs, outputs = load_satellite_data(args.data_path)
     (train_x_np, train_y_np), (valid_x_np, valid_y_np) = _split_dataset(inputs, outputs, args.ntrain, args.nvalid)
 
-    # 从检查点文件夹加载归一化器
-    x_normalizer, y_normalizer = _load_normalizers(args.ckpt, train_x_np, train_y_np)
+    # 从检查点文件夹加载归一化器（需要根据模型类型处理）
+    x_normalizer, y_normalizer = _load_normalizers(args.ckpt, train_x_np, train_y_np, model_type=args.model)
 
     # 选择评估子集
     if args.split == 'train':
@@ -273,12 +414,14 @@ def main():
         eval_x_np = np.concatenate([train_x_np, valid_x_np], axis=0)
         eval_y_np = np.concatenate([train_y_np, valid_y_np], axis=0)
 
-    # 构建模型（MLP 需要先构建以获取 down 参数）
+    # 构建模型（MLP 和 Trans 需要先构建以获取 down 参数）
     if args.model == 'fno':
         net = _build_fno(device)
         model_down = None  # FNO 不需要下采样
     elif args.model == 'mlp':
         net, model_down = _build_mlp(device, args.ckpt)
+    elif args.model == 'trans':
+        net, model_down = _build_trans(device, args.ckpt)
     else:
         raise ValueError(f"未知模型类型: {args.model}")
     
@@ -294,19 +437,36 @@ def main():
         eval_x_t = torch.tensor(eval_x_norm, dtype=torch.float32)
         eval_y_t = torch.tensor(eval_y_norm, dtype=torch.float32)
         
+    elif args.model == 'trans':
+        # Transformer: 使用32x32下采样数据（与训练时保持一致，down=8）
+        down = model_down if model_down else 8
+        s = 256 // down
+        eval_x_down = eval_x_np[:, ::down, ::down, :]  # (N, s, s, 6)
+        eval_y_down = eval_y_np[:, ::down, ::down, :]
+        eval_x_norm = x_normalizer.norm(eval_x_down)
+        eval_y_norm = y_normalizer.norm(eval_y_down)
+        eval_x_t = torch.tensor(eval_x_norm, dtype=torch.float32)
+        eval_y_t = torch.tensor(eval_y_norm, dtype=torch.float32)
+        
     elif args.model == 'mlp':
-        # MLP: 下采样并展平（使用从检查点推断的 down）
+        # MLP: 下采样、归一化（2D格式），然后展平（与训练时保持一致）
+        # 训练时是先归一化2D数据再展平，所以评估时也应该先归一化2D数据再展平
         down = 4
         s = 256 // down
         eval_x_down = eval_x_np[:, ::down, ::down, :]  # (N, s, s, 6)
         eval_y_down = eval_y_np[:, ::down, ::down, :]  # (N, s, s, 1)
         
-        eval_x_norm = x_normalizer.norm(eval_x_down)
-        eval_y_norm = y_normalizer.norm(eval_y_down)
+        # 先归一化2D数据（与训练时保持一致）
+        eval_x_norm = x_normalizer.norm(eval_x_down)  # (N, s, s, 6)
+        eval_y_norm = y_normalizer.norm(eval_y_down)  # (N, s, s, 1)
         
-        # 展平为 1D
-        eval_x_t = torch.tensor(eval_x_norm.reshape(eval_x_norm.shape[0], -1), dtype=torch.float32)
-        eval_y_t = torch.tensor(eval_y_norm.reshape(eval_y_norm.shape[0], -1), dtype=torch.float32)
+        # 然后展平为 (N, features)
+        eval_x_flat = eval_x_norm.reshape(eval_x_norm.shape[0], -1)  # (N, s*s*6)
+        eval_y_flat = eval_y_norm.reshape(eval_y_norm.shape[0], -1)  # (N, s*s*1)
+        
+        # 转换为tensor
+        eval_x_t = torch.tensor(eval_x_flat, dtype=torch.float32)
+        eval_y_t = torch.tensor(eval_y_flat, dtype=torch.float32)
     else:
         raise ValueError(f"未知模型类型: {args.model}")
     
@@ -329,6 +489,9 @@ def main():
             if args.model == 'fno':
                 gd = feature_transform(bx)
                 pred = net(bx, gd)
+            elif args.model == 'trans':
+                gd = feature_transform(bx)
+                pred = net(bx, gd)
             elif args.model == 'mlp':
                 pred = net(bx)
             
@@ -340,14 +503,19 @@ def main():
     
     # 反归一化到物理空间
     if args.model == 'mlp':
-        # MLP 输出需要 reshape 回 2D
-        down = model_down
+        # MLP: 反归一化时，需要先reshape回2D，然后反归一化（与训练时保持一致）
+        down = model_down if model_down else 4
         s = 256 // down
-        preds_all = preds_all.reshape((-1, s, s, 1))
-        trues_all = trues_all.reshape((-1, s, s, 1))
-    
-    preds_all = y_normalizer.back(preds_all)
-    trues_all = y_normalizer.back(trues_all)
+        # 先reshape回2D
+        preds_all = preds_all.reshape((-1, s, s, 1))  # (N, s, s, 1)
+        trues_all = trues_all.reshape((-1, s, s, 1))  # (N, s, s, 1)
+        # 然后反归一化（2D格式）
+        preds_all = y_normalizer.back(preds_all)  # (N, s, s, 1)
+        trues_all = y_normalizer.back(trues_all)  # (N, s, s, 1)
+    else:
+        # FNO 和 Transformer: 直接反归一化（已经是2D格式）
+        preds_all = y_normalizer.back(preds_all)
+        trues_all = y_normalizer.back(trues_all)
 
     # 保存预测和真实值的numpy数组
     if args.split == 'train':

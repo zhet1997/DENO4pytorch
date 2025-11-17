@@ -249,6 +249,7 @@ if __name__ == "__main__":
     parser.add_argument('--self_lr_final', type=float, default=2e-5)
     parser.add_argument('--self_lr_start', type=float, default=2e-6)
     parser.add_argument('--self_sample_limit', type=int, default=None)
+    parser.add_argument('--loss_gap', type=float, default=0.5, help='自监督损失比例阈值')
     args = parser.parse_args()
 
     net_name = 'MLP_DSSL'
@@ -289,7 +290,7 @@ if __name__ == "__main__":
         self_sample_limit=args.self_sample_limit,
         num_workers=4,
         pin_memory=True,
-        use_cache=True
+        use_cache=False
     )
     logger.info('数据加载和预处理完成')
     logger.info(f'归一化器: x_mean.shape={x_normalizer.mean.shape}, y_mean.shape={y_normalizer.mean.shape}')
@@ -357,7 +358,7 @@ if __name__ == "__main__":
             output_dim_mat,
             Optimizer_self,
             train_loss=train_loss,
-            loss_gap=0.5,
+            loss_gap=args.loss_gap,
         )
         log_loss['train_self'].append(self_loss)
 

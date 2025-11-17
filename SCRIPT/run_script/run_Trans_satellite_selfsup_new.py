@@ -17,6 +17,7 @@ if PROJECT_ROOT not in sys.path:
 if MODELS_DIR not in sys.path:
     sys.path.insert(0, MODELS_DIR)
 
+from transformer.Transformers import FourierTransformer
 from collections import OrderedDict
 from Utilizes.process_data import DataNormer
 from Demo.satellite_2d_dssl.dataset_selfsup import (
@@ -26,44 +27,15 @@ from Demo.satellite_2d_dssl.dataset_selfsup import (
 from Demo.satellite_2d_base.utils import load_yaml_config
 from Utilizes.visual_data import MatplotlibVision
 
-class MLP(nn.Module):
-    def __init__(self, layer_mat=None, is_BatchNorm=False, input_shape_2d=None, output_shape_2d=None):
-        super().__init__()
-        if layer_mat is None:
-            raise ValueError("layer_mat must be provided")
-        if input_shape_2d is None or output_shape_2d is None:
-            raise ValueError("input_shape_2d and output_shape_2d must be provided")
-        
-        self.input_shape_2d = input_shape_2d  # (H, W, C_in)
-        self.output_shape_2d = output_shape_2d  # (H, W, C_out)
-        self.depth = len(layer_mat)
-        activation = nn.GELU
-
-        layer_list = []
-        for i in range(self.depth - 2):
-            layer_list.append((f'layer_{i}', nn.Linear(layer_mat[i], layer_mat[i + 1])))
-            if is_BatchNorm:
-                layer_list.append((f'batchnorm_{i}', nn.BatchNorm1d(layer_mat[i + 1])))
-            layer_list.append((f'activation_{i}', activation()))
-        layer_list.append((f'layer_{self.depth - 2}', nn.Linear(layer_mat[-2], layer_mat[-1])))
-        self.layers = nn.Sequential(OrderedDict(layer_list))
-
-        
-    def forward(self, x):
-        """
-        Args:
-            x: (B, H, W, C_in) - 2D格式输入
-        Returns:
-            out: (B, H, W, C_out) - 2D格式输出
-        """
-        B = x.shape[0]
-        # 展平: (B, H, W, C) -> (B, H*W*C)
-        x_flat = x.reshape(B, -1)
-        # MLP处理
-        out_flat = self.layers(x_flat)
-        # 恢复2D: (B, H*W*C) -> (B, H, W, C)
-        out = out_flat.reshape(B, *self.output_shape_2d)
-        return out
+def feature_transform(x: torch.Tensor) -> torch.Tensor:
+    """生成位置编码（grid）"""
+    shape = x.shape
+    batchsize, size_x, size_y = shape[0], shape[1], shape[2]
+    gridx = torch.linspace(0, 1, size_x, dtype=torch.float32, device=x.device)
+    gridx = gridx.reshape(1, size_x, 1, 1).repeat(batchsize, 1, size_y, 1)
+    gridy = torch.linspace(0, 1, size_y, dtype=torch.float32, device=x.device)
+    gridy = gridy.reshape(1, 1, size_y, 1).repeat(batchsize, size_x, 1, 1)
+    return torch.cat((gridx, gridy), dim=-1).to(x.device)
 
 
 
@@ -87,17 +59,19 @@ def train(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
 
 
 def valid(dataloader, netmodel, device, lossfunc):
+    """验证函数"""
     valid_loss = 0
+    batch = 0
     with torch.no_grad():
         for batch, (xx, yy) in enumerate(dataloader):
             xx = xx.to(device)
             yy = yy.to(device)
+            gd = feature_transform(xx)
 
-            pred = netmodel(xx)
+            pred = netmodel(xx, gd)
             loss = lossfunc(pred, yy)
             valid_loss += loss.item()
     return valid_loss / (batch + 1)
-
 
 def build_input_dim_matrix_from_yaml_v2(yaml_path: str) -> np.ndarray:
     """
@@ -207,26 +181,19 @@ def train_selfsup(dataloader_ss,
 def inference(dataloader, netmodel, device):
     """
     Args:
-        dataloader: 2D格式数据
-        netmodel: Network (MLP)
+        dataloader: input coordinates
+        netmodel: Network
         device: 设备
     Returns:
-        coords, grid, true_fields, pred_fields (所有形状为 B, H, W, C)
+        coords, grid, true_fields, pred_fields (所有形状为 N,H,W,C)
     """
     with torch.no_grad():
         xx, yy = next(iter(dataloader))
         xx = xx.to(device)
-        pred = netmodel(xx)  # MLP内部处理展平
-    
-    # 提取尺寸用于生成grid
-    B, H, W, _ = xx.shape
-    
-    # 生成grid
-    gridx = np.linspace(0, 1, H).reshape(1, H, 1, 1).repeat(B, axis=0).repeat(W, axis=2)
-    gridy = np.linspace(0, 1, W).reshape(1, 1, W, 1).repeat(B, axis=0).repeat(H, axis=1)
-    grid = np.concatenate([gridx, gridy], axis=-1)
-    
-    return xx.cpu().numpy(), grid, yy.numpy(), pred.cpu().numpy()
+        gd = feature_transform(xx)
+        pred = netmodel(xx, gd)
+
+    return xx.cpu().numpy(), gd.cpu().numpy(), yy.numpy(), pred.cpu().numpy()
 
 
 if __name__ == "__main__":
@@ -249,14 +216,11 @@ if __name__ == "__main__":
     parser.add_argument('--self_lr_final', type=float, default=2e-5)
     parser.add_argument('--self_lr_start', type=float, default=2e-6)
     parser.add_argument('--self_sample_limit', type=int, default=None)
-    parser.add_argument('--noise_std', type=float, default=0.05, 
-                       help='训练集输出噪声标准差（归一化空间）')
-    parser.add_argument('--noise_type', type=str, default='independent', choices=['independent', 'correlated'])
     args = parser.parse_args()
 
-    net_name = 'MLP_DSSL'
+    net_name = 'Trans__DSSL'
     timestamp = time.strftime('%Y%m%d_%H%M%S')
-    work_path = os.path.join(args.work_dir, f'{net_name}_noise{args.noise_std}_{timestamp}')
+    work_path = os.path.join(args.work_dir, f'{net_name}_n{args.ntrain}_{timestamp}')
     os.makedirs(work_path, exist_ok=True)
     
     # 配置日志
@@ -272,7 +236,6 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
     logger.info(f'工作路径: {work_path}')
     logger.info(f'训练样本数: {args.ntrain}, 验证样本数: {args.nvalid}')
-    logger.info(f'输出噪声标准差（归一化空间）: {args.noise_std}')
 
     # 设备
     if torch.cuda.is_available():
@@ -291,8 +254,6 @@ if __name__ == "__main__":
         down=args.down,
         work_path=work_path,
         self_sample_limit=args.self_sample_limit,
-        noise_std=args.noise_std,
-        noise_type=args.noise_type,
         num_workers=4,
         pin_memory=True,
         use_cache=False
@@ -300,16 +261,42 @@ if __name__ == "__main__":
     logger.info('数据加载和预处理完成')
     logger.info(f'归一化器: x_mean.shape={x_normalizer.mean.shape}, y_mean.shape={y_normalizer.mean.shape}')
 
-    # MLP 初始化（传入2D形状信息）
-    s = 256 // args.down
-    in_dim = s * s * 6
-    out_dim = s * s * 1
-    layers = [in_dim]
-    for _ in range(max(args.layers - 2, 1)):
-        layers.append(args.hidden)
-    layers.append(out_dim)
-    Net_model = MLP(layer_mat=layers, is_BatchNorm=False, 
-                    input_shape_2d=(s, s, 6), output_shape_2d=(s, s, 1)).to(Device)
+    # 组装 Transformer 配置：优先使用 YAML 配置
+    cfg = None
+    down = 8
+    args.config_path = "/data/wqn/DENO4pytorch/data/configs/transformer_config_sate.yml"
+    raw_cfg = load_yaml_config(args.config_path) or {}
+    # 兼容顶层名称
+    if isinstance(raw_cfg, dict) and len(raw_cfg) == 1:
+        cfg = list(raw_cfg.values())[0]
+    elif isinstance(raw_cfg, dict):
+        # 若包含特定键，则取之，否则直接使用
+        cfg = raw_cfg.get('PakB_2d', raw_cfg)
+    else:
+        cfg = {}
+    # 强制覆盖与数据维度相关的关键字段
+    cfg['node_feats'] = 6
+    cfg['n_targets'] = 1
+    cfg['pos_dim'] = 2
+    cfg['spacial_dim'] = 2
+    # feat_extract_type 为空时兜底为 identity
+    if cfg.get('feat_extract_type', None) in [None, 'None']:
+        cfg['feat_extract_type'] = 'identity'
+    # 根据下采样分辨率自动收紧 fourier_modes，避免 RFFT 维度不匹配
+    if 'fourier_modes' in cfg:
+        s = 256 // down
+        safe_modes = max(1, min(int(cfg['fourier_modes']), int(s // 2 + 1)))
+        cfg['fourier_modes'] = safe_modes
+ 
+    
+    # 根据下采样分辨率自动收紧 fourier_modes
+    s = 256 // down
+    if 'fourier_modes' in cfg:
+        safe_modes = max(1, min(int(cfg['fourier_modes']), int(s // 2 + 1)))
+        cfg['fourier_modes'] = safe_modes
+        logger.info(f'自动调整 fourier_modes 为 {safe_modes}（下采样后分辨率: {s}x{s}）')
+
+    Net_model = FourierTransformer(**cfg).to(Device)
 
     # 训练要素：监督
     Loss_func = nn.MSELoss()
@@ -317,7 +304,7 @@ if __name__ == "__main__":
     Scheduler = torch.optim.lr_scheduler.StepLR(Optimizer, step_size=int(args.epochs*0.3), gamma=0.2)
 
     # 量纲矩阵：输入从新版本YAML，输出为temperature的量纲
-    yaml_path = os.path.join(PROJECT_ROOT, 'Demo', 'satellite_2d_dssl', 'augmentation_satellite.yml')
+    yaml_path = os.path.join(CURRENT_DIR, 'augmentation_satellite.yml')
     input_dim_mat_np = build_input_dim_matrix_from_yaml_v2(yaml_path)  # (4,C)
     input_dim_mat = torch.tensor(input_dim_mat_np, dtype=torch.float32, device=Device)
     logger.info(f"输入量纲矩阵形状: {input_dim_mat.shape}")

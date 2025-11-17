@@ -33,7 +33,7 @@ for ntrain in "${NTRAIN_LIST[@]}"; do
     # 训练 MLP_DSSL (自监督)
     echo "" | tee -a "$LOG_FILE"
     echo "[Trans_DSSL] ntrain=$ntrain 开始时间: $(date '+%Y-%m-%d %H:%M:%S')" | tee -a "$LOG_FILE"
-    python run_Trans_satellite_selfsup.py \
+    python run_Trans_satellite_selfsup_new.py \
         --ntrain $ntrain \
         --cuda_index 0 \
         --work_dir work_satellite_dssl_trans \

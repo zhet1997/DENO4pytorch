@@ -25,7 +25,6 @@ from Demo.satellite_2d_base.dataset_satellite import load_satellite_data
 from Demo.satellite_2d_dssl.dataset_selfsup import (
     load_selfsup_data,
     dimension_scaling_Tensor,
-    NoisyOutputDataset,
 )
 from Demo.satellite_2d_base.utils import load_yaml_config
 from Utilizes.visual_data import MatplotlibVision
@@ -238,6 +237,7 @@ if __name__ == "__main__":
     parser.add_argument('--self_sample_limit', type=int, default=None)
     parser.add_argument('--noise_std', type=float, default=0.05, 
                        help='训练集输出噪声标准差（归一化空间）')
+    parser.add_argument('--noise_type', type=str, default='independent', choices=['independent', 'correlated'])
     args = parser.parse_args()
 
     net_name = 'FNO_BASE'
@@ -268,7 +268,7 @@ if __name__ == "__main__":
         Device = torch.device('cpu')
 
     # 加载数据（inputs: N,256,256,6; outputs: N,256,256,1）
-    inputs, outputs = load_satellite_data(args.data_path)
+    inputs, outputs = load_satellite_data(args.data_path, noise_scale=args.noise_std, noise_type=args.noise_type)
     N = inputs.shape[0]
 
     ntrain = args.ntrain
@@ -303,10 +303,7 @@ if __name__ == "__main__":
     logger.info(f'归一化器已保存: x_mean.shape={x_normalizer.mean.shape}, y_mean.shape={y_normalizer.mean.shape}')
 
     # 创建训练集 DataLoader（带噪声支持）
-    if args.noise_std > 0:
-        train_dataset = NoisyOutputDataset(train_x, train_y, noise_std=args.noise_std)
-    else:
-        train_dataset = TensorDataset(train_x, train_y)
+    train_dataset = TensorDataset(train_x, train_y)
     
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False)
     valid_loader = DataLoader(TensorDataset(valid_x, valid_y), batch_size=args.batch_size, shuffle=False, drop_last=False)
@@ -339,7 +336,7 @@ if __name__ == "__main__":
     ss_loader = DataLoader(ss_dataset, batch_size=args.self_batch_size, shuffle=True, drop_last=False)
 
     # 量纲矩阵：输入从新版本YAML，输出沿用 dataset_satellite 定义（temperature）
-    yaml_path = os.path.join(CURRENT_DIR, 'augmentation_satellite.yml')
+    yaml_path = '/data/wqn/DENO4pytorch/Demo/satellite_2d_dssl/augmentation_satellite.yml'
     input_dim_mat_np = build_input_dim_matrix_from_yaml_v2(yaml_path)  # (4,C)
     input_dim_mat = torch.tensor(input_dim_mat_np, dtype=torch.float32, device=Device)
     logger.info(f"输入量纲矩阵形状: {input_dim_mat.shape}")

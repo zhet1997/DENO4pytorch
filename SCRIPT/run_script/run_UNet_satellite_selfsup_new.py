@@ -249,14 +249,11 @@ if __name__ == "__main__":
     parser.add_argument('--self_lr_final', type=float, default=2e-5)
     parser.add_argument('--self_lr_start', type=float, default=2e-6)
     parser.add_argument('--self_sample_limit', type=int, default=None)
-    parser.add_argument('--noise_std', type=float, default=0.05, 
-                       help='训练集输出噪声标准差（归一化空间）')
-    parser.add_argument('--noise_type', type=str, default='independent', choices=['independent', 'correlated'])
     args = parser.parse_args()
 
     net_name = 'MLP_DSSL'
     timestamp = time.strftime('%Y%m%d_%H%M%S')
-    work_path = os.path.join(args.work_dir, f'{net_name}_noise{args.noise_std}_{timestamp}')
+    work_path = os.path.join(args.work_dir, f'{net_name}_n{args.ntrain}_{timestamp}')
     os.makedirs(work_path, exist_ok=True)
     
     # 配置日志
@@ -272,7 +269,6 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
     logger.info(f'工作路径: {work_path}')
     logger.info(f'训练样本数: {args.ntrain}, 验证样本数: {args.nvalid}')
-    logger.info(f'输出噪声标准差（归一化空间）: {args.noise_std}')
 
     # 设备
     if torch.cuda.is_available():
@@ -291,8 +287,6 @@ if __name__ == "__main__":
         down=args.down,
         work_path=work_path,
         self_sample_limit=args.self_sample_limit,
-        noise_std=args.noise_std,
-        noise_type=args.noise_type,
         num_workers=4,
         pin_memory=True,
         use_cache=False
@@ -317,7 +311,7 @@ if __name__ == "__main__":
     Scheduler = torch.optim.lr_scheduler.StepLR(Optimizer, step_size=int(args.epochs*0.3), gamma=0.2)
 
     # 量纲矩阵：输入从新版本YAML，输出为temperature的量纲
-    yaml_path = os.path.join(PROJECT_ROOT, 'Demo', 'satellite_2d_dssl', 'augmentation_satellite.yml')
+    yaml_path = os.path.join(CURRENT_DIR, 'augmentation_satellite.yml')
     input_dim_mat_np = build_input_dim_matrix_from_yaml_v2(yaml_path)  # (4,C)
     input_dim_mat = torch.tensor(input_dim_mat_np, dtype=torch.float32, device=Device)
     logger.info(f"输入量纲矩阵形状: {input_dim_mat.shape}")

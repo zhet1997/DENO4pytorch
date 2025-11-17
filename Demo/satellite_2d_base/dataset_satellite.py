@@ -56,13 +56,23 @@ from .data_utils import (
 )
 
 
-def load_satellite_data(data_path: str = "./data_post/heat_dataset_new.h5", sample_limit: Optional[int] = None) -> Tuple[np.ndarray, np.ndarray]:
+def load_satellite_data(
+    data_path: str = "./data_post/heat_dataset_new.h5", 
+    sample_limit: Optional[int] = None,
+    noise_type: Optional[str] = None,
+    noise_scale: float = 0.0,
+    noise_dir: Optional[str] = None
+) -> Tuple[np.ndarray, np.ndarray]:
     """
-    从h5py格式文件加载卫星热仿真数据
+    从h5py格式文件加载卫星热仿真数据，可选择添加固定噪声
     
     Args:
         data_path (str): h5文件路径
         sample_limit (Optional[int]): 限制加载的样本数量，None表示加载全部数据
+        noise_type (Optional[str]): 噪声类型，'independent'(独立噪声) 或 'correlated'(空间相关噪声)，
+                                     None 表示不添加噪声
+        noise_scale (float): 噪声幅度系数，相对于数据 std 的比例。例如 0.1 表示噪声 std 为数据 std 的 10%
+        noise_dir (Optional[str]): 噪声文件所在目录，None 表示与 data_path 同目录
         
     Returns:
         tuple: (输入数据, 输出数据)
@@ -81,6 +91,12 @@ def load_satellite_data(data_path: str = "./data_post/heat_dataset_new.h5", samp
         
         
         - outputs通道0: 温度场 (K)
+        
+    噪声添加说明：
+        - 噪声仅添加到前 5000 个训练样本的 output
+        - 噪声是预生成的固定值（从 H5 文件加载），确保可复现
+        - 实际噪声幅度 = 预生成噪声 × (output_std × noise_scale)
+        - 数学：u'(x) = u(x) + α·n(x)，其中 α = output_std × noise_scale
     """
     try:
         with h5py.File(data_path, 'r') as f:
@@ -113,6 +129,46 @@ def load_satellite_data(data_path: str = "./data_post/heat_dataset_new.h5", samp
             print(f"   - 输出形状: {outputs.shape}")
             print(f"   - 输入通道: component_sdf, component_power, cooling_sdf, cooling_temp, coord_x, coord_y")
             print(f"   - 输出通道: temperature")
+            
+            # 添加噪声（如果指定）
+            if noise_type is not None and noise_scale > 0:
+                print(f"\n🔊 添加固定噪声:")
+                print(f"   - 噪声类型: {noise_type}")
+                print(f"   - 噪声系数: {noise_scale}")
+                
+                # 确定噪声文件目录
+                if noise_dir is None:
+                    noise_dir = os.path.dirname(data_path)
+                
+                # 加载噪声文件
+                noise_filename = f'noise_{noise_type}.h5'
+                noise_path = os.path.join(noise_dir, noise_filename)
+                
+                if not os.path.exists(noise_path):
+                    raise FileNotFoundError(
+                        f"噪声文件不存在: {noise_path}\n"
+                        f"请先运行 generate_noise.py 生成噪声文件"
+                    )
+                
+                with h5py.File(noise_path, 'r') as nf:
+                    noise_data = np.array(nf['noise'], dtype=np.float32)
+                
+                print(f"   - 噪声文件: {noise_path}")
+                print(f"   - 噪声形状: {noise_data.shape}")
+                
+                # 计算前 5000 个样本的 output 标准差
+                n_train = min(5000, outputs.shape[0])
+                output_std = np.std(outputs[:n_train])
+                print(f"   - 训练集 output std: {output_std:.4f}")
+                
+                # 计算实际噪声幅度: α = output_std × noise_scale
+                actual_noise = noise_data[:n_train] * (output_std * noise_scale)
+                actual_noise_std = np.std(actual_noise)
+                print(f"   - 实际噪声 std: {actual_noise_std:.4f} ({noise_scale*100:.1f}% of data std)")
+                
+                # 只对前 5000 个样本添加噪声
+                outputs[:n_train] = outputs[:n_train] + actual_noise
+                print(f"   - 噪声已添加到前 {n_train} 个样本")
             
             return inputs, outputs
             
