@@ -156,15 +156,35 @@ def load_satellite_data(
                 print(f"   - 噪声文件: {noise_path}")
                 print(f"   - 噪声形状: {noise_data.shape}")
                 
-                # 计算前 5000 个样本的 output 标准差
+                # 检查噪声形状是否匹配
                 n_train = min(5000, outputs.shape[0])
+                expected_noise_shape = (n_train, 256, 256, 1)
+                if noise_data.shape[0] < n_train:
+                    raise ValueError(
+                        f"噪声样本数量不足: {noise_data.shape[0]} < {n_train}\n"
+                        f"请重新生成噪声文件，确保至少包含 {n_train} 个样本"
+                    )
+                if noise_data.shape[1:] != (256, 256, 1):
+                    raise ValueError(
+                        f"噪声空间维度不匹配: {noise_data.shape[1:]} != (256, 256, 1)\n"
+                        f"期望形状: {expected_noise_shape}"
+                    )
+                
+                # 计算前 5000 个样本的 output 标准差
                 output_std = np.std(outputs[:n_train])
                 print(f"   - 训练集 output std: {output_std:.4f}")
                 
-                # 计算实际噪声幅度: α = output_std × noise_scale
-                actual_noise = noise_data[:n_train] * (output_std * noise_scale)
+                # 计算噪声数据本身的 std（用于归一化）
+                noise_std = np.std(noise_data[:n_train])
+                print(f"   - 噪声数据 std: {noise_std:.4f}")
+                
+                # 修正：先归一化噪声到 std=1，再按目标 std 缩放
+                # 公式: actual_noise = (noise_data / noise_data.std()) * (output_std * noise_scale)
+                # 这样确保 noise_scale=1.0 时，实际噪声 std = output_std
+                actual_noise = (noise_data[:n_train] / noise_std) * (output_std * noise_scale)
                 actual_noise_std = np.std(actual_noise)
-                print(f"   - 实际噪声 std: {actual_noise_std:.4f} ({noise_scale*100:.1f}% of data std)")
+                print(f"   - 实际噪声 std: {actual_noise_std:.4f} (期望: {output_std * noise_scale:.4f})")
+                print(f"   - 噪声强度: {noise_scale*100:.1f}% of data std")
                 
                 # 只对前 5000 个样本添加噪声
                 outputs[:n_train] = outputs[:n_train] + actual_noise
