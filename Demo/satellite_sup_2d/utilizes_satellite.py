@@ -13,6 +13,13 @@ import h5py
 import os
 import sys
 import torch
+from pathlib import Path
+from typing import Dict, Any
+import logging
+
+# 设置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # 添加项目根目录到路径
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
@@ -42,7 +49,53 @@ def _detect_format(inputs_shape):
             f"支持的格式: V1(6通道) 或 V2(17通道)。\n"
             f"详情请参考 DATASET_FORMATS.md"
         )
-
+        
+           
+def load_h5_dataset(h5_file: Path) -> Dict[str, Any]:
+    """
+    加载G-U-T格式的H5数据集
+    
+    Args:
+        h5_file: H5文件路径
+    
+    Returns:
+        Dict[str, Any]: 包含G, U, T数据及元信息的字典
+            - 'G': (N, H, W, 4) - 通用全场参数
+            - 'U': (N, H, W, k) - 功率调制SDF
+            - 'T': (N, H, W, 1) or None - 温度场
+            - 'sample_ids': (N,) - 样本ID
+            - 'num_samples': int - 样本数
+            - 'grid_size': str - 网格尺寸
+            - 'channels': dict - 通道数信息
+    """
+    h5_file = Path(h5_file)
+    
+    if not h5_file.exists():
+        raise FileNotFoundError(f"H5文件不存在: {h5_file}")
+    
+    dataset = {}
+    
+    with h5py.File(h5_file, 'r') as h5f:
+        # 加载G-U-T数据
+        dataset['G'] = h5f['G'][:]
+        dataset['U'] = h5f['U'][:]
+        dataset['T'] = h5f['T'][:] if 'T' in h5f else None
+        dataset['sample_ids'] = h5f['sample_ids'][:]
+        
+        # 加载元数据
+        dataset['num_samples'] = h5f.attrs['num_samples']
+        dataset['grid_size'] = h5f.attrs['grid_size']
+        dataset['channels'] = {
+            'G': h5f.attrs['G_channels'],
+            'U': h5f.attrs['U_channels'],
+            'T': h5f.attrs['T_channels']
+        }
+    
+    logger.info(f"加载数据集: {h5_file}")
+    logger.info(f"  样本数: {dataset['num_samples']}, 网格: {dataset['grid_size']}")
+    logger.info(f"  G: {dataset['G'].shape}, U: {dataset['U'].shape}, T: {dataset['T'].shape if dataset['T'] is not None else 'None'}")
+    
+    return dataset
 
 def get_origin_satellite(
     h5_path=None,
@@ -74,7 +127,7 @@ def get_origin_satellite(
     """
     # 设置默认h5路径
     if h5_path is None:
-        h5_path = "/data/wqn/datasets/packaged_dataset20251011_17c/heat_dataset.h5"
+        h5_path = "/data/wqn/datasets/packaged_heat_dataset_17c_20251211/heat_dataset.h5"
     
     # 检查文件是否存在
     if not os.path.exists(h5_path):

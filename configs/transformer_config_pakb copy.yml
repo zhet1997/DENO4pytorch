@@ -1,0 +1,44 @@
+PakB_2d:
+  node_feats: 10  # node [batch_size, seq_len, feats]
+  edge_feats: 0
+  pos_dim: 2  #
+  n_targets: 64
+  n_hidden: 64   # 减少隐藏层维度以避免维度不匹配
+  num_feat_layers: 2  # feature extract layer number
+  num_encoder_layers: 2  # 减少编码器层数以节省内存
+  encoder_dropout: 0.0
+  ffn_dropout: 0.0
+  dropout: 0.0  # 添加缺失的dropout参数
+  attn_activation: 'gelu'
+  n_head: 4
+  pred_len: 0
+  n_freq_targets: 0
+  dim_feedforward: 128  # 减少前馈网络维度
+  feat_extract_type: 'Identity'  # feature extract
+  graph_activation: True
+  raw_laplacian: True
+  attention_type: 'galerkin'  # no softmax, linear attention
+  xavier_init: 1.0e-2
+  diagonal_weight: 1.0e-2
+  symmetric_init: False
+  layer_norm: True
+  attn_norm: False
+  batch_norm: False
+  spacial_residual: False
+  return_attn_weight: True
+  seq_len: null
+  bulk_regression: False
+  decoder_type: 'pointwise'  # spectral ifft require n_grid * n_grid
+  decoder_dropout: 0.0
+  regressor_activation: 'gelu'
+  freq_dim: 64
+  num_regressor_layers: 2  # 减少回归器层数以避免维度问题
+  fourier_modes: 16
+  spacial_dim: 2
+  spacial_fc: False
+  return_latent: False
+  normalizer: null
+  debug: False  # 添加debug参数
+  upsample_mode: 'interp'  # 添加上采样模式
+  downsample_mode: 'interp'  # 添加下采样模式
+  boundary_condition: null  # 添加边界条件

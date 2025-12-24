@@ -58,8 +58,19 @@ def instance_to_half(data, batch_size=1, list=True):
 
 def fill_channels(xx, x_norm=None, channel_num=16, shuffle=False,):
     expand = int(channel_num - xx.shape[-1])
+    
+    # 如果不需要填充（expand <= 0），直接返回或只进行shuffle
+    if expand <= 0:
+        if shuffle:
+            for ii in range(xx.shape[0]):
+                idx = torch.randperm(xx.shape[-1])
+                xx[ii] = xx[ii, ..., idx]
+        return xx
+    
+    # 需要填充时才创建填充张量并归一化
     xx_fill = torch.zeros([*xx.shape[:-1], expand], device=xx.device) + 350
-    xx_fill = x_norm.norm(xx_fill)
+    if x_norm is not None:
+        xx_fill = x_norm.norm(xx_fill)
     xx = torch.cat((xx, xx_fill), dim=-1)  # now the channel num is 16*(2**super_num)
 
     if shuffle:

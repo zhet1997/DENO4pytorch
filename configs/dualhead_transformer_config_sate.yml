@@ -1,0 +1,200 @@
+# DualHeadFourierTransformer 配置文件
+# 适用于卫星数据 (satellite data) 的双头条件化 Transformer
+
+# 基础配置：G(4通道) + U(1通道) -> T(1通道)
+# G 包含: x, y 坐标 + scale_x, scale_y (物理尺度信息)
+# U 包含: 源项场 (1通道)
+DualHead_GUT_2d:
+  # ============ 双头输入配置 ============
+  G_dim: 4              # G 的通道数 (条件场，含 pos 和 scale 信息)
+  U_dim: 1              # U 的通道数 (源项场)
+  n_targets: 1          # 输出通道数
+  
+  # ============ 网络结构 ============
+  n_hidden: 48          # token 隐藏维度
+  num_encoder_layers: 2 # conditional encoder 层数
+  n_head: 2             # 注意力头数
+  dim_feedforward: 48   # FeedForward 中间维度 (通常 2*n_hidden 或等于 n_hidden)
+  
+  # ============ 注意力配置 ============
+  attention_type: galerkin  # fourier, galerkin, linear, softmax
+  pos_dim: 0            # 不需要额外 pos 编码（pos 已在 G 中）
+  xavier_init: 0.01     # Xavier 初始化增益
+  diagonal_weight: 0.01 # 对角权重
+  symmetric_init: False # 是否对称初始化
+  
+  # ============ 归一化配置 ============
+  # 注意: DualHead 使用 CondLayerNorm，这些参数用于内部 LayerNorm
+  norm_eps: 0.0000001   # LayerNorm epsilon
+  
+  # ============ 解码器配置 ============
+  decoder_type: ifft        # pointwise 或 ifft (SpectralRegressor)
+  num_regressor_layers: 1   # regressor 层数
+  freq_dim: 48              # ifft decoder 的频域维度
+  fourier_modes: 8          # ifft decoder 的 Fourier modes (须 < 输入尺寸)
+                            # 注意: 使用 ifft decoder 时，输入尺寸必须 > fourier_modes
+                            # 例如: modes=8 适用于 16x16, modes=12 需要 >=32x32
+  regressor_activation: gelu # regressor 的激活函数
+  last_activation: False    # regressor 最后一层是否有激活
+  
+  # ============ 空间配置 ============
+  spacial_dim: 2        # 2D 数据
+  spacial_fc: False     # regressor 是否使用 spatial FC (False 因为 pos 已在 G 中)
+  
+  # ============ 正则化 ============
+  dropout: 0.0          # 全局 dropout
+  encoder_dropout: 0.0  # encoder dropout
+  decoder_dropout: 0.0  # decoder dropout
+  ffn_dropout: 0.0      # FeedForward dropout
+  
+  # ============ 其他 ============
+  activation_type: silu # encoder 激活函数 (silu, relu, gelu, tanh)
+  return_latent: False  # 是否返回中间层特征
+  debug: False          # 是否打印调试信息
+
+# 不同配置变体示例
+# ============================================================
+
+# 小型模型配置 (适合快速实验)
+DualHead_Small_2d:
+  G_dim: 4
+  U_dim: 1
+  n_targets: 1
+  n_hidden: 32
+  num_encoder_layers: 2
+  n_head: 2
+  dim_feedforward: 64
+  attention_type: fourier
+  decoder_type: pointwise
+  num_regressor_layers: 2
+  spacial_dim: 2
+  spacial_fc: False
+  dropout: 0.05
+  encoder_dropout: 0.05
+  decoder_dropout: 0.05
+  ffn_dropout: 0.05
+  activation_type: silu
+  regressor_activation: silu
+  pos_dim: 0
+  xavier_init: 0.01
+  diagonal_weight: 0.01
+  symmetric_init: False
+  norm_eps: 0.00001
+  return_latent: False
+  debug: False
+
+# 标准模型配置 (平衡性能和计算成本)
+DualHead_Base_2d:
+  G_dim: 4
+  U_dim: 1
+  n_targets: 1
+  n_hidden: 96
+  num_encoder_layers: 4
+  n_head: 4
+  dim_feedforward: 192
+  attention_type: fourier
+  decoder_type: pointwise
+  num_regressor_layers: 2
+  spacial_dim: 2
+  spacial_fc: False
+  dropout: 0.05
+  encoder_dropout: 0.05
+  decoder_dropout: 0.05
+  ffn_dropout: 0.05
+  activation_type: silu
+  regressor_activation: silu
+  pos_dim: 0
+  xavier_init: 0.01
+  diagonal_weight: 0.01
+  symmetric_init: False
+  norm_eps: 0.00001
+  return_latent: False
+  debug: False
+
+# 大型模型配置 (追求最佳性能)
+DualHead_Large_2d:
+  G_dim: 4
+  U_dim: 1
+  n_targets: 1
+  n_hidden: 128
+  num_encoder_layers: 6
+  n_head: 8
+  dim_feedforward: 512
+  attention_type: galerkin
+  decoder_type: ifft
+  num_regressor_layers: 2
+  freq_dim: 128
+  fourier_modes: 12     # 适用于 >=32x32 输入，如需 16x16 请改为 8
+  spacial_dim: 2
+  spacial_fc: False     # pos 已在 G 中，不需要额外的 spatial FC
+  dropout: 0.1
+  encoder_dropout: 0.1
+  decoder_dropout: 0.1
+  ffn_dropout: 0.1
+  activation_type: silu
+  regressor_activation: gelu
+  last_activation: False
+  pos_dim: 0
+  xavier_init: 0.01
+  diagonal_weight: 0.01
+  symmetric_init: False
+  norm_eps: 0.00001
+  return_latent: False
+  debug: False
+
+# 3D 数据配置示例
+DualHead_3D:
+  G_dim: 3              # 3D pos (x, y, z)
+  U_dim: 4              # 4通道源项场
+  n_targets: 1          # 单通道输出
+  n_hidden: 64
+  num_encoder_layers: 3
+  n_head: 4
+  dim_feedforward: 128
+  attention_type: fourier
+  decoder_type: pointwise
+  num_regressor_layers: 2
+  spacial_dim: 3        # 3D！
+  spacial_fc: False
+  dropout: 0.05
+  encoder_dropout: 0.05
+  decoder_dropout: 0.05
+  ffn_dropout: 0.05
+  activation_type: silu
+  regressor_activation: silu
+  pos_dim: 0
+  xavier_init: 0.01
+  diagonal_weight: 0.01
+  symmetric_init: False
+  norm_eps: 0.00001
+  return_latent: False
+  debug: False
+
+# 多通道输入输出配置示例
+DualHead_MultiChannel_2d:
+  G_dim: 4              # G: 坐标 + 尺度
+  U_dim: 5              # U: 5个不同的源项场
+  n_targets: 3          # 输出: 3个物理量 (如 T, P, V)
+  n_hidden: 96
+  num_encoder_layers: 4
+  n_head: 4
+  dim_feedforward: 192
+  attention_type: fourier
+  decoder_type: pointwise
+  num_regressor_layers: 2
+  spacial_dim: 2
+  spacial_fc: False
+  dropout: 0.05
+  encoder_dropout: 0.05
+  decoder_dropout: 0.05
+  ffn_dropout: 0.05
+  activation_type: silu
+  regressor_activation: silu
+  pos_dim: 0
+  xavier_init: 0.01
+  diagonal_weight: 0.01
+  symmetric_init: False
+  norm_eps: 0.00001
+  return_latent: False
+  debug: False
+

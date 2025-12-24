@@ -1,9 +1,13 @@
 import torch
+import os
+import sys
 import numpy as np
 import torch.nn as nn
+
 from Tools.model_define.define_FNO import feature_transform
 from Tools.pre_process.data_reform import channel_to_instance, instance_to_half, fill_channels
 from Tools.pre_process.data_reform import little_windows, big_windows
+
 class supredictor(nn.Module):
 
     def __init__(self, pred, supercondition, channel_num=16,):

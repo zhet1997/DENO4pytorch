@@ -15,18 +15,19 @@ class supredictor_list_windows(nn.Module):
         self.channel_num = channel_num
         self.win_split = win_split
 
-    def forward(self, design, coords):
-        super_num = int(np.log2(design.shape[-1] / self.channel_num))
-        design_list = channel_to_instance(design, channel_num=self.channel_num, list=True)
+    def forward(self, G, U):
+        super_num = int(np.log2(U.shape[-1] / self.channel_num))
+        design_list = channel_to_instance(U, channel_num=self.channel_num, list=True)
         field_list = []
 
         for design in design_list:
-            field_list.append(self.pred_net(design, coords))
+            field_list.append(self.pred_net(G, design))
 
         for _ in range(super_num):
             super_list = []
             field = torch.cat(field_list, dim=-1)
             field_list = channel_to_instance(field, channel_num=2, list=True)
+            coords = feature_transform(field)#这里要看一下
             for field in field_list:
                 field = little_windows(field, num_rows=self.win_split, num_cols=self.win_split)
                 coords_new = little_windows(coords, num_rows=self.win_split, num_cols=self.win_split)
@@ -40,14 +41,13 @@ class supredictor_list_windows(nn.Module):
 
 def train_supercondition(dataloader, netmodel, device, lossfunc, optimizer, scheduler, x_norm=None, super_num=1, channel_num=16):
     train_loss = 0
-    for batch, (xx, yy) in enumerate(dataloader):
-        xx = xx.to(device)
-        yy = yy.to(device)
-        xx = fill_channels(xx, x_norm=x_norm, channel_num=channel_num * (2 ** super_num), shuffle=True)
-        gd = feature_transform(xx).to(device)
+    for batch, (G, U, T) in enumerate(dataloader):
+        G = G.to(device)
+        U = U.to(device)
+        T = T.to(device)
 
-        pred = netmodel(xx, gd)
-        loss = lossfunc(pred, yy, xx)
+        pred = netmodel(G, U)
+        loss = lossfunc(pred, T)
 
         optimizer.zero_grad()
         loss.backward()
@@ -62,13 +62,81 @@ def train_supercondition(dataloader, netmodel, device, lossfunc, optimizer, sche
 def valid_supercondition(dataloader, netmodel, device, lossfunc, x_norm=None, super_num=1, channel_num=16):
     valid_loss = 0
     with torch.no_grad():
+        for batch, (G, U, T) in enumerate(dataloader):
+            G = G.to(device)
+            U = U.to(device)
+            T = T.to(device)
+            pred = netmodel(G, U)
+            loss = lossfunc(pred, T)
+            valid_loss += loss.item()
+
+    return valid_loss / (batch + 1)
+
+
+def train_base(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
+    train_loss = 0
+    for batch, (xx, yy) in enumerate(dataloader):
+        xx = xx.to(device)
+        yy = yy.to(device)
+        gd = feature_transform(xx).to(device)
+
+        pred = netmodel(xx, gd)
+        loss = lossfunc(pred, yy)
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        train_loss += loss.item()
+
+    scheduler.step()
+    return train_loss / (batch + 1)
+
+
+def valid_base(dataloader, netmodel, device, lossfunc):
+    valid_loss = 0
+    with torch.no_grad():
         for batch, (xx, yy) in enumerate(dataloader):
             xx = xx.to(device)
             yy = yy.to(device)
-            xx = fill_channels(xx, x_norm=x_norm, channel_num=channel_num * (2 ** super_num), shuffle=True)
             gd = feature_transform(xx).to(device)
             pred = netmodel(xx, gd)
-            loss = lossfunc(pred, yy, xx)
+            loss = lossfunc(pred, yy)
+            valid_loss += loss.item()
+
+    return valid_loss / (batch + 1)
+
+def train_base_GUT(dataloader, netmodel, device, lossfunc, optimizer, scheduler):
+    train_loss = 0
+    for batch, (G, U, T) in enumerate(dataloader):
+        xx = torch.cat((G, U), dim=-1)
+        xx = xx.to(device)
+        yy = T.to(device)
+        gd = feature_transform(xx).to(device)
+
+        pred = netmodel(xx, gd)
+        loss = lossfunc(pred, yy)
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        train_loss += loss.item()
+
+    scheduler.step()
+    return train_loss / (batch + 1)
+
+
+def valid_base_GUT(dataloader, netmodel, device, lossfunc):
+    valid_loss = 0
+    with torch.no_grad():
+        for batch, (G, U, T) in enumerate(dataloader):
+            xx = torch.cat((G, U), dim=-1)
+            xx = xx.to(device)
+            yy = T.to(device)
+            gd = feature_transform(xx).to(device)
+            pred = netmodel(xx, gd)
+            loss = lossfunc(pred, yy)
             valid_loss += loss.item()
 
     return valid_loss / (batch + 1)
