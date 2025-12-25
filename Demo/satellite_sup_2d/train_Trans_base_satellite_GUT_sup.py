@@ -73,11 +73,11 @@ if __name__ == "__main__":
 
     locals().update(basic_dict)
     locals().update(train_dict)
-    target_U_channels = 1
+    target_U_channels = 16
 
     # 数据加载（固定V2/17通道）
     train_loader, valid_loader, normalizers, meta = get_loaders_satellite_multi_GUT(
-        component_nums=[1, 2, 3, 4, 5],
+        component_nums=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
         target_U_channels=target_U_channels,
         empty_channel_value=1.0,
         train_num=ntrain,

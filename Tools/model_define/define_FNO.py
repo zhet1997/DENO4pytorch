@@ -21,13 +21,13 @@ def feature_transform(x):
     Args:
         x: input coordinates
     Returns:
-        res: input transform
+        res: input transform (on the same device as x)
     """
     shape = x.shape
     batchsize, size_x, size_y = shape[0], shape[1], shape[2]
-    gridx = torch.linspace(0, 1, size_x, dtype=torch.float32)
+    gridx = torch.linspace(0, 1, size_x, dtype=torch.float32, device=x.device)
     gridx = gridx.reshape([1, size_x, 1, 1]).tile([batchsize, 1, size_y, 1])
-    gridy = torch.linspace(0, 1, size_y, dtype=torch.float32)
+    gridy = torch.linspace(0, 1, size_y, dtype=torch.float32, device=x.device)
     gridy = gridy.reshape([1, 1, size_y, 1]).tile([batchsize, size_x, 1, 1])
     return torch.concat((gridx, gridy), axis=-1)
 
