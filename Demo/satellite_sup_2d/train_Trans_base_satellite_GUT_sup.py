@@ -26,9 +26,9 @@ import torch
 import torch.nn as nn
 import argparse
 
-sys.path.append('/data/wqn/DENO4pytorch')
-sys.path.append('/data/wqn/DENO4pytorch/Models')
-sys.path.append('/data/wqn/DENO4pytorch/Utilizes')
+sys.path.append('/data/wqn/Code/DENO4pytorch')
+sys.path.append('/data/wqn/Code/DENO4pytorch/Models')
+sys.path.append('/data/wqn/Code/DENO4pytorch/Utilizes')
 
 from Utilizes.visual_data import MatplotlibVision, TextLogger
 import matplotlib.pyplot as plt
