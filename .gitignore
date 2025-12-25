@@ -133,7 +133,6 @@ venv/
 checkpoint/
 checkpoints/
 saved_models/
-models/
 
 # Training output directories
 work/

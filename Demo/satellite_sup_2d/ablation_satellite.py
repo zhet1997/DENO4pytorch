@@ -24,7 +24,7 @@ def get_setting_satellite() -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, A
     返回: basic_dict, train_dict, pred_model_dict, super_model_dict
     """
     basic_dict = {
-        'in_dim': 1,   # 固定V2格式(17通道)
+        'in_dim': 8,   # 固定V2格式(17通道)
         'out_dim': 1,
         'ntrain': 400,
         'nvalid': 100,
@@ -45,7 +45,7 @@ def get_setting_satellite() -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, A
     #     pred_model_dict['node_feats'] = basic_dict['in_dim']
         
     
-    with open(os.path.join('data', 'configs', 'dualhead_transformer_config_sate.yml')) as f:
+    with open(os.path.join('configs', 'dualhead_transformer_config_sate.yml')) as f:
         config = yaml.full_load(f)
         pred_model_dict = config['DualHead_GUT_2d']
         pred_model_dict['U_dim'] = basic_dict['in_dim']
