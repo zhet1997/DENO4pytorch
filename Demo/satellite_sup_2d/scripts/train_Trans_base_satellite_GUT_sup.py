@@ -202,7 +202,7 @@ if __name__ == "__main__":
 
         # 打印训练信息
         if valid_loader is not None:
-            print('epoch: {:6d}, lr: {:.3e}, train_step: {:.3e}, train_super: {:.3e}, '
+            msg = 'epoch: {:6d}, lr: {:.3e}, train_step: {:.3e}, train_super: {:.3e}, ' \
                   'valid_step: {:.3e}, valid_super: {:.3e}, cost: {:.2f}'.format(
                 epoch,
                 Optimizer_0.state_dict()['param_groups'][0]['lr'],
@@ -211,26 +211,17 @@ if __name__ == "__main__":
                 log_loss['valid_step_loss'][-1],
                 log_super_loss['valid_super_loss'][-1],
                 time.time() - start_time,
-            ))
-            
-            Logger.write('epoch: {:6d}, lr: {:.3e}, train_step: {:.3e}, train_super: {:.3e}, '
-                        'valid_step: {:.3e}, valid_super: {:.3e}, cost: {:.2f}\n'.format(
-                epoch,
-                Optimizer_0.state_dict()['param_groups'][0]['lr'],
-                log_loss['train_step_loss'][-1],
-                log_super_loss['train_super_loss'][-1],
-                log_loss['valid_step_loss'][-1],
-                log_super_loss['valid_super_loss'][-1],
-                time.time() - start_time,
-            ))
+            )
+            Logger.write(msg)
         else:
-            print('epoch: {:6d}, lr: {:.3e}, train_step: {:.3e}, train_super: {:.3e}, cost: {:.2f}'.format(
+            msg = 'epoch: {:6d}, lr: {:.3e}, train_step: {:.3e}, train_super: {:.3e}, cost: {:.2f}'.format(
                 epoch,
                 Optimizer_0.state_dict()['param_groups'][0]['lr'],
                 log_loss['train_step_loss'][-1],
                 log_super_loss['train_super_loss'][-1],
                 time.time() - start_time,
-            ))
+            )
+            Logger.write(msg)
         
         start_time = time.time()
     

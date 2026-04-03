@@ -80,16 +80,37 @@ def load_h5_dataset(h5_file: Path) -> Dict[str, Any]:
         dataset['G'] = h5f['G'][:]
         dataset['U'] = h5f['U'][:]
         dataset['T'] = h5f['T'][:] if 'T' in h5f else None
-        dataset['sample_ids'] = h5f['sample_ids'][:]
-        
+        if 'sample_ids' in h5f:
+            dataset['sample_ids'] = h5f['sample_ids'][:]
+        else:
+            dataset['sample_ids'] = np.arange(dataset['G'].shape[0], dtype=np.int64)
+            logger.warning(f"{h5_file} 缺少 sample_ids，已使用顺序索引代替")
+
         # 加载元数据
-        dataset['num_samples'] = h5f.attrs['num_samples']
-        dataset['grid_size'] = h5f.attrs['grid_size']
+        num_samples = h5f.attrs.get('num_samples')
+        if num_samples is None:
+            num_samples = h5f.attrs.get('success_samples')
+        if num_samples is None:
+            num_samples = dataset['G'].shape[0]
+
+        grid_size = h5f.attrs.get('grid_size')
+        if grid_size is None:
+            grid_size = f"{dataset['G'].shape[1]}x{dataset['G'].shape[2]}"
+
+        dataset['num_samples'] = int(num_samples)
+        dataset['grid_size'] = grid_size
         dataset['channels'] = {
-            'G': h5f.attrs['G_channels'],
-            'U': h5f.attrs['U_channels'],
-            'T': h5f.attrs['T_channels']
+            'G': int(h5f.attrs.get('G_channels', dataset['G'].shape[-1])),
+            'U': int(h5f.attrs.get('U_channels', dataset['U'].shape[-1])),
+            'T': int(h5f.attrs.get('T_channels', dataset['T'].shape[-1] if dataset['T'] is not None else 0))
         }
+        dataset['attrs'] = {key: h5f.attrs[key] for key in h5f.attrs.keys()}
+        dataset['G_channel_names'] = h5f.attrs.get('G_channel_names', None)
+
+        if 'num_samples' not in h5f.attrs:
+            logger.warning(f"{h5_file} 缺少 num_samples，已回退为 {dataset['num_samples']}")
+        if 'T_channels' not in h5f.attrs and dataset['T'] is not None:
+            logger.warning(f"{h5_file} 缺少 T_channels，已回退为 {dataset['channels']['T']}")
     
     logger.info(f"加载数据集: {h5_file}")
     logger.info(f"  样本数: {dataset['num_samples']}, 网格: {dataset['grid_size']}")

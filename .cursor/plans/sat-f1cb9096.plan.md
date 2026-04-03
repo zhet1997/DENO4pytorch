@@ -1,4 +1,36 @@
-<!-- f1cb9096-b7fa-415d-ab93-272a15e7313d 645c7632-cb7c-451c-9c84-b76ea8daf923 -->
+---
+name: 卫星2D模型推理与可视化评估脚本设计
+overview: ""
+todos:
+  - id: d608f52d-31f1-43b4-852a-00083d86fb76
+    content: 创建 Demo/satellite_2d_base/eval_satellite_models.py 脚本骨架
+    status: pending
+  - id: 11b83115-370b-4bf1-abb2-14912ca21d3a
+    content: 实现CLI参数解析（模型/数据/权重/划分/结构/下采样/输出）
+    status: pending
+  - id: 5a9d7d24-ca06-4869-8fdc-11fbf6e40c4f
+    content: 复用load_satellite_data并实现9:1或给定ntrain/nvalid划分与下采样
+    status: pending
+  - id: 8b1a5b8b-e344-4153-801f-59f1c35f8409
+    content: 按训练范式构建DataNormer并应用于评估子集，输出反归一化结果
+    status: pending
+  - id: d54c692f-eb0e-4408-afba-9dbaa2ade8d2
+    content: 按--model重建网络并导入对应feature_transform，实现权重加载与设备放置
+    status: pending
+  - id: de7dc7ae-777a-49b1-8d37-555111bd56fa
+    content: 批量前向推理并缓存逐批预测与标签用于指标与可视化
+    status: pending
+  - id: 8a5ead09-0347-4e41-9bb1-f228475c28f9
+    content: 计算MSE/MAE(可选R2)，保存metrics.json与文本摘要
+    status: pending
+  - id: 04891185-a15c-4208-98c6-6f1bf02b97bf
+    content: 复用MatplotlibVision绘制truth/pred/error三列并批量保存
+    status: pending
+  - id: 76338493-ce0d-492e-9bc7-7fa2e882ca23
+    content: 组织输出目录结构与配置落盘（samples/、metrics、config）
+    status: pending
+---
+
 # 卫星2D模型推理与可视化评估脚本设计
 
 ## 文件与位置
@@ -94,15 +126,3 @@
 
 - `num_workers` 可选参数（默认0），避免在受限环境下引发多进程问题
 - 大图片批量保存时控制分辨率与频率，防止 I/O 过载
-
-### To-dos
-
-- [ ] 创建 Demo/satellite_2d_base/eval_satellite_models.py 脚本骨架
-- [ ] 实现CLI参数解析（模型/数据/权重/划分/结构/下采样/输出）
-- [ ] 复用load_satellite_data并实现9:1或给定ntrain/nvalid划分与下采样
-- [ ] 按训练范式构建DataNormer并应用于评估子集，输出反归一化结果
-- [ ] 按--model重建网络并导入对应feature_transform，实现权重加载与设备放置
-- [ ] 批量前向推理并缓存逐批预测与标签用于指标与可视化
-- [ ] 计算MSE/MAE(可选R2)，保存metrics.json与文本摘要
-- [ ] 复用MatplotlibVision绘制truth/pred/error三列并批量保存
-- [ ] 组织输出目录结构与配置落盘（samples/、metrics、config）

@@ -63,9 +63,12 @@ class TextLogger(object):
                                       "%m-%d %H:%M:%S")
         logger = logging.getLogger()
         logger.setLevel(logging.INFO)
+        
+        # 清除已有的 handlers，防止重复
+        if logger.hasHandlers():
+            logger.handlers.clear()
 
-        # logger = logging.getLogger()
-        # logger.setLevel(level)
+        # 添加文件 handler
         handler = logging.FileHandler(filename)
         handler.setFormatter(formatter)
         level = logging.INFO
@@ -73,6 +76,7 @@ class TextLogger(object):
         handler.setLevel(level)
         logger.addHandler(handler)
 
+        # 添加终端 handler
         stream_handler = logging.StreamHandler()
         stream_handler.setFormatter(formatter)
         stream_handler.setLevel(level)

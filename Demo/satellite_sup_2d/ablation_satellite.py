@@ -26,13 +26,13 @@ def get_setting_satellite() -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, A
     basic_dict = {
         'in_dim': 8,   # 固定V2格式(17通道)
         'out_dim': 1,
-        'ntrain': 400,
-        'nvalid': 100,
+        'ntrain': 8000,
+        'nvalid': 500,
     }
 
     train_dict = {
-        'batch_size': 4,  # 减小batch size以适应内存限制
-        'epochs': 200,
+        'batch_size': 16,  # 减小batch size以适应内存限制
+        'epochs': 1000,
         'learning_rate': 1e-3,
         'scheduler_step': 100,
         'scheduler_gamma': 0.5,
@@ -321,7 +321,7 @@ def get_loaders_satellite_multi_GUT(
     dataset_info = []
     
     for comp_num in component_nums:
-        h5_path = f"{base_path}/packaged_heat_dataset_source_{comp_num}/heat_dataset_source_{comp_num}.h5"
+        h5_path = f"{base_path}/heat_dataset_source_{comp_num}.h5"
         
         if not os.path.exists(h5_path):
             print(f"警告: 文件不存在，跳过 - source_{comp_num}")
